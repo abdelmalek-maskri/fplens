@@ -4,6 +4,8 @@
 fastapi
 uvicorn
 
+---
+
 ## frontend (/app)
 react
 react-dom
