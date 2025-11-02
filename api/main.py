@@ -1,12 +1,15 @@
 from fastapi import FastAPI
+from routers import fpl
 
-app = FastAPI(title="Fantasy Foresight API")
+app = FastAPI(
+    title="Fantasy Foresight API",
+    description="Backend service for Fantasy Foresight: FPL predictions and Best XI recommendations.",
+    version="1.0"
+)
+
+#include the FPL router
+app.include_router(fpl.router)
 
 @app.get("/")
-def home():
-    return {"message": "Fantasy Foresight backend is running!"}
-
-@app.get("/predictions")
-def get_predictions():
-    #dummy response for now
-    return {"status": "ok", "data": []}
+def root():
+    return {"message": "Fantasy Foresight API is running 🚀"}
