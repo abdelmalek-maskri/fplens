@@ -3,6 +3,8 @@
 ## backend (/api)
 fastapi
 uvicorn
+Pydantic
+Pytest
 
 ---
 
