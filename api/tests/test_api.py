@@ -16,3 +16,10 @@ def test_predict_schema():
     data = r.json()
     assert isinstance(data, list)
     assert {"player_id","player_name","team","position","price","predicted_points","gameweek"} <= set(data[0].keys())
+
+def test_bestxi_structure():
+    r = client.get("/fpl/bestxi")
+    assert r.status_code == 200
+    data = r.json()
+    assert "players" in data and len(data["players"]) == 11
+    assert "total_predicted_points" in data

@@ -15,4 +15,6 @@ vite
 tailwindcss
 postcss
 autoprefixer
+react-router-dom
+react-icons
 
