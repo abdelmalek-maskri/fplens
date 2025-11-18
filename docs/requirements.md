@@ -21,7 +21,7 @@ to provide more transparent support for FPL decision-making.
 
 ---
 
-## 3. System Context
+## 2. System Context
 
 The system consists of:
 
@@ -34,12 +34,12 @@ The system consists of:
 
 ---
 
-## 4. Functional Requirements
+## 3. Functional Requirements
 
 Each requirement has an ID and a priority:  
 **M** = must have, **S** = should have, **C** = could have (nice to have).
 
-### 4.1 Data Collection and Storage
+### 3.1 Data Collection and Storage
 
 - **FR-D1 (M):** The system shall ingest historical FPL/EPL data for multiple
   seasons, including per-player statistics such as minutes played, goals,
@@ -57,7 +57,7 @@ Each requirement has an ID and a priority:
 - **FR-D5 (M):** The system shall store processed data in a structured format
   (e.g. relational database or equivalent feature store).
 
-### 4.2 Baseline Modelling
+### 3.2 Baseline Modelling
 
 - **FR-B1 (M):** The system shall construct numerical feature vectors from the
   structured data (statistics, fixtures, injury metadata).
@@ -68,7 +68,7 @@ Each requirement has an ID and a priority:
 - **FR-B3 (M):** The system shall evaluate the baseline model using appropriate
   metrics (e.g. MAE, RMSE) on a held-out test set with time-aware splits.
 
-### 4.3 NLP Feature Extraction
+### 3.3 NLP Feature Extraction
 
 - **FR-N1 (M):** The system shall preprocess news text (e.g. tokenisation,
   cleaning, removal of irrelevant articles).
@@ -82,7 +82,7 @@ Each requirement has an ID and a priority:
 - **FR-N4 (S):** The system should optionally derive additional signals from
   text (e.g. sentiment or injury-related labels).
 
-### 4.4 Hybrid Multi-Stream Model
+### 3.4 Hybrid Multi-Stream Model
 
 - **FR-H1 (M):** The system shall construct hybrid feature vectors by combining
   structured features with textual embeddings.
@@ -97,7 +97,7 @@ Each requirement has an ID and a priority:
   or more data streams (e.g. no text, no injury data) and measure the effect on
   performance.
 
-### 4.5 Optimisation and Recommendation
+### 3.5 Optimisation and Recommendation
 
 - **FR-O1 (M):** The system shall formulate FPL team selection for a single
   gameweek as an optimisation problem that respects FPL rules (budget,
@@ -112,7 +112,7 @@ Each requirement has an ID and a priority:
 - **FR-O4 (S):** The system should allow switching between using the baseline
   and hybrid models as the source of predicted points.
 
-### 4.6 Explanation and User Interface
+### 3.6 Explanation and User Interface
 
 - **FR-U1 (M):** The system shall provide a simple web interface that displays
   predicted points for players in the upcoming gameweek.
@@ -132,7 +132,7 @@ Each requirement has an ID and a priority:
 - **FR-U5 (C):** The interface could display simple plots or charts to
   visualise model outputs and feature contributions.
 
-### 4.7 Experimentation and Evaluation
+### 3.7 Experimentation and Evaluation
 
 - **FR-E1 (M):** The system shall log experiment configurations (e.g. model
   type, hyperparameters, feature sets) to allow results to be reproduced.
@@ -147,7 +147,7 @@ Each requirement has an ID and a priority:
 
 ---
 
-## 5. Non-Functional Requirements
+## 4. Non-Functional Requirements
 
 - **NFR-1 (Performance):** Inference for a single gameweek (predicting points
   for all players and computing one optimal XI) should complete within
@@ -170,4 +170,4 @@ Each requirement has an ID and a priority:
   and used in accordance with their terms of use. No personal data about
   users will be collected.
 
----
+
