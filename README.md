@@ -1,6 +1,18 @@
-# ⚽ Fantasy Foresight
+# Multi-Stream Machine Learning & NLP for Fantasy Premier League
 
-**Fantasy Foresight** is a web application that predicts Fantasy Premier League (FPL) player points and recommends the best starting XI for upcoming gameweeks.  
-It uses real FPL data, machine learning, and optimisation to help managers make smarter team selections.
+## Overview
+
+This project explores how different types of data can be combined to improve player performance prediction and decision-making in Fantasy Premier League
+(FPL). The system uses:
+
+- **Structured data**: historical FPL/EPL statistics, player form, and basic metadata  
+- **Contextual data**: fixture difficulty and team strength  
+- **Injury and availability data**  
+- **Textual data**: football news articles encoded with transformer-based NLP models  
+
+The goal is to build and evaluate a **multi-stream hybrid model** that predicts
+next–gameweek FPL points, and to integrate these predictions into an
+optimisation and explanation framework for team selection.
 
 ---
+
