@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from schemas import PredictionItem, BestXIResponse
+from api.schemas.schemas import PredictionItem, BestXIResponse
 
 router = APIRouter(prefix="/fpl", tags=["FPL"])
 
