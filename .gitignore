@@ -1,7 +1,7 @@
 .venv/
 outputs/
 node_modules/
-data/raw/fpl/vaastav_snapshot_*/
+data/raw/
 
 # Generated ML data
 data/features/
