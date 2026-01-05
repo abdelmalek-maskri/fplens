@@ -67,13 +67,19 @@ def run():
 
     # ---- Zero baseline (predict all zeros) ----
     zero_preds = np.zeros_like(y_test)
-
+    
     zero_mae = float(mean_absolute_error(y_test, zero_preds))
     zero_rmse = rmse(y_test, zero_preds)
 
     print("\n📉 Zero baseline:")
     print(f"  MAE : {zero_mae:.4f}")
     print(f"  RMSE: {zero_rmse:.4f}")
+
+    # ---- Mean baseline (predict train mean) ----
+    mean_pred = np.full_like(y_test, fill_value=y_train.mean(), dtype=float)
+    mean_baseline_value = float(np.mean(y_train))
+    mean_baseline_mae = float(mean_absolute_error(y_test, mean_pred))
+    mean_baseline_rmse = rmse(y_test, mean_pred)
 
 
     metrics = {
@@ -88,11 +94,23 @@ def run():
     # Baseline performance
     "zero_baseline_mae": zero_mae,
     "zero_baseline_rmse": zero_rmse,
+
+    # Mean baseline performance
+    "mean_baseline_value": mean_baseline_value,
+    "mean_baseline_mae": mean_baseline_mae,
+    "mean_baseline_rmse": mean_baseline_rmse,
     }   
+
+    print("model mae:", metrics["mae"])
+    print("model rmse:", metrics["rmse"])
 
     print("\n📈 Model vs Zero baseline:")
     print(f"  MAE improvement : {zero_mae - metrics['mae']:.4f}")
     print(f"  RMSE improvement: {zero_rmse - metrics['rmse']:.4f}")
+    print(f"\n📊 Model vs Mean baseline value ({mean_baseline_value:.4f}):")
+    print(f"  MAE improvement : {mean_baseline_mae - metrics['mae']:.4f}")
+    print(f"  RMSE improvement: {mean_baseline_rmse - metrics['rmse']:.4f}")
+
 
 
     OUT_MODEL.parent.mkdir(parents=True, exist_ok=True)
