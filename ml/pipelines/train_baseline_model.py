@@ -11,10 +11,10 @@ IN_PATH = Path("data/features/baseline_features.csv")
 OUT_MODEL = Path("outputs/models/lgbm_baseline.joblib")
 OUT_METRICS = Path("outputs/metrics/lgbm_baseline.json")
 OUT_IMPORTANCE = Path("outputs/metrics/lgbm_feature_importance.csv")
-OUT_CV = Path("outputs/metrics/lgbm_rolling_cv.csv")
+OUT_CV = Path("outputs/metrics/lgbm_rolling_cv_no_element.csv")
 
 TEST_SEASON = "2023-24"   # optional final holdout
-DROP_COLS = ["name"]      # not useful for model
+DROP_COLS = ["name", "element"]      # not useful for model
 
 # Rolling CV settings:
 MIN_TRAIN_SEASONS = 3     # require at least this many seasons before we start evaluating folds
