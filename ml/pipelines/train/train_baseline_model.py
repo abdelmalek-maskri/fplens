@@ -156,12 +156,41 @@ def run() -> None:
         model.fit(X_train, y_train, categorical_feature=cat_cols)
         preds = model.predict(X_test)
 
+        # --- Holdout baselines (added back) ---
+        zero_preds = np.zeros_like(y_test)
+        mean_value = float(np.mean(y_train))
+        mean_preds = np.full_like(y_test, mean_value, dtype=float)
+
+        model_mae = float(mean_absolute_error(y_test, preds))
+        model_rmse = rmse(y_test, preds)
+
+        zero_mae = float(mean_absolute_error(y_test, zero_preds))
+        zero_rmse = rmse(y_test, zero_preds)
+
+        mean_mae = float(mean_absolute_error(y_test, mean_preds))
+        mean_rmse = rmse(y_test, mean_preds)
+
         metrics = {
             "test_season": TEST_SEASON,
             "rows_train": int(len(train_df)),
             "rows_test": int(len(test_df)),
-            "mae": float(mean_absolute_error(y_test, preds)),
-            "rmse": rmse(y_test, preds),
+
+            "mae": model_mae,
+            "rmse": model_rmse,
+
+            "zero_baseline_mae": zero_mae,
+            "zero_baseline_rmse": zero_rmse,
+
+            "mean_baseline_value": mean_value,
+            "mean_baseline_mae": mean_mae,
+            "mean_baseline_rmse": mean_rmse,
+
+            # Improvements (positive = model better)
+            "mae_improve_vs_zero": zero_mae - model_mae,
+            "rmse_improve_vs_zero": zero_rmse - model_rmse,
+            "mae_improve_vs_mean": mean_mae - model_mae,
+            "rmse_improve_vs_mean": mean_rmse - model_rmse,
+
             "rolling_cv": cv_summary,
         }
 
@@ -180,7 +209,19 @@ def run() -> None:
         imp.to_csv(OUT_IMPORTANCE, index=False)
 
         print("✅ Saved final model & metrics")
-        print("Top features:")
+        print("\n📉 Holdout baselines:")
+        print(f"  Zero baseline MAE : {zero_mae:.4f}")
+        print(f"  Mean baseline MAE : {mean_mae:.4f} (mean={mean_value:.4f})")
+
+        print("\n📊 Holdout model metrics:")
+        print(f"  Model MAE : {model_mae:.4f}")
+        print(f"  Model RMSE: {model_rmse:.4f}")
+
+        print("\n📈 Holdout improvements:")
+        print(f"  MAE improve vs zero: {metrics['mae_improve_vs_zero']:.4f}")
+        print(f"  MAE improve vs mean: {metrics['mae_improve_vs_mean']:.4f}")
+
+        print("\nTop features:")
         print(imp.head(15).to_string(index=False))
 
 
