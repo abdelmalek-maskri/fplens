@@ -1,7 +1,8 @@
+# ml/pipelines/features/create_target.py
 import pandas as pd
 from pathlib import Path
 
-IN_PATH = Path("data/processed/merged/fpl_base.csv")
+IN_PATH = Path("data/processed/merged/fpl_base_enriched.csv")
 OUT_PATH = Path("data/processed/merged/fpl_with_target.csv")
 
 def run():
