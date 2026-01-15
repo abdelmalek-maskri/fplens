@@ -11,10 +11,11 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error
 
 IN_PATH = Path("data/features/baseline_features.csv")
 
-OUT_MODEL = Path("outputs/models/lgbm_baseline.joblib")
-OUT_METRICS = Path("outputs/metrics/lgbm_baseline.json")
-OUT_IMPORTANCE = Path("outputs/metrics/lgbm_feature_importance.csv")
-OUT_CV = Path("outputs/metrics/lgbm_rolling_cv.csv")
+OUT_MODEL = Path("outputs/models/lgbm_baseline_v1.joblib")
+OUT_METRICS = Path("outputs/metrics/baseline_v1.json")
+OUT_IMPORTANCE = Path("outputs/metrics/baseline_v1_feature_importance.csv")
+OUT_CV = Path("outputs/metrics/baseline_v1_cv.csv")
+
 
 # Optional final holdout (set to None to disable)
 TEST_SEASON = "2023-24"
