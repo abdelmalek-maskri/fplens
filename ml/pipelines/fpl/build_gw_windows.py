@@ -1,4 +1,4 @@
-# ml/pipelines/build_gw_windows.py
+# ml/pipelines/build_gw_windows.py (3)
 import argparse
 from pathlib import Path
 
@@ -10,12 +10,10 @@ OUT_DIR = Path("data/processed/mappings")
 
 
 def safe_read_csv(path: Path) -> pd.DataFrame:
-    """Read CSV robustly across seasons (mixed encodings + occasional bad lines)."""
     try:
         return pd.read_csv(path, encoding="utf-8")
     except (UnicodeDecodeError, pd.errors.ParserError):
         return pd.read_csv(path, encoding="latin1", engine="python", on_bad_lines="skip")
-
 
 def find_latest_snapshot(root: Path) -> Path:
     snaps = sorted([p for p in root.glob("vaastav_snapshot_*") if p.is_dir()])
@@ -63,18 +61,30 @@ def run_one(season: str) -> Path:
     w = pd.DataFrame(rows).sort_values("GW")
     w.to_csv(out, index=False)
 
-    print(f"✅ Saved: {out}")
+    print(f"Saved: {out}")
     print(w.head(5).to_string(index=False))
     print("GW range:", int(w["GW"].min()), "->", int(w["GW"].max()))
     return out
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--season", required=True)
-    args = ap.parse_args()
-    run_one(args.season)
+    # ap = argparse.ArgumentParser()
+    # ap.add_argument("--season", required=True)
+    # args = ap.parse_args()
+    # run_one(args.season)
 
+    SEASONS = [
+        "2016-17", "2017-18", "2018-19",
+        "2019-20", "2020-21", "2021-22",
+        "2022-23", "2023-24", "2024-25",
+        "2025-26" 
+    ]
+
+    snap = find_latest_snapshot(SNAPSHOT_ROOT)
+    for season in SEASONS:
+        run_one(season)
+    
+    
 
 if __name__ == "__main__":
     main()
