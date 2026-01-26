@@ -1,4 +1,4 @@
-# ml/pipelines/build_fpl_fixtures_from_gws.py
+# ml/pipelines/build_fpl_fixtures_from_gws.py (2)
 import argparse
 from pathlib import Path
 import pandas as pd
@@ -16,13 +16,9 @@ def find_latest_snapshot(root: Path) -> Path:
 
 
 def build_element_to_team_map(season_dir: Path) -> pd.Series:
-    """
-    Build mapping: element_id -> team_id (FPL team integer)
 
-    players_raw schema varies by season:
-      - element id can be in 'id' or 'element'
-      - team id can be in 'team' (most common), sometimes 'team_id' or 'team_code'
-    """
+    # Build mapping: element_id -> team_id (FPL team integer)
+
     players_path = season_dir / "players_raw.csv"
     players = safe_read_csv(players_path)
 
@@ -48,7 +44,6 @@ def build_element_to_team_map(season_dir: Path) -> pd.Series:
     m = m.dropna(subset=[elem_col, team_col]).drop_duplicates(subset=[elem_col])
 
     m[elem_col] = m[elem_col].astype(int)
-    m[team_col] = m[team_col].astype(int)
 
     return m.set_index(elem_col)[team_col]
 
@@ -86,7 +81,7 @@ def run_one(season: str, snapshot: Path) -> Path:
     if not gw_files:
         raise FileNotFoundError(f"No gw*.csv files found in {gws_dir}")
 
-    # Always build element->team from players_raw 
+    #always build element->team from players_raw 
     element_to_team = build_element_to_team_map(season_dir)
 
     rows = []
@@ -127,8 +122,7 @@ def run_one(season: str, snapshot: Path) -> Path:
         dfx = df.dropna(subset=["fixture", "kickoff_time", "team", "opponent_team"]).copy()
 
         if dfx.empty:
-            # Helpful debug (won't crash the whole run)
-            print(f"⚠️ {season} {f.name}: empty after dropna. "
+            print(f"{season} {f.name}: empty after dropna. "
                   f"team_na={df['team'].isna().mean():.3f}, "
                   f"kickoff_na={df['kickoff_time'].isna().mean():.3f}, "
                   f"opp_na={df['opponent_team'].isna().mean():.3f}")
@@ -138,18 +132,18 @@ def run_one(season: str, snapshot: Path) -> Path:
         dfx["team"] = dfx["team"].astype(int)
         dfx["opponent_team"] = dfx["opponent_team"].astype(int)
 
-        # choose one home-side record per fixture
+        #choose one home-side record per fixture
         home_side = dfx[dfx["was_home"]][
             ["fixture", "kickoff_time", "team", "opponent_team", "team_h_score", "team_a_score"]
         ].copy()
 
         if home_side.empty:
-            # fallback: use away-side rows and swap ids
+            #fallback: use away-side rows and swap ids
             away_side = dfx[~dfx["was_home"]][
                 ["fixture", "kickoff_time", "team", "opponent_team", "team_h_score", "team_a_score"]
             ].copy()
             if away_side.empty:
-                print(f"⚠️ {season} {f.name}: no home or away rows after filtering.")
+                print(f"{season} {f.name}: no home or away rows after filtering.")
                 continue
 
             away_side = away_side.rename(columns={"team": "away_team_id", "opponent_team": "home_team_id"})
@@ -165,7 +159,7 @@ def run_one(season: str, snapshot: Path) -> Path:
         rows.append(one_per_fixture)
 
     if not rows:
-        # Hard fail: you *want* to know this immediately.
+        #hard fail if no fixture rows produced
         raise RuntimeError(
             f"{season}: produced 0 fixture rows from gw files. "
             f"Check that gw*.csv contain element ids matching players_raw and valid kickoff_time."
@@ -173,24 +167,33 @@ def run_one(season: str, snapshot: Path) -> Path:
 
     fx = pd.concat(rows, ignore_index=True)
 
-    # One row per fixture (dedupe across GWs)
+    #one row per fixture 
     fx = fx.sort_values(["fixture", "kickoff_time"]).drop_duplicates(subset=["fixture"], keep="first")
     fx = fx.sort_values(["kickoff_time", "fixture"]).reset_index(drop=True)
 
     fx.to_csv(out, index=False)
-    print(f"✅ Saved: {out}")
+    print(f"Saved: {out}")
     print("rows:", len(fx))
     print(fx.head(8).to_string(index=False))
     return out
 
 
 def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--season", required=True, help="e.g. 2016-17")
-    args = ap.parse_args()
 
+    SEASONS = [
+    "2016-17", "2017-18", "2018-19",
+    "2019-20", "2020-21", "2021-22",
+    "2022-23", "2023-24", "2024-25",
+    "2025-26"
+    ]
+    # ap = argparse.ArgumentParser()
+    # ap.add_argument("--season", required=True, help="e.g. 2016-17")
+    # args = ap.parse_args()
     snap = find_latest_snapshot(SNAPSHOT_ROOT)
-    run_one(args.season, snap)
+
+    for season in SEASONS:
+        run_one(season, snap)
+    # run_one(args.season, snap)
 
 
 if __name__ == "__main__":

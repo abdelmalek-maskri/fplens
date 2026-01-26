@@ -1,3 +1,4 @@
+#ml/pipelines/fpl/buildfpl_table.py (1)
 import pandas as pd
 from pathlib import Path
 
@@ -70,8 +71,6 @@ def run():
     rows = []
     season_dirs = sorted([p for p in snapshot.iterdir() if p.is_dir()])
 
-    skipped_seasons = []
-
     for season_dir in season_dirs:
         season = season_dir.name
         f = season_dir / "gws" / "merged_gw.csv"
@@ -80,10 +79,8 @@ def run():
 
         df = safe_read_csv(f)
         
-        # --- LOGGING ADDED HERE ---
         before_rows = len(df)
         print(f"{season}: loaded {before_rows} rows")
-        # --------------------------
 
         #add season column (not present in merged_gw.csv)
         df["season"] = season
