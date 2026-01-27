@@ -1,4 +1,4 @@
-# ml/pipelines/build_fixture_to_gw.py
+# ml/pipelines/build_fixture_to_gw.py (4) 
 import argparse
 from pathlib import Path
 import pandas as pd
@@ -7,7 +7,7 @@ from ml.utils.io import safe_read_csv
 
 
 def find_latest_snapshot(root: Path) -> Path:
-    """Return the most recent Vaastav FPL snapshot directory."""
+    """return the most recent Vaastav FPL snapshot directory."""
     snaps = sorted([p for p in root.glob("vaastav_snapshot_*") if p.is_dir()])
     if not snaps:
         raise FileNotFoundError("No snapshot found under data/raw/fpl/vaastav_snapshot_*")
@@ -33,22 +33,31 @@ def run_one(season: str) -> Path:
         fx = pd.to_numeric(df["fixture"], errors="coerce").dropna().astype(int)
         rows.append(pd.DataFrame({"fixture": fx.unique(), "GW": gw}))
 
-    # One row per fixture
+    #one row per fixture
     m = pd.concat(rows, ignore_index=True).drop_duplicates("fixture")
 
     out = Path(f"data/processed/mappings/fixture_to_gw_{season}.csv")
     out.parent.mkdir(parents=True, exist_ok=True)
     m.to_csv(out, index=False)
 
-    print(f"✅ Saved: {out} rows: {len(m)}")
+    print(f"Saved: {out} rows: {len(m)}")
     return out
 
 
 def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--season", required=True)
-    args = ap.parse_args()
-    run_one(args.season)
+    # ap = argparse.ArgumentParser()
+    # ap.add_argument("--season", required=True)
+    # args = ap.parse_args()
+    # run_one(args.season)
+
+    SEASONS = ["2016-2017", "2017-2018", "2018-2019", 
+               "2019-2020","2020-2021", "2021-2022", 
+               "2022-2023", "2023-2024", "2024-2025",
+               "2025-2026"]
+    
+    for season in SEASONS:
+        run_one(season)
+    
 
 
 if __name__ == "__main__":
