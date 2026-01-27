@@ -48,6 +48,7 @@ ALIASES = {
     # Nottingham Forest variants (just in case)
     "nottingham forest": "nottm forest",
     "notts forest": "nottm forest",
+    "nott m forest": "nottm forest",
 
     # Brighton variants
     "brighton and hove albion": "brighton",
