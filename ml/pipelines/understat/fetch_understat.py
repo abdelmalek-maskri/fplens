@@ -1,4 +1,5 @@
-# ml/pipelines/fetch_understat.py
+# ml/pipelines/fetch_understat.py (5)
+
 """
 Fetch Understat data for a given FPL season string (e.g. "2016-17").
 
@@ -7,9 +8,6 @@ Writes:
 - data/processed/external/understat/player_matches_EPL_{YEAR}_all_filtered.csv
 
 Where YEAR = int(season.split("-")[0])  (e.g. "2016-17" -> 2016)
-
-Run from project root:
-  python3 -m ml.pipelines.fetch_understat --season 2016-17
 """
 
 import argparse
@@ -32,7 +30,7 @@ async def _get_league_players(understat: Understat, league: str, year: int) -> L
 
 async def _get_teams(understat: Understat, league: str, year: int) -> Set[str]:
     teams = await understat.get_teams(league, year)
-    # Understat commonly uses "title" for team name; fallback to "name" if ever present.
+    #understat commonly uses "title" for team name; fallback to "name" if ever present.
     out = set()
     for t in teams:
         if "title" in t and t["title"]:
@@ -46,8 +44,7 @@ async def _get_player_matches(understat: Understat, player_id: int) -> List[Dict
     return await understat.get_player_matches(player_id)
 
 
-def _filter_matches(
-    matches: List[Dict[str, Any]],
+def _filter_matches(matches: List[Dict[str, Any]],
     *,
     year: int,
     league: str,
@@ -55,7 +52,7 @@ def _filter_matches(
     player_id: int,
 ) -> List[Dict[str, Any]]:
     """
-    Keep only:
+    keep only:
     - season == year
     - both h_team and a_team are in EPL team list for that year
     """
@@ -87,6 +84,7 @@ async def fetch_all(
     max_players: Optional[int],
     concurrency: int,
 ) -> None:
+    
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
     connector = aiohttp.TCPConnector(limit=concurrency)
@@ -95,19 +93,19 @@ async def fetch_all(
     async with aiohttp.ClientSession(connector=connector, timeout=timeout) as session:
         understat = Understat(session)
 
-        print(f"📥 Fetching Understat players: {league} {year}/{str(year + 1)[-2:]}")
+        print(f"Fetching Understat players: {league} {year}/{str(year + 1)[-2:]}")
         players = await _get_league_players(understat, league, year)
         players_df = pd.DataFrame(players)
 
         players_path = OUT_DIR / f"players_{league}_{year}.csv"
         players_df.to_csv(players_path, index=False)
-        print(f"✅ Saved: {players_path} rows: {len(players_df)}")
+        print(f"saved: {players_path} rows: {len(players_df)}")
 
-        print(f"📥 Fetching Understat team names: {league} {year}")
+        print(f"Fetching Understat team names: {league} {year}")
         team_names = await _get_teams(understat, league, year)
         print("Teams (sample):", sorted(team_names)[:5], "... total:", len(team_names))
 
-        # Decide which players to fetch matches for
+        #decide which players to fetch matches for
         if players_df.empty or "id" not in players_df.columns:
             raise ValueError("Understat league players response missing 'id' column or is empty.")
 
@@ -120,7 +118,7 @@ async def fetch_all(
             players_df = players_df.head(max_players).copy()
 
         player_ids = [int(x) for x in players_df["id"].tolist() if pd.notna(x)]
-        print(f"📥 Fetching matches for {len(player_ids)} players... (concurrency={concurrency})")
+        print(f"Fetching matches for {len(player_ids)} players... (concurrency={concurrency})")
 
         sem = asyncio.Semaphore(concurrency)
 
@@ -131,10 +129,10 @@ async def fetch_all(
                     return _filter_matches(m, year=year, league=league, team_names=team_names, player_id=pid)
                 except Exception as e:
                     # Don’t crash the whole run; log and continue
-                    print(f"⚠️  Failed player_id={pid}: {e}")
+                    print(f"Failed player_id={pid}: {e}")
                     return []
 
-        # Run many requests concurrently
+        #run many requests concurrently
         chunks: List[List[Dict[str, Any]]] = await asyncio.gather(*(fetch_one(pid) for pid in player_ids))
         all_rows: List[Dict[str, Any]] = [r for chunk in chunks for r in chunk]
 
@@ -142,16 +140,15 @@ async def fetch_all(
         matches_path = OUT_DIR / f"player_matches_{league}_{year}_all_filtered.csv"
         matches_df.to_csv(matches_path, index=False)
 
-        print(f"✅ Saved: {matches_path} rows: {len(matches_df)}")
+        print(f"saved: {matches_path} rows: {len(matches_df)}")
         if not matches_df.empty:
             print("Sample columns:", matches_df.columns.tolist()[:30])
         else:
-            print("⚠️ No matches after filtering (check team names / season value / Understat data).")
+            print("No matches after filtering (check team names / season value / Understat data).")
 
 
 def parse_args() -> argparse.Namespace:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--season", required=True, help='FPL season string, e.g. "2016-17"')
     ap.add_argument("--league", default=LEAGUE, help='Understat league code (default: "EPL")')
     ap.add_argument(
         "--max-players",
@@ -165,23 +162,32 @@ def parse_args() -> argparse.Namespace:
         default=15,
         help="How many concurrent player match requests (default: 15).",
     )
+
+
+
     return ap.parse_args()
 
 
 def main() -> None:
     args = parse_args()
 
-    # REQUIRED by your spec:
-    year = int(args.season.split("-")[0])
+    SEASONS = ["2016-17", "2017-18", "2018-19",
+    "2019-20", "2020-21", "2021-22",
+    "2022-23", "2023-24", "2024-25",
+    "2025-26"]
 
-    asyncio.run(
-        fetch_all(
-            year=year,
-            league=args.league,
-            max_players=args.max_players,
-            concurrency=max(1, int(args.concurrency)),
+    for season in SEASONS:
+        year = int(season.split("-")[0])
+        print(f"\n=== Fetching Understat data for season {season} ===")
+
+        asyncio.run(
+            fetch_all(
+                year=year,
+                league=args.league,
+                max_players=args.max_players,
+                concurrency=max(1, int(args.concurrency)),
+            )
         )
-    )
 
 
 if __name__ == "__main__":
