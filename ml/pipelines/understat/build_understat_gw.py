@@ -1,4 +1,5 @@
-# ml/pipelines/build_understat_gw.py
+# ml/pipelines/build_understat_gw.py (10)
+
 import argparse
 from pathlib import Path
 import pandas as pd
@@ -37,14 +38,19 @@ def run_one(season: str) -> Path:
     out.parent.mkdir(parents=True, exist_ok=True)
     agg.to_csv(out, index=False)
 
-    print("✅ Saved:", out, "rows:", len(agg))
+    print("Saved:", out, "rows:", len(agg))
     return out
 
 def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--season", required=True)
-    args = ap.parse_args()
-    run_one(args.season)
+    SEASONS = [
+    "2016-17", "2017-18", "2018-19",
+    "2019-20", "2020-21", "2021-22",
+    "2022-23", "2023-24", "2024-25",
+    "2025-26",
+    ]
+
+    for season in SEASONS:
+        run_one(season)  
 
 if __name__ == "__main__":
     main()
