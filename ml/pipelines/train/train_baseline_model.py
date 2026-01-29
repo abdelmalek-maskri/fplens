@@ -1,35 +1,34 @@
 # ml/pipelines/train/train_baseline_model.py
+"""
+Baseline LightGBM model for FPL points prediction.
+"""
+
 from pathlib import Path
 import json
-
 import joblib
-import numpy as np
 import pandas as pd
 from lightgbm import LGBMRegressor
-from sklearn.metrics import mean_absolute_error, mean_squared_error
 
+from ml.config.eval_config import (
+    HOLDOUT_SEASON,
+    CV_SEASONS,
+    MIN_TRAIN_SEASONS,
+    DROP_COLS,
+    CAT_COLS,
+    TARGET_COL,
+    MODELS_DIR,
+    METRICS_DIR,
+)
+from ml.utils.eval_metrics import (
+    full_evaluation,
+    print_final_summary,
+)
 
 IN_PATH = Path("data/features/baseline_features.csv")
-
-OUT_MODEL = Path("outputs/models/lgbm_baseline_v1.joblib")
-OUT_METRICS = Path("outputs/metrics/baseline_v1.json")
-OUT_IMPORTANCE = Path("outputs/metrics/baseline_v1_feature_importance.csv")
-OUT_CV = Path("outputs/metrics/baseline_v1_cv.csv")
-
-
-# Optional final holdout (set to None to disable)
-TEST_SEASON = "2023-24"
-
-DROP_COLS = ["name", "element"]
-
-# Rolling CV settings
-MIN_TRAIN_SEASONS = 3
-
-CAT_COLS = ["season", "position", "team", "opponent_team"]
-
-
-def rmse(y_true, y_pred) -> float:
-    return float(np.sqrt(mean_squared_error(y_true, y_pred)))
+OUT_MODEL = Path(MODELS_DIR) / "lgbm_baseline_v1.joblib"
+OUT_METRICS = Path(METRICS_DIR) / "baseline_v1.json"
+OUT_IMPORTANCE = Path(METRICS_DIR) / "baseline_v1_feature_importance.csv"
+OUT_CV = Path(METRICS_DIR) / "baseline_v1_cv.csv"
 
 
 def build_model() -> LGBMRegressor:
@@ -45,21 +44,17 @@ def build_model() -> LGBMRegressor:
 
 
 def prepare_xy(df: pd.DataFrame):
-    y = df["points_next_gw"].values
-    drop = set(["points_next_gw"] + DROP_COLS)
+    """Extract features (X) and target (y) from dataframe."""
+    y = df[TARGET_COL].values
+    drop = set([TARGET_COL] + DROP_COLS)
     X = df.drop(columns=[c for c in drop if c in df.columns])
     return X, y
 
 
 def rolling_season_cv(df: pd.DataFrame, seasons: list[str]) -> pd.DataFrame:
-    """
-    Rolling-season CV:
-      fold i:
-        train = seasons[:i]
-        test  = seasons[i]
-    """
-    rows = []
+    # fold i: train on seasons[:i], test on seasons[i]  
 
+    rows = []
     for i in range(MIN_TRAIN_SEASONS, len(seasons)):
         test_season = seasons[i]
         train_seasons = seasons[:i]
@@ -69,161 +64,140 @@ def rolling_season_cv(df: pd.DataFrame, seasons: list[str]) -> pd.DataFrame:
 
         X_train, y_train = prepare_xy(train_df)
         X_test, y_test = prepare_xy(test_df)
-
-        # Align columns
         X_test = X_test[X_train.columns]
 
         cat_cols = [c for c in CAT_COLS if c in X_train.columns]
 
         model = build_model()
         model.fit(X_train, y_train, categorical_feature=cat_cols)
-
         preds = model.predict(X_test)
 
-        zero_preds = np.zeros_like(y_test)
-        mean_value = float(np.mean(y_train))
-        mean_preds = np.full_like(y_test, mean_value, dtype=float)
+        eval_result = full_evaluation(y_test, preds, y_train)
 
         fold = {
             "test_season": test_season,
+            "n_train_seasons": len(train_seasons),
             "rows_train": int(len(train_df)),
             "rows_test": int(len(test_df)),
-            "mae": float(mean_absolute_error(y_test, preds)),
-            "rmse": rmse(y_test, preds),
-            "zero_baseline_mae": float(mean_absolute_error(y_test, zero_preds)),
-            "zero_baseline_rmse": rmse(y_test, zero_preds),
-            "mean_baseline_value": mean_value,
-            "mean_baseline_mae": float(mean_absolute_error(y_test, mean_preds)),
-            "mean_baseline_rmse": rmse(y_test, mean_preds),
+            **{f"model_{k}": v for k, v in eval_result["model"].items()},
+            **{f"zero_{k}": v for k, v in eval_result["baselines"]["zero_baseline"].items()},
+            **{f"mean_{k}": v for k, v in eval_result["baselines"]["mean_baseline"].items()},
+            **{f"improve_vs_zero_{k}": v for k, v in eval_result["improvements"]["vs_zero"].items()},
+            **{f"improve_vs_mean_{k}": v for k, v in eval_result["improvements"]["vs_mean"].items()},
         }
-
-        fold["mae_improve_vs_zero"] = fold["zero_baseline_mae"] - fold["mae"]
-        fold["mae_improve_vs_mean"] = fold["mean_baseline_mae"] - fold["mae"]
-
         rows.append(fold)
+
+        print(f"  CV fold {test_season}: MAE={eval_result['model']['mae']:.4f}, R²={eval_result['model']['r2']:.4f}")
 
     return pd.DataFrame(rows)
 
 
 def run() -> None:
-    print("📥 Loading baseline features...")
+    print("=" * 60)
+    print("BASELINE MODEL TRAINING")
+    print("=" * 60)
+    print(f"Holdout season: {HOLDOUT_SEASON}")
+    print(f"CV seasons: {CV_SEASONS}")
+    print()
+
+    print("Loading baseline features...")
     df = pd.read_csv(IN_PATH, low_memory=False)
 
-    # Explicit categoricals for LightGBM
+    # Convert categoricals for LightGBM
     for c in CAT_COLS:
         if c in df.columns:
             df[c] = df[c].astype("category")
 
-    seasons = sorted(df["season"].dropna().unique().tolist())
+    # Verify we have required seasons
+    available = set(df["season"].dropna().unique())
+    if HOLDOUT_SEASON not in available:
+        raise ValueError(f"Holdout season {HOLDOUT_SEASON} not in data: {available}")
 
-    if len(seasons) < MIN_TRAIN_SEASONS + 1:
-        raise ValueError(f"Not enough seasons for rolling CV: {seasons}")
+    cv_seasons_available = [s for s in CV_SEASONS if s in available]
+    if len(cv_seasons_available) < MIN_TRAIN_SEASONS + 1:
+        raise ValueError(f"Not enough CV seasons: {cv_seasons_available}")
 
-    # -----------------------
-    # 1) Rolling-season CV
-    # -----------------------
-    print("🔁 Running rolling-season CV...")
-    cv_df = rolling_season_cv(df, seasons)
+    # 1) Rolling-season CV (on CV_SEASONS only, excludes holdout)
+    print("Running rolling-season CV...")
+    cv_df = rolling_season_cv(df[df["season"].isin(cv_seasons_available)], cv_seasons_available)
 
     OUT_CV.parent.mkdir(parents=True, exist_ok=True)
     cv_df.to_csv(OUT_CV, index=False)
 
     cv_summary = {
-        "folds": int(len(cv_df)),
-        "mae_mean": float(cv_df["mae"].mean()),
-        "rmse_mean": float(cv_df["rmse"].mean()),
-        "mae_improve_vs_zero_mean": float(cv_df["mae_improve_vs_zero"].mean()),
-        "mae_improve_vs_mean_mean": float(cv_df["mae_improve_vs_mean"].mean()),
+        "n_folds": int(len(cv_df)),
+        "mae_mean": float(cv_df["model_mae"].mean()),
+        "mae_std": float(cv_df["model_mae"].std()),
+        "rmse_mean": float(cv_df["model_rmse"].mean()),
+        "r2_mean": float(cv_df["model_r2"].mean()),
+    }
+    print(f"\nCV Summary: MAE={cv_summary['mae_mean']:.4f} ± {cv_summary['mae_std']:.4f}, R²={cv_summary['r2_mean']:.4f}")
+
+    # 2) Final holdout evaluation (train on all CV seasons, test on holdout)
+
+    print(f"\nTraining final model for holdout evaluation ({HOLDOUT_SEASON})...")
+
+    train_df = df[df["season"].isin(cv_seasons_available)]
+    test_df = df[df["season"] == HOLDOUT_SEASON]
+
+    X_train, y_train = prepare_xy(train_df)
+    X_test, y_test = prepare_xy(test_df)
+    X_test = X_test[X_train.columns]
+
+    cat_cols = [c for c in CAT_COLS if c in X_train.columns]
+
+    model = build_model()
+    model.fit(X_train, y_train, categorical_feature=cat_cols)
+    preds = model.predict(X_test)
+
+    holdout_eval = full_evaluation(y_test, preds, y_train)
+
+    print_final_summary(
+        model_name="lgbm_baseline_v1",
+        holdout_season=HOLDOUT_SEASON,
+        train_seasons=cv_seasons_available,
+        n_train=len(train_df),
+        n_test=len(test_df),
+        eval_result=holdout_eval,
+        output_dir=str(OUT_METRICS.parent),
+    )
+    # 3) Save outputs
+    
+    metrics = {
+        "model_name": "lgbm_baseline_v1",
+        "holdout_season": HOLDOUT_SEASON,
+        "cv_seasons": cv_seasons_available,
+        "rows_train": int(len(train_df)),
+        "rows_test": int(len(test_df)),
+        "holdout": holdout_eval,
+        "cv_summary": cv_summary,
     }
 
-    print("📊 Rolling CV summary:", cv_summary)
+    OUT_MODEL.parent.mkdir(parents=True, exist_ok=True)
+    OUT_METRICS.parent.mkdir(parents=True, exist_ok=True)
 
-    # -----------------------
-    # 2) Optional final holdout
-    # -----------------------
-    if TEST_SEASON and TEST_SEASON in seasons:
-        print(f"\n🏁 Training final model (holdout={TEST_SEASON})")
+    joblib.dump(model, OUT_MODEL)
+    OUT_METRICS.write_text(json.dumps(metrics, indent=2))
 
-        train_df = df[df["season"] != TEST_SEASON]
-        test_df = df[df["season"] == TEST_SEASON]
+    # Feature importance
+    imp = pd.DataFrame({
+        "feature": X_train.columns,
+        "importance": model.feature_importances_,
+    }).sort_values("importance", ascending=False)
 
-        X_train, y_train = prepare_xy(train_df)
-        X_test, y_test = prepare_xy(test_df)
-        X_test = X_test[X_train.columns]
+    OUT_IMPORTANCE.parent.mkdir(parents=True, exist_ok=True)
+    imp.to_csv(OUT_IMPORTANCE, index=False)
 
-        cat_cols = [c for c in CAT_COLS if c in X_train.columns]
+    print("\n" + "=" * 60)
+    print("OUTPUTS SAVED")
+    print("=" * 60)
+    print(f"Model:      {OUT_MODEL}")
+    print(f"Metrics:    {OUT_METRICS}")
+    print(f"CV results: {OUT_CV}")
+    print(f"Features:   {OUT_IMPORTANCE}")
 
-        model = build_model()
-        model.fit(X_train, y_train, categorical_feature=cat_cols)
-        preds = model.predict(X_test)
-
-        # --- Holdout baselines (added back) ---
-        zero_preds = np.zeros_like(y_test)
-        mean_value = float(np.mean(y_train))
-        mean_preds = np.full_like(y_test, mean_value, dtype=float)
-
-        model_mae = float(mean_absolute_error(y_test, preds))
-        model_rmse = rmse(y_test, preds)
-
-        zero_mae = float(mean_absolute_error(y_test, zero_preds))
-        zero_rmse = rmse(y_test, zero_preds)
-
-        mean_mae = float(mean_absolute_error(y_test, mean_preds))
-        mean_rmse = rmse(y_test, mean_preds)
-
-        metrics = {
-            "test_season": TEST_SEASON,
-            "rows_train": int(len(train_df)),
-            "rows_test": int(len(test_df)),
-
-            "mae": model_mae,
-            "rmse": model_rmse,
-
-            "zero_baseline_mae": zero_mae,
-            "zero_baseline_rmse": zero_rmse,
-
-            "mean_baseline_value": mean_value,
-            "mean_baseline_mae": mean_mae,
-            "mean_baseline_rmse": mean_rmse,
-
-            # Improvements (positive = model better)
-            "mae_improve_vs_zero": zero_mae - model_mae,
-            "rmse_improve_vs_zero": zero_rmse - model_rmse,
-            "mae_improve_vs_mean": mean_mae - model_mae,
-            "rmse_improve_vs_mean": mean_rmse - model_rmse,
-
-            "rolling_cv": cv_summary,
-        }
-
-        OUT_MODEL.parent.mkdir(parents=True, exist_ok=True)
-        OUT_METRICS.parent.mkdir(parents=True, exist_ok=True)
-
-        joblib.dump(model, OUT_MODEL)
-        OUT_METRICS.write_text(json.dumps(metrics, indent=2))
-
-        imp = pd.DataFrame({
-            "feature": X_train.columns,
-            "importance": model.feature_importances_,
-        }).sort_values("importance", ascending=False)
-
-        OUT_IMPORTANCE.parent.mkdir(parents=True, exist_ok=True)
-        imp.to_csv(OUT_IMPORTANCE, index=False)
-
-        print("✅ Saved final model & metrics")
-        print("\n📉 Holdout baselines:")
-        print(f"  Zero baseline MAE : {zero_mae:.4f}")
-        print(f"  Mean baseline MAE : {mean_mae:.4f} (mean={mean_value:.4f})")
-
-        print("\n📊 Holdout model metrics:")
-        print(f"  Model MAE : {model_mae:.4f}")
-        print(f"  Model RMSE: {model_rmse:.4f}")
-
-        print("\n📈 Holdout improvements:")
-        print(f"  MAE improve vs zero: {metrics['mae_improve_vs_zero']:.4f}")
-        print(f"  MAE improve vs mean: {metrics['mae_improve_vs_mean']:.4f}")
-
-        print("\nTop features:")
-        print(imp.head(15).to_string(index=False))
+    print("\nTop 15 features:")
+    print(imp.head(15).to_string(index=False))
 
 
 if __name__ == "__main__":
