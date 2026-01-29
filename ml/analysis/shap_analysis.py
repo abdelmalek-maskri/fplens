@@ -18,35 +18,42 @@ import joblib
 import numpy as np
 import pandas as pd
 import shap
-from lightgbm import LGBMRegressor
+
+from ml.config.eval_config import (
+    HOLDOUT_SEASON,
+    DROP_COLS,
+    CAT_COLS,
+    TARGET_COL,
+)
+
+# Import StackedEnsemble class for unpickling the saved model
+from ml.pipelines.train.train_extended_ensemble import StackedEnsemble  # noqa: F401
 
 # Paths
 FEATURES_PATH = Path("data/features/extended_features.csv")
 MODEL_PATH = Path("outputs/experiments/extended_v1/extended_ensemble.joblib")
 OUT_DIR = Path("outputs/analysis/shap")
 
-# Configuration
-TEST_SEASON = "2023-24"
-CAT_COLS = ["season", "position", "team", "opponent_team"]
-DROP_COLS = ["name", "element", "points_next_gw", "will_play_next"]
+# Configuration - uses shared eval_config
 SAMPLE_SIZE = 5000  # For SHAP computation (full dataset is slow)
 
 
 def load_data():
     """Load and prepare data for SHAP analysis."""
     print("Loading data...")
+    print(f"Using holdout season: {HOLDOUT_SEASON}")
     df = pd.read_csv(FEATURES_PATH, low_memory=False)
 
     for c in CAT_COLS:
         if c in df.columns:
             df[c] = df[c].astype("category")
 
-    # Use test season for analysis
-    test_df = df[df["season"] == TEST_SEASON].copy().reset_index(drop=True)
+    # Use holdout season for analysis (consistent with model evaluation)
+    test_df = df[df["season"] == HOLDOUT_SEASON].copy().reset_index(drop=True)
 
     # Prepare features
-    y = test_df["points_next_gw"].values
-    drop = set(DROP_COLS)
+    y = test_df[TARGET_COL].values
+    drop = set([TARGET_COL] + DROP_COLS + ["will_play_next"])
     X = test_df.drop(columns=[c for c in drop if c in test_df.columns])
 
     # Store position for stratified analysis
@@ -55,29 +62,44 @@ def load_data():
     return X, y, positions, test_df
 
 
-def train_interpretable_model(X: pd.DataFrame, y: np.ndarray) -> LGBMRegressor:
-    """Train a single LightGBM model for SHAP analysis."""
-    print("Training interpretable model...")
+def load_production_model():
+    """Load the production extended ensemble model."""
+    print(f"Loading production model from: {MODEL_PATH}")
 
-    # Convert categoricals for LightGBM
-    cat_cols = [c for c in CAT_COLS if c in X.columns]
+    if not MODEL_PATH.exists():
+        raise FileNotFoundError(
+            f"Model not found at {MODEL_PATH}. "
+            "Run train_extended_ensemble.py first."
+        )
 
-    model = LGBMRegressor(
-        n_estimators=800,
-        learning_rate=0.05,
-        num_leaves=63,
-        subsample=0.8,
-        colsample_bytree=0.8,
-        random_state=42,
-        n_jobs=-1,
-        verbose=-1,
-    )
-
-    model.fit(X, y, categorical_feature=cat_cols)
-    return model
+    ensemble = joblib.load(MODEL_PATH)
+    return ensemble
 
 
-def compute_shap_values(model: LGBMRegressor, X: pd.DataFrame, positions: np.ndarray, sample_size: int = 5000):
+def get_interpretable_model(ensemble):
+    """
+    Extract the primary LightGBM model from the ensemble for SHAP analysis.
+
+    The extended ensemble uses multiple base models with a Ridge meta-learner.
+    For interpretability, we analyze the primary LGBM which has the highest
+    meta coefficient (~0.43) and drives most predictions.
+    """
+    print("Extracting primary LightGBM from ensemble for SHAP analysis...")
+
+    # Get the main lgbm model (highest contribution to ensemble)
+    if "lgbm" in ensemble.base_models:
+        lgbm_model, model_type = ensemble.base_models["lgbm"]
+        print(f"  Using 'lgbm' base model (type: {model_type})")
+        return lgbm_model
+    else:
+        # Fallback: use first available model
+        first_name = list(ensemble.base_models.keys())[0]
+        model, _ = ensemble.base_models[first_name]
+        print(f"  Using '{first_name}' base model as fallback")
+        return model
+
+
+def compute_shap_values(model, X: pd.DataFrame, positions: np.ndarray, sample_size: int = 5000):
     """Compute SHAP values for the model."""
     print(f"Computing SHAP values (sample size: {sample_size})...")
 
@@ -163,7 +185,7 @@ def feature_interactions(shap_values: np.ndarray, X_sample: pd.DataFrame, top_n:
 
 
 def explain_predictions(
-    model: LGBMRegressor,
+    model,
     X: pd.DataFrame,
     y: np.ndarray,
     test_df: pd.DataFrame,
@@ -221,8 +243,8 @@ def generate_summary_report(
     report = {
         "overview": {
             "description": "SHAP analysis of FPL prediction model",
-            "model": "LightGBM Regressor (800 trees)",
-            "test_season": TEST_SEASON,
+            "model": "Extended Ensemble (primary LightGBM component)",
+            "holdout_season": HOLDOUT_SEASON,
         },
         "global_importance": {
             "top_10": global_imp.head(10).to_dict(orient="records"),
@@ -289,10 +311,11 @@ def run():
 
     # Load data
     X, y, positions, test_df = load_data()
-    print(f"Test data: {len(X)} samples, {len(X.columns)} features")
+    print(f"Holdout data: {len(X)} samples, {len(X.columns)} features")
 
-    # Train model (or load existing)
-    model = train_interpretable_model(X, y)
+    # Load production model and extract interpretable component
+    ensemble = load_production_model()
+    model = get_interpretable_model(ensemble)
 
     # Compute SHAP values
     shap_values, X_sample, positions_sample, explainer = compute_shap_values(model, X, positions, SAMPLE_SIZE)
