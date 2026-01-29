@@ -1,18 +1,13 @@
-# ml/pipelines/build_fpl_fixtures_from_gws.py (2)
+# ml/pipelines/fpl/build_fpl_fixtures_from_gws.py
 import argparse
 from pathlib import Path
+
 import pandas as pd
 
-from ml.utils.io import safe_read_csv
+from ml.config.seasons import SEASONS_ALL
+from ml.utils.io import find_latest_snapshot, safe_read_csv
 
 SNAPSHOT_ROOT = Path("data/raw/fpl")
-
-
-def find_latest_snapshot(root: Path) -> Path:
-    snaps = sorted([p for p in root.glob("vaastav_snapshot_*") if p.is_dir()])
-    if not snaps:
-        raise FileNotFoundError("No snapshot found under data/raw/fpl/vaastav_snapshot_*")
-    return snaps[-1]
 
 
 def build_element_to_team_map(season_dir: Path) -> pd.Series:
@@ -179,19 +174,9 @@ def run_one(season: str, snapshot: Path) -> Path:
 
 
 def main():
-
-    SEASONS = [
-    "2016-17", "2017-18", "2018-19",
-    "2019-20", "2020-21", "2021-22",
-    "2022-23", "2023-24", "2024-25",
-    "2025-26"
-    ]
-    # ap = argparse.ArgumentParser()
-    # ap.add_argument("--season", required=True, help="e.g. 2016-17")
-    # args = ap.parse_args()
     snap = find_latest_snapshot(SNAPSHOT_ROOT)
 
-    for season in SEASONS:
+    for season in SEASONS_ALL:
         run_one(season, snap)
     # run_one(args.season, snap)
 

@@ -1,6 +1,9 @@
-#ml/pipelines/fpl/buildfpl_table.py (1)
-import pandas as pd
+# ml/pipelines/fpl/build_fpl_table.py
 from pathlib import Path
+
+import pandas as pd
+
+from ml.utils.io import find_latest_snapshot, safe_read_csv
 
 SNAPSHOT_ROOT = Path("data/raw/fpl")
 OUT_PATH = Path("data/processed/merged/fpl_base.csv")
@@ -39,30 +42,6 @@ KEEP_COLS = [
     "expected_goal_involvements",
     "expected_goals_conceded",
 ]
-
-def find_latest_snapshot(root: Path) -> Path:
-    snaps = sorted([p for p in root.glob("vaastav_snapshot_*") if p.is_dir()])
-    if not snaps:
-        raise FileNotFoundError("No snapshot found under data/raw/fpl/vaastav_snapshot_*")
-    return snaps[-1]
-
-def safe_read_csv(path):
-    #try fast C engine first
-    try:
-        return pd.read_csv(path, encoding="utf-8")
-    except UnicodeDecodeError:
-        pass
-    except pd.errors.ParserError:
-        pass
-
-    #fallback
-    return pd.read_csv(
-        path,
-        encoding="latin1",
-        engine="python",
-        on_bad_lines="skip"
-    )
-
 
 def run():
     snapshot = find_latest_snapshot(SNAPSHOT_ROOT)

@@ -1,25 +1,14 @@
-# ml/pipelines/build_gw_windows.py (3)
+# ml/pipelines/fpl/build_gw_windows.py
 import argparse
 from pathlib import Path
 
 import pandas as pd
 
+from ml.config.seasons import SEASONS_ALL
+from ml.utils.io import find_latest_snapshot, safe_read_csv
 
 SNAPSHOT_ROOT = Path("data/raw/fpl")
 OUT_DIR = Path("data/processed/mappings")
-
-
-def safe_read_csv(path: Path) -> pd.DataFrame:
-    try:
-        return pd.read_csv(path, encoding="utf-8")
-    except (UnicodeDecodeError, pd.errors.ParserError):
-        return pd.read_csv(path, encoding="latin1", engine="python", on_bad_lines="skip")
-
-def find_latest_snapshot(root: Path) -> Path:
-    snaps = sorted([p for p in root.glob("vaastav_snapshot_*") if p.is_dir()])
-    if not snaps:
-        raise FileNotFoundError(f"No snapshot directory found under {root}/vaastav_snapshot_*")
-    return snaps[-1]
 
 
 def run_one(season: str) -> Path:
@@ -68,20 +57,8 @@ def run_one(season: str) -> Path:
 
 
 def main() -> None:
-    # ap = argparse.ArgumentParser()
-    # ap.add_argument("--season", required=True)
-    # args = ap.parse_args()
-    # run_one(args.season)
-
-    SEASONS = [
-        "2016-17", "2017-18", "2018-19",
-        "2019-20", "2020-21", "2021-22",
-        "2022-23", "2023-24", "2024-25",
-        "2025-26" 
-    ]
-
     snap = find_latest_snapshot(SNAPSHOT_ROOT)
-    for season in SEASONS:
+    for season in SEASONS_ALL:
         run_one(season)
     
     
