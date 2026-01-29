@@ -1,7 +1,9 @@
-# ml/pipelines/understat_map_fixture.py (8)
-import argparse
+# ml/pipelines/understat/understat_map_fixture.py
 from pathlib import Path
+
 import pandas as pd
+
+from ml.config.seasons import SEASONS_ALL
 from ml.utils.name_normalize import norm  
 
 def run_one(season: str) -> Path:
@@ -114,14 +116,7 @@ def run_one(season: str) -> Path:
 
 
 def main():
-    SEASONS = [
-    "2016-17", "2017-18", "2018-19",
-    "2019-20", "2020-21", "2021-22",
-    "2022-23", "2023-24", "2024-25",
-    "2025-26",
-    ]
-
-    for season in SEASONS:
+    for season in SEASONS_ALL:
         run_one(season)   
 
 

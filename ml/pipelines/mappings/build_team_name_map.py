@@ -1,20 +1,15 @@
-# ml/pipelines/mappings/build_team_name_map.py (6)
+# ml/pipelines/mappings/build_team_name_map.py
 from pathlib import Path
+
 import pandas as pd
+
+from ml.config.seasons import SEASONS_ALL
 
 MASTER = Path("external/vaastav_fpl/data/master_team_list.csv")
 OUT_DIR = Path("data/processed/mappings")
 
-#fallback for newer seasons where master_team_list.csv stops (e.g. 2024-25+)
+# Fallback for newer seasons where master_team_list.csv stops (e.g. 2024-25+)
 TEAMS_FALLBACK_ROOT = Path("external/vaastav_fpl/data")
-
-#seasons to build mapping files for (runs all without CLI args)
-SEASONS = [
-    "2016-17", "2017-18", "2018-19",
-    "2019-20", "2020-21", "2021-22",
-    "2022-23", "2023-24", "2024-25",
-    "2025-26",
-]
 
 
 def norm(s: str) -> str:
@@ -117,7 +112,7 @@ def run_one(season: str) -> Path:
 
 def main():
     """Run for all seasons (no CLI args required)."""
-    for season in SEASONS:
+    for season in SEASONS_ALL:
         run_one(season)
 
 

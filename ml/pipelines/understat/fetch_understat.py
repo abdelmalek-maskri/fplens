@@ -1,5 +1,4 @@
-# ml/pipelines/fetch_understat.py (5)
-
+# ml/pipelines/understat/fetch_understat.py
 """
 Fetch Understat data for a given FPL season string (e.g. "2016-17").
 
@@ -18,6 +17,8 @@ from typing import Any, Dict, List, Set, Optional
 import aiohttp
 import pandas as pd
 from understat import Understat
+
+from ml.config.seasons import SEASONS_ALL
 
 
 OUT_DIR = Path("data/processed/external/understat")
@@ -171,12 +172,7 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
 
-    SEASONS = ["2016-17", "2017-18", "2018-19",
-    "2019-20", "2020-21", "2021-22",
-    "2022-23", "2023-24", "2024-25",
-    "2025-26"]
-
-    for season in SEASONS:
+    for season in SEASONS_ALL:
         year = int(season.split("-")[0])
         print(f"\n=== Fetching Understat data for season {season} ===")
 

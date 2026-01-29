@@ -1,8 +1,9 @@
-# ml/pipelines/build_understat_gw.py (10)
-
-import argparse
+# ml/pipelines/understat/build_understat_gw.py
 from pathlib import Path
+
 import pandas as pd
+
+from ml.config.seasons import SEASONS_ALL
 
 US_COLS = ["xG", "xA", "npxG", "xGChain", "xGBuildup", "shots", "key_passes", "time"]
 
@@ -42,14 +43,7 @@ def run_one(season: str) -> Path:
     return out
 
 def main():
-    SEASONS = [
-    "2016-17", "2017-18", "2018-19",
-    "2019-20", "2020-21", "2021-22",
-    "2022-23", "2023-24", "2024-25",
-    "2025-26",
-    ]
-
-    for season in SEASONS:
+    for season in SEASONS_ALL:
         run_one(season)  
 
 if __name__ == "__main__":
