@@ -1,11 +1,10 @@
-# ml/pipelines/understat_map_fixture.py
-import argparse
+# ml/pipelines/understat/understat_map_fixture.py
 from pathlib import Path
 
 import pandas as pd
 
-from ml.utils.name_normalize import norm  # single source of truth for name normalisation
-
+from ml.config.seasons import SEASONS_ALL
+from ml.utils.name_normalize import norm  
 
 def run_one(season: str) -> Path:
     year = int(season.split("-")[0])
@@ -22,7 +21,7 @@ def run_one(season: str) -> Path:
     if not under_in.exists():
         raise FileNotFoundError(f"Missing {under_in} (run fetch_understat first)")
 
-    # Load FPL fixtures and derive match date (Understat is date-granularity).
+    # Load FPL fixtures and derive match date.
     fx = pd.read_csv(fpl_fix, low_memory=False)
     fx["kickoff_time"] = pd.to_datetime(fx["kickoff_time"], errors="coerce", utc=True)
     fx = fx.dropna(subset=["kickoff_time", "home_team_id", "away_team_id"]).copy()
@@ -77,7 +76,7 @@ def run_one(season: str) -> Path:
         f"home={under['home_team_id'].isna().mean():.3f}, away={under['away_team_id'].isna().mean():.3f}",
     )
 
-    # Strict match on (date, home_team_id, away_team_id).
+    #strict match on (date, home_team_id, away_team_id).
     right = fx[["fixture", "date", "home_team_id", "away_team_id"]].copy()
     merged = under.merge(right, on=["date", "home_team_id", "away_team_id"], how="left")
 
@@ -105,7 +104,7 @@ def run_one(season: str) -> Path:
     out_path.parent.mkdir(parents=True, exist_ok=True)
     merged.to_csv(out_path, index=False)
 
-    print("✅ Saved:", out_path)
+    print("Saved:", out_path)
     print("Mapped fixture %:", float(merged["fixture"].notna().mean()))
     print("Unmapped sample:")
     print(
@@ -117,10 +116,8 @@ def run_one(season: str) -> Path:
 
 
 def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--season", required=True)
-    args = ap.parse_args()
-    run_one(args.season)
+    for season in SEASONS_ALL:
+        run_one(season)   
 
 
 if __name__ == "__main__":

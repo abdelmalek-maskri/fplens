@@ -1,0 +1,36 @@
+{
+  "test_season": "2023-24",
+  "holdout": {
+    "stage1_auc": 0.902837285934283,
+    "stage1_accuracy": 0.8349226758098504,
+    "stage1_precision": 0.7524800154098045,
+    "stage1_recall": 0.7919918905220477,
+    "stage1_f1": 0.7717305412880284,
+    "mae_full_hard": 1.0609452153750287,
+    "mae_full_soft": 1.0012993433333062,
+    "rmse_full_hard": 2.0783584612473445,
+    "rmse_full_soft": 1.985981272471036,
+    "mae_played_hard": 2.2265852519402407,
+    "mae_played_soft": 1.959819234034928,
+    "rmse_played_hard": 3.1093751289941443,
+    "rmse_played_soft": 3.0819725332821326,
+    "mae_not_played_hard": 0.4268303504408819,
+    "mae_not_played_soft": 0.4798590256002359,
+    "n_train": 174223,
+    "n_train_played": 72832,
+    "n_test": 27999,
+    "n_test_played": 9865,
+    "pct_test_played": 35.23340119289974,
+    "delta_vs_baseline_hard": -0.06180530037697374,
+    "delta_vs_baseline_soft": -0.002159428335251179,
+    "baseline_mae": 0.999139914998055,
+    "best_method": "soft",
+    "best_mae": 1.0012993433333062
+  },
+  "cv_summary": {
+    "cv_folds": 7,
+    "cv_mae_hard_mean": 1.1840036121391786,
+    "cv_mae_soft_mean": 1.1325753576356972,
+    "cv_auc_mean": 0.892372302780178
+  }
+}

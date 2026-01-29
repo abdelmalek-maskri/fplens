@@ -1,6 +1,6 @@
-# ml/pipelines/features/build_baseline_features.py
-from pathlib import Path
+# ml/pipelines/features/build_baseline_features.py (13)
 
+from pathlib import Path
 import pandas as pd
 
 
@@ -27,7 +27,7 @@ BASE_NUM_COLS = [
 
 
 def run() -> None:
-    print("📥 Loading fpl_with_target...")
+    print("Loading fpl_with_target...")
     df = pd.read_csv(IN_PATH, low_memory=False)
 
     # Ordering keys
@@ -92,7 +92,7 @@ def run() -> None:
     OUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     out.to_csv(OUT_PATH, index=False)
 
-    print("✅ Saved:", OUT_PATH)
+    print("Saved:", OUT_PATH)
     print("Rows dropped (no lag history):", before - after)
     print("Final shape:", out.shape)
     print("Example columns:", out.columns[:25].tolist())

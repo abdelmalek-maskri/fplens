@@ -1,0 +1,5 @@
+vaastav_snapshot: vaastav_snapshot_2025-12-30
+understat_pipeline: ml.pipelines.runners.run_understat_all
+enriched_table: data/processed/merged/fpl_base_enriched.csv
+generated_on: 2026-01-15
+git_commit: dffb6cd

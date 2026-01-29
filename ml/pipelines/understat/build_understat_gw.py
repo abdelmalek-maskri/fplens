@@ -1,7 +1,9 @@
-# ml/pipelines/build_understat_gw.py
-import argparse
+# ml/pipelines/understat/build_understat_gw.py
 from pathlib import Path
+
 import pandas as pd
+
+from ml.config.seasons import SEASONS_ALL
 
 US_COLS = ["xG", "xA", "npxG", "xGChain", "xGBuildup", "shots", "key_passes", "time"]
 
@@ -37,14 +39,12 @@ def run_one(season: str) -> Path:
     out.parent.mkdir(parents=True, exist_ok=True)
     agg.to_csv(out, index=False)
 
-    print("✅ Saved:", out, "rows:", len(agg))
+    print("Saved:", out, "rows:", len(agg))
     return out
 
 def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--season", required=True)
-    args = ap.parse_args()
-    run_one(args.season)
+    for season in SEASONS_ALL:
+        run_one(season)  
 
 if __name__ == "__main__":
     main()
