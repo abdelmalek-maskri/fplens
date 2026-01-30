@@ -2,18 +2,16 @@
 """
 Article Content Extraction
 
-This script extracts clean article text from HTML content.
-Different news sources have different HTML structures, so we need
-source-specific parsing logic.
+This script processes raw articles from various sources (Guardian API, RSS)
+and extracts clean text for NLP processing.
 
-Why Extract Text?
-    - Raw HTML contains navigation, ads, related articles, etc.
-    - We only want the main article content for embeddings
-    - Clean text produces better NLP features
+The Guardian API already provides article body as HTML, so we:
+1. Parse HTML to extract clean text (remove tags, scripts, etc.)
+2. Extract first paragraph for relevance scoring
 
-Libraries Used:
-    - BeautifulSoup: HTML parsing and navigation
-    - (Optional) newspaper3k: Automatic article extraction
+For RSS articles:
+- We only have summaries, which are already fairly clean
+- But they may contain HTML tags that need stripping
 
 Usage:
     python -m ml.pipelines.news.extract_article
@@ -23,8 +21,6 @@ import json
 import re
 from pathlib import Path
 
-# BeautifulSoup: Library for parsing HTML/XML
-# Install: pip install beautifulsoup4 lxml
 from bs4 import BeautifulSoup
 
 from ml.pipelines.news.config import (
@@ -36,14 +32,16 @@ from ml.pipelines.news.config import (
 
 def clean_text(text: str) -> str:
     """
-    Clean extracted text by removing extra whitespace.
+    Clean text by removing extra whitespace and normalizing.
 
     Args:
-        text: Raw extracted text
+        text: Raw text (may contain extra spaces, newlines)
 
     Returns:
         Cleaned text with normalized whitespace
     """
+    if not text:
+        return ""
     # Replace multiple whitespace/newlines with single space
     text = re.sub(r"\s+", " ", text)
     # Strip leading/trailing whitespace
@@ -51,188 +49,170 @@ def clean_text(text: str) -> str:
     return text
 
 
-def extract_guardian_article(html: str) -> dict | None:
+def html_to_text(html: str) -> str:
     """
-    Extract article content from Guardian HTML.
+    Convert HTML to plain text using BeautifulSoup.
 
-    Guardian articles typically have:
-    - <h1> or <h2> for headline
-    - <article> containing the main content
-    - <p> tags with class containing "body" for paragraphs
+    Removes:
+    - Script and style tags
+    - HTML tags (keeping text content)
+    - Extra whitespace
 
     Args:
-        html: Raw HTML content
+        html: HTML string
 
     Returns:
-        Dictionary with title, body, and first_paragraph, or None if extraction failed
+        Plain text string
     """
+    if not html:
+        return ""
+
     soup = BeautifulSoup(html, "lxml")
 
-    # Find headline
-    title = None
-    headline_tag = soup.find("h1")
-    if headline_tag:
-        title = clean_text(headline_tag.get_text())
+    # Remove script and style elements
+    for script in soup(["script", "style", "aside", "nav", "footer"]):
+        script.decompose()
 
-    # Find article body
-    # Guardian uses various classes; try multiple selectors
-    article_body = None
-    body_selectors = [
-        ("div", {"class": re.compile(r"article-body")}),
-        ("div", {"class": re.compile(r"content__article-body")}),
-        ("article", {}),
-    ]
+    # Get text content
+    text = soup.get_text(separator=" ")
 
-    for tag, attrs in body_selectors:
-        body_elem = soup.find(tag, attrs)
-        if body_elem:
-            # Get all paragraph text
-            paragraphs = body_elem.find_all("p")
-            if paragraphs:
-                article_body = " ".join(clean_text(p.get_text()) for p in paragraphs)
-                break
-
-    if not article_body or len(article_body) < MIN_ARTICLE_LENGTH:
-        return None
-
-    # Extract first paragraph separately (useful for relevance scoring)
-    first_para = ""
-    if article_body:
-        # Split by sentence boundaries and take first few sentences
-        sentences = article_body.split(". ")[:3]
-        first_para = ". ".join(sentences)
-
-    return {
-        "title": title or "",
-        "body": article_body,
-        "first_paragraph": first_para,
-    }
+    return clean_text(text)
 
 
-def extract_bbc_article(html: str) -> dict | None:
+def extract_first_paragraph(text: str, num_sentences: int = 3) -> str:
     """
-    Extract article content from BBC Sport HTML.
+    Extract the first few sentences as the 'first paragraph'.
 
-    BBC Sport articles typically have:
-    - <h1> with id="main-heading" for headline
-    - <article> with data-component="text-block" for paragraphs
+    This is useful for relevance scoring - mentions in the first
+    paragraph are more likely to be about the player.
 
     Args:
-        html: Raw HTML content
+        text: Full article text
+        num_sentences: Number of sentences to include
 
     Returns:
-        Dictionary with title, body, and first_paragraph, or None if extraction failed
+        First few sentences joined
     """
-    soup = BeautifulSoup(html, "lxml")
+    if not text:
+        return ""
 
-    # Find headline
-    title = None
-    headline_tag = soup.find("h1", id="main-heading")
-    if not headline_tag:
-        headline_tag = soup.find("h1")
-    if headline_tag:
-        title = clean_text(headline_tag.get_text())
-
-    # Find article body
-    # BBC uses data attributes; fallback to article tag
-    article_body = None
-
-    # Try BBC-specific selectors
-    article_elem = soup.find("article")
-    if article_elem:
-        paragraphs = article_elem.find_all("p")
-        if paragraphs:
-            article_body = " ".join(clean_text(p.get_text()) for p in paragraphs)
-
-    if not article_body or len(article_body) < MIN_ARTICLE_LENGTH:
-        return None
-
-    # Extract first paragraph
-    first_para = ""
-    if article_body:
-        sentences = article_body.split(". ")[:3]
-        first_para = ". ".join(sentences)
-
-    return {
-        "title": title or "",
-        "body": article_body,
-        "first_paragraph": first_para,
-    }
+    # Split by sentence boundaries (period followed by space or end)
+    sentences = re.split(r"(?<=[.!?])\s+", text)
+    return " ".join(sentences[:num_sentences])
 
 
-def extract_article(html: str, source: str) -> dict | None:
+def process_guardian_articles() -> list[dict]:
     """
-    Extract article content based on source.
+    Process Guardian API articles from JSON files.
 
-    This is a dispatcher function that calls the appropriate
-    source-specific extraction function.
+    Guardian API provides:
+    - title (headline)
+    - summary (trailText)
+    - body (HTML content)
 
-    Args:
-        html: Raw HTML content
-        source: Source identifier (e.g., "guardian_pl", "bbc_football")
+    We need to convert body HTML to plain text.
 
     Returns:
-        Extracted article dict or None
+        List of processed articles
     """
-    if "guardian" in source.lower():
-        return extract_guardian_article(html)
-    elif "bbc" in source.lower():
-        return extract_bbc_article(html)
-    else:
-        # Generic fallback: try both extractors
-        result = extract_guardian_article(html)
-        if not result:
-            result = extract_bbc_article(html)
-        return result
+    processed = []
 
+    # Find all guardian article files
+    guardian_files = list(RAW_NEWS_DIR.glob("guardian_articles_*.json"))
 
-def process_wayback_articles(season: str) -> list[dict]:
-    """
-    Process all Wayback articles for a season, extracting text.
-
-    Args:
-        season: Season string like "2023-24"
-
-    Returns:
-        List of processed articles with extracted text
-    """
-    input_path = RAW_NEWS_DIR / f"wayback_articles_{season}.json"
-
-    if not input_path.exists():
-        print(f"No wayback articles found for {season} at {input_path}")
+    if not guardian_files:
+        print("No Guardian article files found")
         return []
 
-    with open(input_path, "r", encoding="utf-8") as f:
-        articles = json.load(f)
+    for filepath in guardian_files:
+        season = filepath.stem.replace("guardian_articles_", "")
+        print(f"\nProcessing {filepath.name}...")
 
-    print(f"Processing {len(articles)} articles from {input_path}...")
+        with open(filepath, "r", encoding="utf-8") as f:
+            articles = json.load(f)
 
-    processed = []
-    for i, article in enumerate(articles):
-        if (i + 1) % 50 == 0:
-            print(f"  Processed {i + 1}/{len(articles)}...")
+        print(f"  Found {len(articles)} articles")
 
-        html = article.get("html_content", "")
-        source = article.get("source", "")
+        for i, article in enumerate(articles):
+            if (i + 1) % 100 == 0:
+                print(f"  Processed {i + 1}/{len(articles)}...")
 
-        extracted = extract_article(html, source)
+            # Extract body text from HTML
+            body_html = article.get("body", "")
+            body_text = html_to_text(body_html)
 
-        if extracted:
-            # Keep original metadata, add extracted content
+            # Use summary if body is too short
+            if len(body_text) < MIN_ARTICLE_LENGTH:
+                summary = article.get("summary", "")
+                body_text = html_to_text(summary) if "<" in summary else summary
+
+            if len(body_text) < MIN_ARTICLE_LENGTH:
+                continue  # Skip articles that are too short
+
             processed_article = {
-                "article_id": f"{season}_{i}",
-                "original_url": article.get("original_url", ""),
-                "wayback_url": article.get("wayback_url", ""),
-                "source": source,
+                "article_id": article.get("article_id", f"guardian_{season}_{i}"),
+                "source": "guardian",
                 "season": season,
-                "timestamp": article.get("timestamp", ""),
-                "title": extracted["title"],
-                "body": extracted["body"],
-                "first_paragraph": extracted["first_paragraph"],
+                "title": clean_text(article.get("title", "")),
+                "body": body_text,
+                "first_paragraph": extract_first_paragraph(body_text),
+                "published": article.get("published", ""),
+                "url": article.get("url", ""),
             }
             processed.append(processed_article)
 
-    print(f"Successfully extracted {len(processed)}/{len(articles)} articles")
+        print(f"  Extracted {len([p for p in processed if p['season'] == season])} valid articles")
+
+    return processed
+
+
+def process_rss_articles() -> list[dict]:
+    """
+    Process RSS articles from JSON files.
+
+    RSS provides:
+    - title
+    - summary (may contain HTML)
+    - link, published, etc.
+
+    Returns:
+        List of processed articles
+    """
+    rss_path = RAW_NEWS_DIR / "rss_articles.json"
+
+    if not rss_path.exists():
+        print("No RSS articles file found")
+        return []
+
+    print(f"\nProcessing {rss_path.name}...")
+
+    with open(rss_path, "r", encoding="utf-8") as f:
+        articles = json.load(f)
+
+    print(f"  Found {len(articles)} articles")
+
+    processed = []
+    for i, article in enumerate(articles):
+        # Clean summary (may contain HTML)
+        summary = article.get("summary", "")
+        body_text = html_to_text(summary) if "<" in summary else clean_text(summary)
+
+        if len(body_text) < 50:  # RSS summaries can be shorter
+            continue
+
+        processed_article = {
+            "article_id": f"rss_{article.get('feed_name', '')}_{i}",
+            "source": article.get("feed_name", "rss"),
+            "season": "2024-25",  # RSS is current season
+            "title": clean_text(article.get("title", "")),
+            "body": body_text,
+            "first_paragraph": extract_first_paragraph(body_text),
+            "published": article.get("published", ""),
+            "url": article.get("link", ""),
+        }
+        processed.append(processed_article)
+
+    print(f"  Extracted {len(processed)} valid articles")
     return processed
 
 
@@ -242,48 +222,48 @@ def run():
     print("ARTICLE CONTENT EXTRACTION")
     print("=" * 60)
 
-    # Process each season's wayback articles
     all_processed = []
 
-    for season in ["2023-24", "2024-25"]:
-        print(f"\nProcessing {season}...")
-        processed = process_wayback_articles(season)
-        all_processed.extend(processed)
+    # Process Guardian API articles
+    guardian_articles = process_guardian_articles()
+    all_processed.extend(guardian_articles)
 
-    # Also process RSS articles (they have summary, not full HTML)
-    rss_path = RAW_NEWS_DIR / "rss_articles.json"
-    if rss_path.exists():
-        print("\nProcessing RSS articles...")
-        with open(rss_path, "r", encoding="utf-8") as f:
-            rss_articles = json.load(f)
+    # Process RSS articles
+    rss_articles = process_rss_articles()
+    all_processed.extend(rss_articles)
 
-        for i, article in enumerate(rss_articles):
-            # RSS articles have summary, not full body
-            # We'll use summary as-is (it's already clean text)
-            processed_article = {
-                "article_id": f"rss_{i}",
-                "original_url": article.get("link", ""),
-                "source": article.get("feed_name", ""),
-                "season": "2024-25",  # RSS is current season
-                "timestamp": article.get("published", ""),
-                "title": article.get("title", ""),
-                "body": article.get("summary", ""),
-                "first_paragraph": article.get("summary", "")[:500],
-            }
-            if len(processed_article["body"]) >= MIN_ARTICLE_LENGTH:
-                all_processed.append(processed_article)
+    if not all_processed:
+        print("\nNo articles to process. Run the scrapers first:")
+        print("  python -m ml.pipelines.news.scrape_guardian --season 2023-24")
+        print("  python -m ml.pipelines.news.scrape_rss")
+        return
 
-        print(f"  Added {len(rss_articles)} RSS articles")
+    # Summary by source and season
+    print(f"\n{'=' * 60}")
+    print("SUMMARY")
+    print(f"{'=' * 60}")
+    print(f"Total articles extracted: {len(all_processed)}")
 
-    # Save processed articles
+    from collections import Counter
+    sources = Counter(a["source"] for a in all_processed)
+    seasons = Counter(a["season"] for a in all_processed)
+
+    print(f"\nBy source:")
+    for source, count in sources.items():
+        print(f"  {source}: {count}")
+
+    print(f"\nBy season:")
+    for season, count in sorted(seasons.items()):
+        print(f"  {season}: {count}")
+
+    # Save
     PROCESSED_NEWS_DIR.mkdir(parents=True, exist_ok=True)
     output_path = PROCESSED_NEWS_DIR / "extracted_articles.json"
 
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(all_processed, f, indent=2, ensure_ascii=False)
 
-    print(f"\n{'=' * 60}")
-    print(f"DONE: Saved {len(all_processed)} extracted articles to {output_path}")
+    print(f"\nSaved to {output_path}")
     print(f"{'=' * 60}")
 
 
