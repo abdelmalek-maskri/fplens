@@ -31,23 +31,16 @@ RSS_FEEDS = {
 }
 
 # =============================================================================
-# WAYBACK MACHINE CONFIG
+# GUARDIAN API CONFIG
 # =============================================================================
-# The Internet Archive's Wayback Machine stores historical snapshots of web pages.
-# CDX API: https://github.com/internetarchive/wayback/tree/master/wayback-cdx-server
+# The Guardian Open Platform provides free access to articles.
+# Register at: https://bonobo.capi.gutools.co.uk/register/developer
+# Docs: https://open-platform.theguardian.com/documentation/
 
-WAYBACK_CDX_API = "http://web.archive.org/cdx/search/cdx"
+GUARDIAN_API_URL = "https://content.guardianapis.com/search"
 
-# URL patterns to search in Wayback Machine
-# These are the base URLs whose archived versions we want to find
-WAYBACK_URL_PATTERNS = {
-    "guardian_pl": "theguardian.com/football/premierleague/*",
-    "guardian_transfers": "theguardian.com/football/transfer-window/*",
-    "bbc_pl": "bbc.co.uk/sport/football/premier-league/*",
-}
-
-# Rate limiting: Be polite to the Internet Archive servers
-WAYBACK_DELAY_SECONDS = 1.0  # Delay between requests
+# Rate limiting: 1 request per second for free tier
+GUARDIAN_DELAY_SECONDS = 1.0
 
 # =============================================================================
 # SEASON DATE RANGES
