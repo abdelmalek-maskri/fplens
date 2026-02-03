@@ -28,6 +28,8 @@ from ml.config.eval_config import (
 
 OUT_DIR = Path("outputs/analysis/shap")
 
+FEATURES_PATH = Path("data/features/extended_features.csv")
+
 SAMPLE_SIZE = 5000  # For SHAP computation (full dataset is slow)
 
 
