@@ -37,7 +37,7 @@ from ml.utils.eval_metrics import (
 )
 
 IN_PATH = Path("data/features/extended_features.csv")
-OUT_DIR = Path("outputs/experiments/stacked_ensemble")
+OUT_DIR = Path("outputs/models/stacked_ensemble.joblib")
 STACKED_METRICS = Path("outputs/experiments/stacked_ensemble/summary.json")
 
 N_INNER_FOLDS = 3
@@ -340,12 +340,12 @@ def run():
         "best_method": best_method,
     }
 
-    joblib.dump(ensemble, OUT_DIR / "extended_ensemble.joblib")
+    joblib.dump(ensemble, OUT_DIR)
     (OUT_DIR / "summary.json").write_text(json.dumps(metrics, indent=2, default=str))
 
     # Print standardized summary
     print_final_summary(
-        model_name="extended_ensemble_v1",
+        model_name="stacked_ensemble_v1",
         holdout_season=HOLDOUT_SEASON,
         train_seasons=train_seasons,
         n_train=len(train_df),
