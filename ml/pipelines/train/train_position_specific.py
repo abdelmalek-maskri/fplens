@@ -1,14 +1,13 @@
-# ml/pipelines/train/train_position_specific.py
+# ml/pipelines/train/train_position_specific_lgbm_v2.py
 
 """
-Position-Specific Stacked Ensemble
+Position-Specific LightGBM (v2)
 
-Uses the best-performing model architecture (stacked ensemble) but trains
-4 separate ensembles - one for each position:
-  - GK ensemble:  trained only on goalkeepers
-  - DEF ensemble: trained only on defenders
-  - MID ensemble: trained only on midfielders
-  - FWD ensemble: trained only on forwards
+Trains 4 separate LightGBM models - one per position:
+  - GK
+  - DEF
+  - MID
+  - FWD
 
 """
 
@@ -17,12 +16,7 @@ from pathlib import Path
 import joblib
 import numpy as np
 import pandas as pd
-from lightgbm import LGBMClassifier, LGBMRegressor
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.linear_model import Ridge
-from sklearn.model_selection import KFold
-from xgboost import XGBRegressor
-
+from lightgbm import LGBMRegressor
 
 from ml.config.eval_config import (
     HOLDOUT_SEASON,
@@ -30,7 +24,6 @@ from ml.config.eval_config import (
     DROP_COLS,
     CAT_COLS,
     TARGET_COL,
-    METRICS_DIR,
 )
 from ml.utils.eval_metrics import (
     compute_metrics,
@@ -38,47 +31,23 @@ from ml.utils.eval_metrics import (
     print_final_summary,
 )
 
-# Paths
-IN_PATH = Path("data/features/baseline_features.csv")
-OUT_DIR = Path("outputs/experiments/position_specific_v1")
+IN_PATH = Path("data/features/extended_features.csv")
+OUT_DIR = Path("outputs/experiments/position_specific")
+OUT_MODEL = Path("outputs/models/position_specific.joblib")
 
-# Positions in FPL
 POSITIONS = ["GK", "DEF", "MID", "FWD"]
 
-# Stacking config
-N_INNER_FOLDS = 3
-
-def build_lgbm() -> LGBMRegressor:
-    return LGBMRegressor(
-        n_estimators=800, learning_rate=0.05, num_leaves=63,
-        subsample=0.8, colsample_bytree=0.8, random_state=42, n_jobs=-1, verbose=-1,
-    )
 
 def build_lgbm_v2() -> LGBMRegressor:
     return LGBMRegressor(
-        n_estimators=600, learning_rate=0.03, num_leaves=31,
-        subsample=0.7, colsample_bytree=0.7, random_state=123, n_jobs=-1, verbose=-1,
-    )
-
-def build_xgboost():
-    return XGBRegressor(
-        n_estimators=800, learning_rate=0.05, max_depth=7,
-        subsample=0.8, colsample_bytree=0.8, random_state=42, n_jobs=-1, verbosity=0,
-    )
-
-def build_rf() -> RandomForestRegressor:
-    return RandomForestRegressor(
-        n_estimators=200, max_depth=12, min_samples_split=10,
-        min_samples_leaf=5, random_state=42, n_jobs=-1,
-    )
-
-def build_ridge() -> Ridge:
-    return Ridge(alpha=1.0, random_state=42)
-
-def build_played_classifier() -> LGBMClassifier:
-    return LGBMClassifier(
-        n_estimators=500, learning_rate=0.05, num_leaves=31,
-        subsample=0.8, colsample_bytree=0.8, random_state=42, n_jobs=-1, verbose=-1,
+        n_estimators=600,
+        learning_rate=0.03,
+        num_leaves=31,
+        subsample=0.7,
+        colsample_bytree=0.7,
+        random_state=123,
+        n_jobs=-1,
+        verbose=-1,
     )
 
 
@@ -89,107 +58,8 @@ def prepare_xy(df: pd.DataFrame):
     return X, y
 
 
-def to_numeric(X: pd.DataFrame) -> pd.DataFrame:
-    X_num = X.copy()
-    for c in CAT_COLS:
-        if c in X_num.columns and hasattr(X_num[c], 'cat'):
-            X_num[c] = X_num[c].cat.codes
-        elif c in X_num.columns:
-            X_num[c] = X_num[c].astype("category").cat.codes
-    X_num = X_num.fillna(0)
-    return X_num
-
-class StackedEnsemble:
-    """Stacked ensemble with Ridge meta-learner."""
-
-    def __init__(self, n_inner_folds: int = 3):
-        self.n_inner_folds = n_inner_folds
-        self.base_models = {}
-        self.meta_model = None
-        self.base_names = []
-
-    def _get_base_learners(self):
-        learners = {
-            "lgbm": (build_lgbm, "lgbm"),
-            "lgbm_v2": (build_lgbm_v2, "lgbm"),
-            "rf": (build_rf, "sklearn"),
-            "ridge": (build_ridge, "sklearn"),
-            "played_prob": (build_played_classifier, "classifier"),
-            "xgb": (build_xgboost, "sklearn"),
-        }
-        return learners
-
-    def fit(self, X_train: pd.DataFrame, y_train: np.ndarray, cat_cols: list):
-        X_num = to_numeric(X_train)
-        learners = self._get_base_learners()
-        self.base_names = list(learners.keys())
-
-        n_samples = len(y_train)
-        oof_predictions = np.zeros((n_samples, len(learners)))
-        y_played = (y_train > 0).astype(int)
-
-        kf = KFold(n_splits=self.n_inner_folds, shuffle=True, random_state=42)
-
-        for fold_idx, (train_idx, val_idx) in enumerate(kf.split(X_train)):
-            X_tr = X_train.iloc[train_idx]
-            X_val = X_train.iloc[val_idx]
-            X_tr_num = X_num.iloc[train_idx]
-            X_val_num = X_num.iloc[val_idx]
-            y_tr = y_train[train_idx]
-
-            for i, (name, (builder, ltype)) in enumerate(learners.items()):
-                model = builder()
-                if ltype == "lgbm":
-                    model.fit(X_tr, y_tr, categorical_feature=cat_cols)
-                    oof_predictions[val_idx, i] = model.predict(X_val)
-                elif ltype == "classifier":
-                    model.fit(X_tr, y_played[train_idx], categorical_feature=cat_cols)
-                    oof_predictions[val_idx, i] = model.predict_proba(X_val)[:, 1]
-                else:
-                    model.fit(X_tr_num, y_tr)
-                    oof_predictions[val_idx, i] = model.predict(X_val_num)
-
-        self.meta_model = Ridge(alpha=1.0)
-        self.meta_model.fit(oof_predictions, y_train)
-
-        for name, (builder, ltype) in learners.items():
-            model = builder()
-            if ltype == "lgbm":
-                model.fit(X_train, y_train, categorical_feature=cat_cols)
-            elif ltype == "classifier":
-                model.fit(X_train, y_played, categorical_feature=cat_cols)
-            else:
-                model.fit(X_num, y_train)
-            self.base_models[name] = (model, ltype)
-
-        return self
-
-    def predict(self, X_test: pd.DataFrame) -> np.ndarray:
-        X_num = to_numeric(X_test)
-        pred_matrix = []
-
-        for name in self.base_names:
-            model, ltype = self.base_models[name]
-            if ltype == "lgbm":
-                pred = model.predict(X_test)
-            elif ltype == "classifier":
-                pred = model.predict_proba(X_test)[:, 1]
-            else:
-                pred = model.predict(X_num)
-            pred_matrix.append(pred)
-
-        pred_matrix = np.column_stack(pred_matrix)
-        return self.meta_model.predict(pred_matrix)
-
-
-class PositionSpecificStackedModel:
-    """
-    Trains a separate stacked ensemble for each position.
-
-    self.models["GK"]  -> StackedEnsemble trained on goalkeepers only
-    self.models["DEF"] -> StackedEnsemble trained on defenders only
-    etc.
-    """
+class PositionSpecificLGBMModel:
+    """Train a separate LGBM model per position."""
 
     def __init__(self):
         self.models = {}
@@ -200,19 +70,18 @@ class PositionSpecificStackedModel:
 
         for pos in POSITIONS:
             mask = positions == pos
-            n_samples = mask.sum()
+            n_samples = int(mask.sum())
 
             if n_samples < 100:
-                print(f"    {pos}: Only {n_samples} samples, skipping stacking")
+                print(f"    {pos}: Only {n_samples} samples, skipping")
                 continue
 
             X_pos = X[mask].reset_index(drop=True)
             y_pos = y[mask]
 
-            print(f"    {pos}: Training stacked ensemble on {n_samples:,} samples...")
-
-            model = StackedEnsemble(n_inner_folds=N_INNER_FOLDS)
-            model.fit(X_pos, y_pos, cat_cols)
+            print(f"    {pos}: Training LGBM v2 on {n_samples:,} samples...")
+            model = build_lgbm_v2()
+            model.fit(X_pos, y_pos, categorical_feature=cat_cols)
             self.models[pos] = model
 
         return self
@@ -232,33 +101,33 @@ class PositionSpecificStackedModel:
 
         return predictions
 
-def train_single_stacked(X_train, y_train, X_test, cat_cols):
-    """Train single stacked ensemble (baseline comparison)."""
-    print("  Training single stacked ensemble (all positions)...")
-    model = StackedEnsemble(n_inner_folds=N_INNER_FOLDS)
-    model.fit(X_train, y_train, cat_cols)
+
+def train_single_lgbm(X_train, y_train, X_test, cat_cols):
+    print("  Training single LGBM (all positions)...")
+    model = build_lgbm_v2()
+    model.fit(X_train, y_train, categorical_feature=cat_cols)
     preds = model.predict(X_test)
     return preds, model
 
 
-def train_position_stacked(X_train, y_train, positions_train, X_test, positions_test, cat_cols):
-    """Train position-specific stacked ensembles."""
-    print("  Training position-specific stacked ensembles...")
-    model = PositionSpecificStackedModel()
+def train_position_lgbm(X_train, y_train, positions_train, X_test, positions_test, cat_cols):
+    print("  Training position-specific LGBM models...")
+    model = PositionSpecificLGBMModel()
     model.fit(X_train, y_train, positions_train, cat_cols)
     preds = model.predict(X_test, positions_test)
     return preds, model
 
+
 def run():
     print("=" * 60)
-    print("POSITION-SPECIFIC STACKED ENSEMBLE")
+    print("POSITION-SPECIFIC LIGHTGBM")
     print("=" * 60)
     print(f"Holdout season: {HOLDOUT_SEASON}")
     print(f"Train seasons: {CV_SEASONS}")
-    print(f"Architecture: Stacked ensemble (best performing model)")
+    print("Architecture: LightGBM (per-position)")
     print()
 
-    print("Loading baseline features...")
+    print("Loading extended features...")
     df = pd.read_csv(IN_PATH, low_memory=False)
 
     if "position" not in df.columns:
@@ -294,16 +163,16 @@ def run():
     cat_cols = [c for c in CAT_COLS if c in X_train.columns]
 
     print(f"Train: {len(train_df):,}, Test: {len(test_df):,}")
-    print(f"\nPosition distribution (test):")
+    print("\nPosition distribution (test):")
     for pos in POSITIONS:
-        n = (positions_test == pos).sum()
+        n = int((positions_test == pos).sum())
         print(f"  {pos}: {n:,} ({n/len(positions_test)*100:.1f}%)")
 
     print("\n" + "-" * 60)
-    single_preds, single_model = train_single_stacked(X_train, y_train, X_test, cat_cols)
+    single_preds, single_model = train_single_lgbm(X_train, y_train, X_test, cat_cols)
 
     print()
-    position_preds, position_model = train_position_stacked(
+    position_preds, position_model = train_position_lgbm(
         X_train, y_train, positions_train, X_test, positions_test, cat_cols
     )
 
@@ -314,9 +183,6 @@ def run():
     print("HOLDOUT RESULTS")
     print(f"{'='*60}")
 
-    # Results will be shown in final summary
-
-    # Per-position breakdown
     print(f"\n{'='*60}")
     print("PER-POSITION BREAKDOWN")
     print(f"{'='*60}")
@@ -352,16 +218,14 @@ def run():
     mae_diff = single_eval["model"]["mae"] - position_eval["model"]["mae"]
 
     metrics = {
-        "model_name": "position_specific_stacked_v1",
+        "model_name": "position_specific",
         "holdout_season": HOLDOUT_SEASON,
         "train_seasons": train_seasons,
         "rows_train": int(len(train_df)),
         "rows_test": int(len(test_df)),
-        # Main holdout results (same structure as other models)
         "holdout": position_eval,
-        # Comparison with single model
         "comparison": {
-            "single_stacked": single_eval,
+            "single_lgbm_v2": single_eval,
             "position_specific": position_eval,
             "mae_improvement": mae_diff,
             "pct_improvement": mae_diff / single_eval["model"]["mae"] * 100 if single_eval["model"]["mae"] else 0,
@@ -370,12 +234,14 @@ def run():
     }
 
     (OUT_DIR / "summary.json").write_text(json.dumps(metrics, indent=2, default=str))
-    joblib.dump(position_model, OUT_DIR / "position_specific_model.joblib")
+
+    OUT_MODEL.parent.mkdir(parents=True, exist_ok=True)
+    joblib.dump(position_model, OUT_MODEL)
 
     print(f"\n{'='*60}")
     print("SUMMARY")
     print(f"{'='*60}")
-    print(f"Single stacked MAE:      {single_eval['model']['mae']:.4f}")
+    print(f"Single LGBM v2 MAE:      {single_eval['model']['mae']:.4f}")
     print(f"Position-specific MAE:   {position_eval['model']['mae']:.4f}")
     print(f"Difference:              {mae_diff:+.4f} ({'better' if mae_diff > 0 else 'worse'})")
 
@@ -384,11 +250,10 @@ def run():
     elif mae_diff < -0.002:
         print(f"\nSingle model is BETTER by {-mae_diff:.4f} MAE")
     else:
-        print(f"\nNo significant difference")
+        print("\nNo significant difference")
 
-    # Print standardized summary
     print_final_summary(
-        model_name="position_specific_stacked_v1",
+        model_name="position_specific",
         holdout_season=HOLDOUT_SEASON,
         train_seasons=train_seasons,
         n_train=len(train_df),
