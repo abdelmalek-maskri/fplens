@@ -30,22 +30,22 @@ from ml.config.eval_config import (
 
 # Import model classes for unpickling saved joblib files.
 # Keep these optional to avoid hard deps (e.g., xgboost) when not needed.
-try:  # noqa: F401
-    from ml.pipelines.train.train_stacked_ensemble import StackedEnsemble  # type: ignore
-except Exception:  # pragma: no cover
-    class StackedEnsemble:  # type: ignore
+try:  
+    from ml.pipelines.train.train_stacked_ensemble import StackedEnsemble  
+except Exception:  
+    class StackedEnsemble:  
         pass
 
-try:  # noqa: F401
-    from ml.pipelines.train.train_position_specific import StackedEnsemble as PositionStackedEnsemble  # type: ignore
-except Exception:  # pragma: no cover
-    class PositionStackedEnsemble:  # type: ignore
+try:  
+    from ml.pipelines.train.train_twohead_model import TwoHeadModel  
+except Exception:  
+    class TwoHeadModel:  
         pass
 
-try:  # noqa: F401
-    from ml.pipelines.train.train_twohead_model import TwoHeadModel  # type: ignore
-except Exception:  # pragma: no cover
-    class TwoHeadModel:  # type: ignore
+try:  
+    from ml.pipelines.train.train_position_specific import PositionSpecificLGBMModel  
+except Exception:  
+    class PositionSpecificLGBMModel:  
         pass
 
 
@@ -453,8 +453,13 @@ def _align_features_for_model(X: pd.DataFrame, model) -> pd.DataFrame:
     return X
 
 
-def _predict_model(model, X: pd.DataFrame) -> np.ndarray:
-    preds = model.predict(X)
+def _predict_model(model, X: pd.DataFrame, positions: Optional[np.ndarray]) -> np.ndarray:
+    try:
+        preds = model.predict(X)
+    except TypeError:
+        if positions is None:
+            raise
+        preds = model.predict(X, positions)
     if isinstance(preds, tuple):
         primary = preds[0]
         return np.asarray(primary)
@@ -501,7 +506,7 @@ def run_from_cli() -> None:
     model = joblib.load(model_path)
     X, y_true, positions, gameweek_ids = _load_holdout_data(features_path)
     X = _align_features_for_model(X, model)
-    y_pred = _predict_model(model, X)
+    y_pred = _predict_model(model, X, positions)
 
     evaluator = ComprehensiveEvaluator(output_dir)
     experiment_name = args.experiment_name or model_path.stem
