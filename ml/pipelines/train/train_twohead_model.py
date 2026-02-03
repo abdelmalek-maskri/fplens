@@ -21,9 +21,11 @@ from sklearn.metrics import roc_auc_score
 from ml.config.eval_config import (
     HOLDOUT_SEASON,
     CV_SEASONS,
+    MIN_TRAIN_SEASONS,
     DROP_COLS,
     CAT_COLS,
     TARGET_COL,
+    MODELS_DIR,
     METRICS_DIR,
 )
 
@@ -32,9 +34,8 @@ from ml.utils.eval_metrics import (
     print_final_summary,
 )
 
-# Paths
 IN_PATH = Path("data/features/extended_features.csv")
-OUT_DIR = Path("outputs/experiments/twohead_v1")
+OUT_DIR = Path("outputs/experiments/twohead")
 
 def prepare_xy(df: pd.DataFrame):
     y = df[TARGET_COL].values
@@ -44,15 +45,6 @@ def prepare_xy(df: pd.DataFrame):
 
 
 class TwoHeadModel:
-    """
-    Two-head architecture for FPL prediction.
-
-    Head 1 (Classifier): Predicts P(player will play)
-    Head 2 (Regressor): Predicts E[points | player plays]
-
-    Final: P(play) x E[points | play]
-    """
-
     def __init__(self):
         self.classifier = None
         self.regressor = None
@@ -220,7 +212,9 @@ def run():
     }
 
     (OUT_DIR / "summary.json").write_text(json.dumps(metrics, indent=2, default=str))
-    joblib.dump(model, OUT_DIR / "twohead_model.joblib")
+    out_path = Path(MODELS_DIR + "twohead.joblib")
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    joblib.dump(model, out_path)
 
     # Print standardized summary
     print_final_summary(
