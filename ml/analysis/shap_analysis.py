@@ -34,16 +34,16 @@ except Exception:
     class StackedEnsemble:  
         pass
 
-try:  
-    from ml.pipelines.train.train_position_specific import StackedEnsemble as PositionStackedEnsemble  
-except Exception:  
-    class PositionStackedEnsemble:  
-        pass
-
 try:
     from ml.pipelines.train.train_twohead_model import TwoHeadModel
 except Exception:
     class TwoHeadModel:
+        pass
+
+try:
+    from ml.pipelines.train.train_position_specific import PositionSpecificLGBMModel
+except Exception:
+    class PositionSpecificLGBMModel:
         pass
 
 
@@ -87,7 +87,7 @@ def load_model(model_path: Path):
     return joblib.load(model_path)
 
 
-def get_interpretable_model(model):
+def get_interpretable_model(model, positions: np.ndarray | None = None):
     """
     Extract the primary LightGBM model from the ensemble for SHAP analysis.
     """
@@ -95,6 +95,17 @@ def get_interpretable_model(model):
     if hasattr(model, "regressor") and model.regressor is not None:
         print("Using TwoHeadModel regressor for SHAP analysis...")
         return model.regressor
+
+    if hasattr(model, "models") and isinstance(model.models, dict) and model.models:
+        if positions is not None:
+            pos_values, pos_counts = np.unique(positions, return_counts=True)
+            pos = pos_values[int(np.argmax(pos_counts))]
+            if pos in model.models:
+                print(f"Using position-specific model for SHAP analysis: {pos}")
+                return model.models[pos]
+        first_key = list(model.models.keys())[0]
+        print(f"Using position-specific model fallback: {first_key}")
+        return model.models[first_key]
 
     if not hasattr(model, "base_models"):
         print("Using provided model directly for SHAP analysis...")
@@ -357,7 +368,7 @@ def run() -> None:
 
     # Load model and extract interpretable component 
     loaded_model = load_model(model_path)
-    model = get_interpretable_model(loaded_model)
+    model = get_interpretable_model(loaded_model, positions)
 
     # Compute SHAP values
     shap_values, X_sample, positions_sample, explainer = compute_shap_values(model, X, positions, SAMPLE_SIZE)
