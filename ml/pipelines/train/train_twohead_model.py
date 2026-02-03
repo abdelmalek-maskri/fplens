@@ -218,7 +218,7 @@ def run():
 
     # Print standardized summary
     print_final_summary(
-        model_name="twohead_v1",
+        model_name="twohead",
         holdout_season=HOLDOUT_SEASON,
         train_seasons=train_seasons,
         n_train=len(train_df),
