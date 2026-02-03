@@ -37,9 +37,8 @@ from ml.utils.eval_metrics import (
 )
 
 IN_PATH = Path("data/features/extended_features.csv")
-OUT_DIR = Path("outputs/experiments/extended_stacked_ensemble_v1")
-BASELINE_METRICS = Path(METRICS_DIR) / "baseline_extended_v1.json"
-STACKED_METRICS = Path("outputs/experiments/extended_stacked_ensemble_v1/summary.json")
+OUT_DIR = Path("outputs/experiments/stacked_ensemble")
+STACKED_METRICS = Path("outputs/experiments/stacked_ensemble/summary.json")
 
 N_INNER_FOLDS = 3
 
