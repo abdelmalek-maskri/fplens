@@ -69,12 +69,16 @@ def add_season_avg_features(df: pd.DataFrame, num_cols: list) -> pd.DataFrame:
     # Group by season and element for expanding mean
     g_season = df.groupby(["season", "element"], sort=False)
 
+    new_cols = {}
     for col in num_cols:
         if col in SEASON_AVG_COLS:
             # Expanding mean of all previous games this season
-            df[f"{col}_season_avg"] = g_season[col].transform(
+            new_cols[f"{col}_season_avg"] = g_season[col].transform(
                 lambda x: x.shift(1).expanding(min_periods=1).mean()
             )
+
+    if new_cols:
+        df = pd.concat([df, pd.DataFrame(new_cols, index=df.index)], axis=1)
 
     return df
 
@@ -83,6 +87,8 @@ def add_availability_features(df: pd.DataFrame, g) -> pd.DataFrame:
     """Add features related to player availability/rotation."""
 
     print("  Adding availability features...")
+
+    new_cols = {}
 
     # Consecutive starts 
     # Count how many consecutive games the player has started
@@ -101,13 +107,13 @@ def add_availability_features(df: pd.DataFrame, g) -> pd.DataFrame:
                 result[i] = count
             return result
 
-        df["consecutive_starts"] = g["starts"].transform(
+        new_cols["consecutive_starts"] = g["starts"].transform(
             lambda x: pd.Series(count_consecutive(x.shift(1).fillna(0).values), index=x.index)
         )
 
     # Minutes trend (increasing = more likely to play full 90)
     if "minutes" in df.columns:
-        df["minutes_trend"] = g["minutes"].shift(1).rolling(window=3, min_periods=2).apply(
+        new_cols["minutes_trend"] = g["minutes"].shift(1).rolling(window=3, min_periods=2).apply(
             lambda x: (x.iloc[-1] - x.iloc[0]) / max(x.iloc[0], 1) if len(x) >= 2 else 0,
             raw=False
         )
@@ -126,9 +132,12 @@ def add_availability_features(df: pd.DataFrame, g) -> pd.DataFrame:
                 result[i] = count
             return result
 
-        df["games_since_start"] = g["starts"].transform(
+        new_cols["games_since_start"] = g["starts"].transform(
             lambda x: pd.Series(games_since_start(x.shift(1).fillna(0).values), index=x.index)
         )
+
+    if new_cols:
+        df = pd.concat([df, pd.DataFrame(new_cols, index=df.index)], axis=1)
 
     return df
 
@@ -138,17 +147,22 @@ def add_form_momentum_features(df: pd.DataFrame, g) -> pd.DataFrame:
 
     print("  Adding form momentum features...")
 
+    new_cols = {}
+
     # Form momentum: roll3 - roll10 (positive = improving form)
     if "total_points_roll3" in df.columns and "total_points_roll10" in df.columns:
-        df["points_momentum"] = df["total_points_roll3"] - df["total_points_roll10"]
+        new_cols["points_momentum"] = df["total_points_roll3"] - df["total_points_roll10"]
 
     # BPS momentum (underlying performance)
     if "bps_roll3" in df.columns and "bps_roll10" in df.columns:
-        df["bps_momentum"] = df["bps_roll3"] - df["bps_roll10"]
+        new_cols["bps_momentum"] = df["bps_roll3"] - df["bps_roll10"]
 
     # xG momentum (attacking threat trend)
     if "expected_goals_roll3" in df.columns and "expected_goals_roll10" in df.columns:
-        df["xg_momentum"] = df["expected_goals_roll3"] - df["expected_goals_roll10"]
+        new_cols["xg_momentum"] = df["expected_goals_roll3"] - df["expected_goals_roll10"]
+
+    if new_cols:
+        df = pd.concat([df, pd.DataFrame(new_cols, index=df.index)], axis=1)
 
     return df
 
@@ -188,13 +202,17 @@ def run() -> None:
     print("\nBuilding baseline features...")
 
     # Lag-1 features
+    new_cols = {}
     for col in num_cols:
-        df[f"{col}_lag1"] = g[col].shift(1)
+        new_cols[f"{col}_lag1"] = g[col].shift(1)
 
     # Rolling mean features
     for w in ROLL_WINDOWS:
         for col in num_cols:
-            df[f"{col}_roll{w}"] = g[col].shift(1).rolling(window=w, min_periods=1).mean()
+            new_cols[f"{col}_roll{w}"] = g[col].shift(1).rolling(window=w, min_periods=1).mean()
+
+    if new_cols:
+        df = pd.concat([df, pd.DataFrame(new_cols, index=df.index)], axis=1)
 
     # Played last GW
     if "minutes_lag1" in df.columns:
