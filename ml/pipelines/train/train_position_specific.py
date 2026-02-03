@@ -79,7 +79,7 @@ class PositionSpecificLGBMModel:
             X_pos = X[mask].reset_index(drop=True)
             y_pos = y[mask]
 
-            print(f"    {pos}: Training LGBM v2 on {n_samples:,} samples...")
+            print(f"    {pos}: Training LGBM on {n_samples:,} samples...")
             model = build_lgbm_v2()
             model.fit(X_pos, y_pos, categorical_feature=cat_cols)
             self.models[pos] = model
@@ -225,7 +225,7 @@ def run():
         "rows_test": int(len(test_df)),
         "holdout": position_eval,
         "comparison": {
-            "single_lgbm_v2": single_eval,
+            "single_lgbm": single_eval,
             "position_specific": position_eval,
             "mae_improvement": mae_diff,
             "pct_improvement": mae_diff / single_eval["model"]["mae"] * 100 if single_eval["model"]["mae"] else 0,
@@ -241,7 +241,7 @@ def run():
     print(f"\n{'='*60}")
     print("SUMMARY")
     print(f"{'='*60}")
-    print(f"Single LGBM v2 MAE:      {single_eval['model']['mae']:.4f}")
+    print(f"Single LGBM MAE:      {single_eval['model']['mae']:.4f}")
     print(f"Position-specific MAE:   {position_eval['model']['mae']:.4f}")
     print(f"Difference:              {mae_diff:+.4f} ({'better' if mae_diff > 0 else 'worse'})")
 
