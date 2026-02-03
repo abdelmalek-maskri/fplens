@@ -1,4 +1,5 @@
 # ml/analysis/shap_analysis.py
+
 """
 SHAP Analysis for FPL Prediction Models
 
@@ -8,13 +9,11 @@ Provides:
 3. Feature interactions (which features work together?)
 4. Individual prediction explanations
 
-For research report and model trust.
 """
 
 import argparse
 import json
 from pathlib import Path
-
 import joblib
 import numpy as np
 import pandas as pd
@@ -27,14 +26,8 @@ from ml.config.eval_config import (
     TARGET_COL,
 )
 
-# Import StackedEnsemble class for unpickling the saved model
-from ml.pipelines.train.train_extended_ensemble import StackedEnsemble  # noqa: F401
-
-# Paths
-FEATURES_PATH = Path("data/features/extended_features.csv")
 OUT_DIR = Path("outputs/analysis/shap")
 
-# Configuration - uses shared eval_config
 SAMPLE_SIZE = 5000  # For SHAP computation (full dataset is slow)
 
 
@@ -48,7 +41,7 @@ def load_data(features_path: Path):
         if c in df.columns:
             df[c] = df[c].astype("category")
 
-    # Use holdout season for analysis (consistent with model evaluation)
+    # Use holdout season for analysis
     test_df = df[df["season"] == HOLDOUT_SEASON].copy().reset_index(drop=True)
 
     # Prepare features
@@ -63,9 +56,8 @@ def load_data(features_path: Path):
 
 
 def load_model(model_path: Path):
-    """Load model for SHAP analysis."""
-    print(f"Loading model from: {model_path}")
 
+    print(f"Loading model from: {model_path}")
     if not model_path.exists():
         raise FileNotFoundError(f"Model not found at {model_path}.")
 
@@ -75,11 +67,8 @@ def load_model(model_path: Path):
 def get_interpretable_model(model):
     """
     Extract the primary LightGBM model from the ensemble for SHAP analysis.
-
-    The extended ensemble uses multiple base models with a Ridge meta-learner.
-    For interpretability, we analyze the primary LGBM which has the highest
-    meta coefficient (~0.43) and drives most predictions.
     """
+
     if not hasattr(model, "base_models"):
         print("Using provided model directly for SHAP analysis...")
         return model
@@ -112,7 +101,7 @@ def compute_shap_values(model, X: pd.DataFrame, positions: np.ndarray, sample_si
         X_sample = X
         positions_sample = positions
 
-    # Use TreeExplainer for tree-based models (fast)
+    # Use TreeExplainer for tree-based models 
     explainer = shap.TreeExplainer(model)
     shap_values = explainer.shap_values(X_sample)
 
@@ -175,7 +164,7 @@ def feature_interactions(shap_values: np.ndarray, X_sample: pd.DataFrame, top_n:
     importance = np.abs(shap_values).mean(axis=0)
     top_features = X_sample.columns[np.argsort(-importance)[:top_n]].tolist()
 
-    # Compute correlation between SHAP values (proxy for interaction)
+    # Compute correlation between SHAP values
     shap_df = pd.DataFrame(shap_values, columns=X_sample.columns)
     top_shap = shap_df[top_features]
 
@@ -239,8 +228,7 @@ def generate_summary_report(
     examples: list,
     model_name: str,
 ) -> dict:
-    """Generate a summary report for the research paper."""
-
+    
     report = {
         "overview": {
             "description": "SHAP analysis of FPL prediction model",
@@ -302,7 +290,6 @@ def generate_summary_report(
 
 
 def run() -> None:
-    """Main entry point."""
     parser = argparse.ArgumentParser(description="Run SHAP analysis for a given model.")
     parser.add_argument(
         "--model-path",
@@ -341,7 +328,7 @@ def run() -> None:
     X, y, positions, test_df = load_data(features_path)
     print(f"Holdout data: {len(X)} samples, {len(X.columns)} features")
 
-    # Load model and extract interpretable component (if ensemble)
+    # Load model and extract interpretable component 
     loaded_model = load_model(model_path)
     model = get_interpretable_model(loaded_model)
 
@@ -354,7 +341,7 @@ def run() -> None:
     global_imp = global_importance(shap_values, X_sample)
     global_imp.to_csv(output_dir / f"{model_name}_global_importance.csv", index=False)
 
-    print("\n📊 TOP 15 GLOBAL FEATURES:")
+    print("\nTOP 15 GLOBAL FEATURES:")
     print(global_imp.head(15).to_string(index=False))
 
     # Position-specific importance
@@ -363,7 +350,7 @@ def run() -> None:
     for pos, imp_df in position_imp.items():
         imp_df.to_csv(output_dir / f"{model_name}_{pos.lower()}_importance.csv", index=False)
 
-    print("\n📍 TOP 5 FEATURES BY POSITION:")
+    print("\nTOP 5 FEATURES BY POSITION:")
     for pos in ["GK", "DEF", "MID", "FWD"]:
         if pos in position_imp:
             top5 = position_imp[pos].head(5)["feature"].tolist()
@@ -384,7 +371,7 @@ def run() -> None:
     (output_dir / f"{model_name}_shap_report.json").write_text(json.dumps(report, indent=2, default=str))
 
     # Print key findings
-    print("\n🔍 KEY FINDINGS:")
+    print("\nKEY FINDINGS:")
     for i, finding in enumerate(report["key_findings"], 1):
         print(f"  {i}. {finding}")
 
@@ -392,7 +379,7 @@ def run() -> None:
     joblib.dump(model, output_dir / f"{model_name}_interpretable_model.joblib")
     joblib.dump(explainer, output_dir / f"{model_name}_shap_explainer.joblib")
 
-    print(f"\n✅ Analysis saved to: {output_dir}")
+    print(f"\nAnalysis saved to: {output_dir}")
     print("=" * 60)
 
 
