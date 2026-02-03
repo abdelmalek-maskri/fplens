@@ -64,7 +64,6 @@ def compute_improvements(model_metrics: dict, baselines: dict) -> dict:
 def full_evaluation(y_true: np.ndarray, y_pred: np.ndarray, y_train: np.ndarray) -> dict:
     """
     Complete evaluation: model metrics, baselines, and improvements.
-    Use this for consistent reporting across all models.
     """
     model_metrics = compute_metrics(y_true, y_pred)
     baselines = compute_baselines(y_true, y_train)
