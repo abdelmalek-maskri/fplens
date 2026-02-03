@@ -42,6 +42,12 @@ except Exception:  # pragma: no cover
     class PositionStackedEnsemble:  # type: ignore
         pass
 
+try:  # noqa: F401
+    from ml.pipelines.train.train_twohead_model import TwoHeadModel  # type: ignore
+except Exception:  # pragma: no cover
+    class TwoHeadModel:  # type: ignore
+        pass
+
 
 @dataclass
 class StratifiedMetrics:
@@ -453,6 +459,8 @@ def _predict_model(model, X: pd.DataFrame) -> np.ndarray:
         primary = preds[0]
         return np.asarray(primary)
     if isinstance(preds, dict):
+        if "soft" in preds:
+            return np.asarray(preds["soft"])
         if "stacked" in preds:
             return np.asarray(preds["stacked"])
         if "mean" in preds:

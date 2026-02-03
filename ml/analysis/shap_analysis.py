@@ -40,6 +40,12 @@ except Exception:
     class PositionStackedEnsemble:  
         pass
 
+try:
+    from ml.pipelines.train.train_twohead_model import TwoHeadModel
+except Exception:
+    class TwoHeadModel:
+        pass
+
 
 OUT_DIR = Path("outputs/analysis/shap")
 
@@ -85,6 +91,10 @@ def get_interpretable_model(model):
     """
     Extract the primary LightGBM model from the ensemble for SHAP analysis.
     """
+
+    if hasattr(model, "regressor") and model.regressor is not None:
+        print("Using TwoHeadModel regressor for SHAP analysis...")
+        return model.regressor
 
     if not hasattr(model, "base_models"):
         print("Using provided model directly for SHAP analysis...")

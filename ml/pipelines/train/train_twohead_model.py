@@ -212,7 +212,7 @@ def run():
     }
 
     (OUT_DIR / "summary.json").write_text(json.dumps(metrics, indent=2, default=str))
-    out_path = Path(MODELS_DIR + "twohead.joblib")
+    out_path = Path("outputs/models/twohead.joblib")
     out_path.parent.mkdir(parents=True, exist_ok=True)
     joblib.dump(model, out_path)
 
