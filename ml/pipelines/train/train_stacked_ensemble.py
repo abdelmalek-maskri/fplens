@@ -320,7 +320,7 @@ def run():
     holdout_eval = full_evaluation(y_test, stacked_pred, y_train)
 
     metrics = {
-        "model_name": "extended_ensemble_v1",
+        "model_name": "extended_ensemble",
         "holdout_season": HOLDOUT_SEASON,
         "train_seasons": train_seasons,
         "rows_train": int(len(train_df)),
