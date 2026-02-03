@@ -7,22 +7,14 @@ import csv
 import warnings
 from pathlib import Path
 from typing import Union
-
 import pandas as pd
 
 
 def find_latest_snapshot(root: Union[str, Path] = "data/raw/fpl") -> Path:
     """
     Find the most recent vaastav snapshot directory.
-
-    Args:
-        root: Base directory containing vaastav_snapshot_* folders
-
     Returns:
         Path to the latest snapshot directory
-
-    Raises:
-        FileNotFoundError: If no snapshot directories found
     """
     root = Path(root)
     snaps = sorted([p for p in root.glob("vaastav_snapshot_*") if p.is_dir()])
