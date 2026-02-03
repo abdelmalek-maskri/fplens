@@ -28,6 +28,20 @@ from ml.config.eval_config import (
     TARGET_COL,
 )
 
+# Import model classes for unpickling saved joblib files.
+# Keep these optional to avoid hard deps (e.g., xgboost) when not needed.
+try:  # noqa: F401
+    from ml.pipelines.train.train_stacked_ensemble import StackedEnsemble  # type: ignore
+except Exception:  # pragma: no cover
+    class StackedEnsemble:  # type: ignore
+        pass
+
+try:  # noqa: F401
+    from ml.pipelines.train.train_position_specific import StackedEnsemble as PositionStackedEnsemble  # type: ignore
+except Exception:  # pragma: no cover
+    class PositionStackedEnsemble:  # type: ignore
+        pass
+
 
 @dataclass
 class StratifiedMetrics:
@@ -433,6 +447,19 @@ def _align_features_for_model(X: pd.DataFrame, model) -> pd.DataFrame:
     return X
 
 
+def _predict_model(model, X: pd.DataFrame) -> np.ndarray:
+    preds = model.predict(X)
+    if isinstance(preds, tuple):
+        primary = preds[0]
+        return np.asarray(primary)
+    if isinstance(preds, dict):
+        if "stacked" in preds:
+            return np.asarray(preds["stacked"])
+        if "mean" in preds:
+            return np.asarray(preds["mean"])
+    return np.asarray(preds)
+
+
 def run_from_cli() -> None:
     parser = argparse.ArgumentParser(description="Run comprehensive evaluation on holdout data.")
     parser.add_argument("--model-path", required=True, help="Path to trained model (joblib).")
@@ -466,7 +493,7 @@ def run_from_cli() -> None:
     model = joblib.load(model_path)
     X, y_true, positions, gameweek_ids = _load_holdout_data(features_path)
     X = _align_features_for_model(X, model)
-    y_pred = model.predict(X)
+    y_pred = _predict_model(model, X)
 
     evaluator = ComprehensiveEvaluator(output_dir)
     experiment_name = args.experiment_name or model_path.stem

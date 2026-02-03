@@ -26,6 +26,21 @@ from ml.config.eval_config import (
     TARGET_COL,
 )
 
+# Import model classes for unpickling saved joblib files.
+# Keep these optional to avoid hard deps (e.g., xgboost) when not needed.
+try:  
+    from ml.pipelines.train.train_stacked_ensemble import StackedEnsemble  
+except Exception:  
+    class StackedEnsemble:  
+        pass
+
+try:  
+    from ml.pipelines.train.train_position_specific import StackedEnsemble as PositionStackedEnsemble  
+except Exception:  
+    class PositionStackedEnsemble:  
+        pass
+
+
 OUT_DIR = Path("outputs/analysis/shap")
 
 FEATURES_PATH = Path("data/features/extended_features.csv")
