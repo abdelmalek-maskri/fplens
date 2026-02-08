@@ -17,7 +17,7 @@ import pandas as pd
 from lightgbm import LGBMClassifier, LGBMRegressor
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import Ridge
-from sklearn.model_selection import KFold
+from sklearn.model_selection import GroupKFold
 from xgboost import XGBRegressor
 
 
@@ -28,7 +28,6 @@ from ml.config.eval_config import (
     DROP_COLS,
     CAT_COLS,
     TARGET_COL,
-    METRICS_DIR,
 )
 
 from ml.utils.eval_metrics import (
@@ -37,8 +36,7 @@ from ml.utils.eval_metrics import (
 )
 
 IN_PATH = Path("data/features/extended_features.csv")
-OUT_DIR = Path("outputs/models/stacked_ensemble.joblib")
-STACKED_METRICS = Path("outputs/experiments/stacked_ensemble/summary.json")
+OUT_DIR = Path("outputs/experiments/stacked_ensemble")
 
 N_INNER_FOLDS = 3
 
@@ -111,7 +109,7 @@ def build_played_classifier() -> LGBMClassifier:
 
 def prepare_xy(df: pd.DataFrame):
     y = df[TARGET_COL].values
-    drop = set([TARGET_COL] + DROP_COLS + ["will_play_next"])
+    drop = set([TARGET_COL] + DROP_COLS)
     X = df.drop(columns=[c for c in drop if c in df.columns])
     return X, y
 
@@ -153,10 +151,14 @@ class StackedEnsemble:
         oof_predictions = np.zeros((n_samples, len(learners)))
         y_played = (y_train > 0).astype(int)
 
-        print(f"  Generating OOF predictions ({self.n_inner_folds} inner folds)...")
-        kf = KFold(n_splits=self.n_inner_folds, shuffle=True, random_state=42)
+        # Use GroupKFold by season to prevent temporal leakage in inner CV
+        groups = X_train["season"].cat.codes.values if hasattr(X_train["season"], "cat") else X_train["season"].values
+        n_groups = len(np.unique(groups))
+        n_folds = min(self.n_inner_folds, n_groups)
+        print(f"  Generating OOF predictions ({n_folds} inner folds, grouped by season)...")
+        gkf = GroupKFold(n_splits=n_folds)
 
-        for fold_idx, (train_idx, val_idx) in enumerate(kf.split(X_train)):
+        for fold_idx, (train_idx, val_idx) in enumerate(gkf.split(X_train, groups=groups)):
             X_tr = X_train.iloc[train_idx]
             X_val = X_train.iloc[val_idx]
             X_tr_num = X_num.iloc[train_idx]
@@ -178,9 +180,7 @@ class StackedEnsemble:
         print("  Fitting meta-learner...")
         self.meta_model = Ridge(alpha=1.0)
         self.meta_model.fit(oof_predictions, y_train)
-
         print(f"  Meta-learner coefficients: {dict(zip(self.base_names, self.meta_model.coef_.round(4)))}")
-
         print("  Refitting base models on full data...")
         for name, (builder, ltype) in learners.items():
             model = builder()
@@ -240,7 +240,6 @@ def run():
     print(f"Holdout season: {HOLDOUT_SEASON}")
     print(f"Train seasons: {CV_SEASONS}")
     print()
-
     print("Loading extended features...")
     df = pd.read_csv(IN_PATH, low_memory=False)
 
@@ -316,7 +315,6 @@ def run():
 
     # Save outputs
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-
     holdout_eval = full_evaluation(y_test, stacked_pred, y_train)
 
     metrics = {
@@ -340,10 +338,11 @@ def run():
         "best_method": best_method,
     }
 
-    joblib.dump(ensemble, OUT_DIR)
+    model_path = Path("outputs/models/stacked_ensemble.joblib")
+    model_path.parent.mkdir(parents=True, exist_ok=True)
+    joblib.dump(ensemble, model_path)
     (OUT_DIR / "summary.json").write_text(json.dumps(metrics, indent=2, default=str))
 
-    # Print standardized summary
     print_final_summary(
         model_name="stacked_ensemble_v1",
         holdout_season=HOLDOUT_SEASON,
@@ -353,7 +352,6 @@ def run():
         eval_result=holdout_eval,
         output_dir=str(OUT_DIR),
     )
-
 
 if __name__ == "__main__":
     run()
