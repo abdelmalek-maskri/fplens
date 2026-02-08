@@ -18,9 +18,7 @@ import pandas as pd
 IN_PATH = Path("data/processed/merged/fpl_with_target.csv")
 OUT_PATH = Path("data/features/extended_features.csv")
 
-# Time windows: baseline uses [3, 5], we add [10]
 ROLL_WINDOWS = [3, 5, 10]
-
 BASE_NUM_COLS = [
     "total_points",
     "minutes",
@@ -48,18 +46,6 @@ SEASON_AVG_COLS = [
     "threat",
     "bps",
 ]
-
-
-# def add_extended_features(df: pd.DataFrame, g, num_cols: list) -> pd.DataFrame:
-#     """Add extended time window features."""
-
-#     print("  Adding roll10 features...")
-#     for col in num_cols:
-#         # Roll10: 10-game rolling average (captures form cycles)
-#         df[f"{col}_roll10"] = g[col].shift(1).rolling(window=10, min_periods=3).mean()
-
-#     return df
-
 
 def add_season_avg_features(df: pd.DataFrame, num_cols: list) -> pd.DataFrame:
     """Add expanding season average features (all games so far this season)."""
@@ -90,7 +76,6 @@ def add_availability_features(df: pd.DataFrame, g) -> pd.DataFrame:
 
     new_cols = {}
 
-    # Consecutive starts 
     # Count how many consecutive games the player has started
     if "starts" in df.columns:
         starts_shifted = g["starts"].shift(1)
@@ -113,9 +98,11 @@ def add_availability_features(df: pd.DataFrame, g) -> pd.DataFrame:
 
     # Minutes trend (increasing = more likely to play full 90)
     if "minutes" in df.columns:
-        new_cols["minutes_trend"] = g["minutes"].shift(1).rolling(window=3, min_periods=2).apply(
-            lambda x: (x.iloc[-1] - x.iloc[0]) / max(x.iloc[0], 1) if len(x) >= 2 else 0,
-            raw=False
+        new_cols["minutes_trend"] = g["minutes"].transform(
+            lambda x: x.shift(1).rolling(window=3, min_periods=2).apply(
+                lambda w: (w.iloc[-1] - w.iloc[0]) / max(w.iloc[0], 1) if len(w) >= 2 else 0,
+                raw=False
+            )
         )
 
     # Games since last start (rotation indicator)
@@ -144,9 +131,7 @@ def add_availability_features(df: pd.DataFrame, g) -> pd.DataFrame:
 
 def add_form_momentum_features(df: pd.DataFrame, g) -> pd.DataFrame:
     """Add form momentum features (short-term vs long-term form)."""
-
     print("  Adding form momentum features...")
-
     new_cols = {}
 
     # Form momentum: roll3 - roll10 (positive = improving form)
@@ -171,7 +156,6 @@ def run() -> None:
     print("=" * 60)
     print("Extended Feature Engineering")
     print("=" * 60)
-
     print("\nLoading fpl_with_target...")
     df = pd.read_csv(IN_PATH, low_memory=False)
 
@@ -197,8 +181,6 @@ def run() -> None:
             num_cols.append(c)
 
     print(f"\nNumeric columns: {len(num_cols)}")
-
-    # ---- Baseline features (lag1, roll3, roll5) ----
     print("\nBuilding baseline features...")
 
     # Lag-1 features
@@ -209,7 +191,9 @@ def run() -> None:
     # Rolling mean features
     for w in ROLL_WINDOWS:
         for col in num_cols:
-            new_cols[f"{col}_roll{w}"] = g[col].shift(1).rolling(window=w, min_periods=1).mean()
+            new_cols[f"{col}_roll{w}"] = g[col].transform(
+                lambda x: x.shift(1).rolling(window=w, min_periods=1).mean()
+            )
 
     if new_cols:
         df = pd.concat([df, pd.DataFrame(new_cols, index=df.index)], axis=1)
@@ -232,9 +216,7 @@ def run() -> None:
     # Form momentum (after roll features exist)
     df = add_form_momentum_features(df, g)
 
-    # ---- Cleanup ----
     print("\nCleaning up...")
-
     # Require at least 1 previous GW
     before = len(df)
     if "total_points_lag1" in df.columns:
@@ -265,10 +247,8 @@ def run() -> None:
     keep += feature_cols
     out = df[keep].copy()
 
-    # ---- Save ----
     OUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     out.to_csv(OUT_PATH, index=False)
-
     print("\nSaved:", OUT_PATH)
     print(f"   Rows dropped (no lag history): {before - after}")
     print(f"   Final shape: {out.shape}")
@@ -284,7 +264,6 @@ def run() -> None:
     print(f"   Availability: {availability_features}")
     print(f"   Metadata: {len(keep) - baseline_features - extended_features - availability_features}")
     print(f"   Total: {len(out.columns)}")
-
 
 if __name__ == "__main__":
     run()
