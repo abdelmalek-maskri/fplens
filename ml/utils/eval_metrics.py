@@ -22,12 +22,9 @@ def compute_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
 def compute_baselines(y_true: np.ndarray, y_train: np.ndarray) -> dict:
     """
     Compute baseline predictions and their metrics.
-
     Baselines:
       - zero: predict 0 for everything
       - mean: predict training set mean for everything
-
-    Returns dict with baseline values and metrics.
     """
     zero_preds = np.zeros_like(y_true)
     mean_value = float(np.mean(y_train))
@@ -76,25 +73,6 @@ def full_evaluation(y_true: np.ndarray, y_pred: np.ndarray, y_train: np.ndarray)
     }
 
 
-def print_evaluation(eval_result: dict, prefix: str = "") -> None:
-    m = eval_result["model"]
-    b = eval_result["baselines"]
-    imp = eval_result["improvements"]
-
-    print(f"\n{prefix}Model metrics:")
-    print(f"  MAE:  {m['mae']:.4f}")
-    print(f"  RMSE: {m['rmse']:.4f}")
-    print(f"  R²:   {m['r2']:.4f}")
-
-    print(f"\n{prefix}Baselines:")
-    print(f"  Zero baseline MAE:  {b['zero_baseline']['mae']:.4f}")
-    print(f"  Mean baseline MAE:  {b['mean_baseline']['mae']:.4f} (mean={b['mean_baseline']['mean_value']:.4f})")
-
-    print(f"\n{prefix}Improvements (positive = model better):")
-    print(f"  vs Zero - MAE: {imp['vs_zero']['mae_improve']:+.4f}, R²: {imp['vs_zero']['r2_improve']:+.4f}")
-    print(f"  vs Mean - MAE: {imp['vs_mean']['mae_improve']:+.4f}, R²: {imp['vs_mean']['r2_improve']:+.4f}")
-
-
 def print_final_summary(
     model_name: str,
     holdout_season: str,
@@ -113,12 +91,10 @@ def print_final_summary(
     print("=" * 65)
     print(f"  {model_name.upper()}")
     print("=" * 65)
-
     print(f"\n  Holdout Season: {holdout_season}")
     print(f"  Train Seasons:  {train_seasons[0]} to {train_seasons[-1]} ({len(train_seasons)} seasons)")
     print(f"  Train Samples:  {n_train:,}")
     print(f"  Test Samples:   {n_test:,}")
-
     print("\n" + "-" * 65)
     print("  HOLDOUT METRICS")
     print("-" * 65)
