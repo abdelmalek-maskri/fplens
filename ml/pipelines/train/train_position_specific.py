@@ -1,15 +1,4 @@
-# ml/pipelines/train/train_position_specific_lgbm_v2.py
-
-"""
-Position-Specific LightGBM (v2)
-
-Trains 4 separate LightGBM models - one per position:
-  - GK
-  - DEF
-  - MID
-  - FWD
-
-"""
+# ml/pipelines/train/train_position_specific.py
 
 import json
 from pathlib import Path
@@ -17,7 +6,6 @@ import joblib
 import numpy as np
 import pandas as pd
 from lightgbm import LGBMRegressor
-
 from ml.config.eval_config import (
     HOLDOUT_SEASON,
     CV_SEASONS,
@@ -34,11 +22,9 @@ from ml.utils.eval_metrics import (
 IN_PATH = Path("data/features/extended_features.csv")
 OUT_DIR = Path("outputs/experiments/position_specific")
 OUT_MODEL = Path("outputs/models/position_specific.joblib")
-
 POSITIONS = ["GK", "DEF", "MID", "FWD"]
 
-
-def build_lgbm_v2() -> LGBMRegressor:
+def build_lgbm() -> LGBMRegressor:
     return LGBMRegressor(
         n_estimators=600,
         learning_rate=0.03,
@@ -53,14 +39,11 @@ def build_lgbm_v2() -> LGBMRegressor:
 
 def prepare_xy(df: pd.DataFrame):
     y = df[TARGET_COL].values
-    drop = set([TARGET_COL] + DROP_COLS + ["will_play_next"])
+    drop = set([TARGET_COL] + DROP_COLS)
     X = df.drop(columns=[c for c in drop if c in df.columns])
     return X, y
-
-
 class PositionSpecificLGBMModel:
     """Train a separate LGBM model per position."""
-
     def __init__(self):
         self.models = {}
         self.feature_cols = None
@@ -80,7 +63,7 @@ class PositionSpecificLGBMModel:
             y_pos = y[mask]
 
             print(f"    {pos}: Training LGBM on {n_samples:,} samples...")
-            model = build_lgbm_v2()
+            model = build_lgbm()
             model.fit(X_pos, y_pos, categorical_feature=cat_cols)
             self.models[pos] = model
 
@@ -104,11 +87,10 @@ class PositionSpecificLGBMModel:
 
 def train_single_lgbm(X_train, y_train, X_test, cat_cols):
     print("  Training single LGBM (all positions)...")
-    model = build_lgbm_v2()
+    model = build_lgbm()
     model.fit(X_train, y_train, categorical_feature=cat_cols)
     preds = model.predict(X_test)
     return preds, model
-
 
 def train_position_lgbm(X_train, y_train, positions_train, X_test, positions_test, cat_cols):
     print("  Training position-specific LGBM models...")
@@ -116,7 +98,6 @@ def train_position_lgbm(X_train, y_train, positions_train, X_test, positions_tes
     model.fit(X_train, y_train, positions_train, cat_cols)
     preds = model.predict(X_test, positions_test)
     return preds, model
-
 
 def run():
     print("=" * 60)
@@ -170,7 +151,6 @@ def run():
 
     print("\n" + "-" * 60)
     single_preds, single_model = train_single_lgbm(X_train, y_train, X_test, cat_cols)
-
     print()
     position_preds, position_model = train_position_lgbm(
         X_train, y_train, positions_train, X_test, positions_test, cat_cols
@@ -182,7 +162,6 @@ def run():
     print(f"\n{'='*60}")
     print("HOLDOUT RESULTS")
     print(f"{'='*60}")
-
     print(f"\n{'='*60}")
     print("PER-POSITION BREAKDOWN")
     print(f"{'='*60}")
@@ -192,16 +171,15 @@ def run():
     per_position_results = {}
     for pos in POSITIONS:
         mask = positions_test == pos
+
         if mask.sum() == 0:
             continue
 
         y_pos = y_test[mask]
         single_pos = single_preds[mask]
         position_pos = position_preds[mask]
-
         single_m = compute_metrics(y_pos, single_pos)
         position_m = compute_metrics(y_pos, position_pos)
-
         diff = position_m["mae"] - single_m["mae"]
 
         per_position_results[pos] = {
@@ -210,13 +188,11 @@ def run():
             "position_specific": position_m,
             "mae_diff": diff,
         }
-
         print(f"{pos:<8} {mask.sum():<8} {single_m['mae']:.4f}       {position_m['mae']:.4f}        {diff:+.4f}")
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
     mae_diff = single_eval["model"]["mae"] - position_eval["model"]["mae"]
-
     metrics = {
         "model_name": "position_specific",
         "holdout_season": HOLDOUT_SEASON,
@@ -261,7 +237,6 @@ def run():
         eval_result=position_eval,
         output_dir=str(OUT_DIR),
     )
-
 
 if __name__ == "__main__":
     run()
