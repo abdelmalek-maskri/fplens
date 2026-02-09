@@ -1,13 +1,11 @@
 # ml/pipelines/enrich_fpl_with_understat_all.py (11) 
 
-import argparse
 from pathlib import Path
 import pandas as pd
 from ml.config.seasons import SEASONS_ALL
 
 FPL_BASE = Path("data/processed/merged/fpl_base.csv")
 OUT = Path("data/processed/merged/fpl_base_enriched.csv")
-
 
 def run(seasons):
     #load base FPL table
@@ -32,7 +30,14 @@ def run(seasons):
         us["element"] = pd.to_numeric(us["element"], errors="coerce")
 
         # merge on season + player + GW
+        n_before = len(sub)
         merged = sub.merge(us, on=["season", "element", "GW"], how="left")
+        if len(merged) != n_before:
+            raise RuntimeError(
+                f"{season}: merge fan-out detected! "
+                f"FPL rows={n_before}, after merge={len(merged)}. "
+                f"Understat GW file likely has duplicate (element, GW) rows."
+            )
 
         # Backfill expected stats where FPL data is missing
         if "expected_goals" in merged.columns and "us_xg" in merged.columns:
@@ -67,14 +72,12 @@ def run(seasons):
     full = pd.concat(parts, ignore_index=True)
     OUT.parent.mkdir(parents=True, exist_ok=True)
     full.to_csv(OUT, index=False)
-
     print("Saved:", OUT)
     print("Shape:", full.shape)
 
 
 def main():
     run(SEASONS_ALL) 
-
 
 if __name__ == "__main__":
     main()

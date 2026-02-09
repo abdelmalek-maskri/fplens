@@ -2,11 +2,9 @@
 
 """
 Two-Head Model
-
 Architecture:
   Head 1: LGBMClassifier -> P(will play)
   Head 2: LGBMRegressor -> E[points | played] (trained only on played samples)
-
 Final prediction: P(play) x E[points | played]
 """
 
@@ -17,42 +15,27 @@ import numpy as np
 import pandas as pd
 from lightgbm import LGBMClassifier, LGBMRegressor
 from sklearn.metrics import roc_auc_score
-
 from ml.config.eval_config import (
     HOLDOUT_SEASON,
     CV_SEASONS,
     DROP_COLS,
     CAT_COLS,
     TARGET_COL,
-    METRICS_DIR,
 )
-
 from ml.utils.eval_metrics import (
     full_evaluation,
     print_final_summary,
 )
 
-# Paths
 IN_PATH = Path("data/features/extended_features.csv")
-OUT_DIR = Path("outputs/experiments/twohead_v1")
+OUT_DIR = Path("outputs/experiments/twohead")
 
 def prepare_xy(df: pd.DataFrame):
     y = df[TARGET_COL].values
-    drop = set([TARGET_COL] + DROP_COLS + ["will_play_next"])
+    drop = set([TARGET_COL] + DROP_COLS)
     X = df.drop(columns=[c for c in drop if c in df.columns])
     return X, y
-
-
 class TwoHeadModel:
-    """
-    Two-head architecture for FPL prediction.
-
-    Head 1 (Classifier): Predicts P(player will play)
-    Head 2 (Regressor): Predicts E[points | player plays]
-
-    Final: P(play) x E[points | play]
-    """
-
     def __init__(self):
         self.classifier = None
         self.regressor = None
@@ -103,7 +86,6 @@ class TwoHeadModel:
     def predict(self, X: pd.DataFrame) -> dict:
         play_prob = self.classifier.predict_proba(X)[:, 1]
         points_if_play = self.regressor.predict(X)
-
         predictions = {
             "soft": play_prob * points_if_play,
             "hard": np.where(play_prob > self.played_threshold, points_if_play, 0),
@@ -136,7 +118,6 @@ def run():
     print(f"Holdout season: {HOLDOUT_SEASON}")
     print(f"Train seasons: {CV_SEASONS}")
     print()
-
     print("Loading extended features...")
     df = pd.read_csv(IN_PATH, low_memory=False)
 
@@ -146,7 +127,7 @@ def run():
 
     available = set(df["season"].dropna().unique())
     train_seasons = [s for s in CV_SEASONS if s in available]
-
+    
     if HOLDOUT_SEASON not in available:
         raise ValueError(f"Holdout season {HOLDOUT_SEASON} not in data")
 
@@ -155,7 +136,6 @@ def run():
     # Split
     train_df = df[df["season"].isin(train_seasons)]
     test_df = df[df["season"] == HOLDOUT_SEASON]
-
     X_train, y_train = prepare_xy(train_df)
     X_test, y_test = prepare_xy(test_df)
     X_test = X_test[X_train.columns]
@@ -166,7 +146,6 @@ def run():
             X_test[c] = X_test[c].astype("category")
 
     cat_cols = [c for c in CAT_COLS if c in X_train.columns]
-
     print(f"\nTrain: {len(train_df):,} samples")
     print(f"Test: {len(test_df):,} samples")
     print(f"Played in test: {(y_test > 0).sum():,} ({(y_test > 0).mean()*100:.1f}%)")
@@ -204,9 +183,7 @@ def run():
 
     # Save
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-
     holdout_eval = full_evaluation(y_test, predictions["soft"], y_train)
-
     metrics = {
         "model_name": "twohead_v1",
         "holdout_season": HOLDOUT_SEASON,
@@ -218,13 +195,14 @@ def run():
         "all_methods": results,
         "best_method": best_method,
     }
-
     (OUT_DIR / "summary.json").write_text(json.dumps(metrics, indent=2, default=str))
-    joblib.dump(model, OUT_DIR / "twohead_model.joblib")
+    out_path = Path("outputs/models/twohead.joblib")
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    joblib.dump(model, out_path)
 
     # Print standardized summary
     print_final_summary(
-        model_name="twohead_v1",
+        model_name="twohead",
         holdout_season=HOLDOUT_SEASON,
         train_seasons=train_seasons,
         n_train=len(train_df),
@@ -232,7 +210,6 @@ def run():
         eval_result=holdout_eval,
         output_dir=str(OUT_DIR),
     )
-
 
 if __name__ == "__main__":
     run()

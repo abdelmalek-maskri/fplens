@@ -1,7 +1,4 @@
 # ml/pipelines/train/train_baseline_model.py
-"""
-Baseline LightGBM model for FPL points prediction.
-"""
 
 from pathlib import Path
 import json
@@ -24,11 +21,11 @@ from ml.utils.eval_metrics import (
     print_final_summary,
 )
 
-IN_PATH = Path("data/features/baseline_features.csv")
-OUT_MODEL = Path(MODELS_DIR) / "lgbm_baseline_v1.joblib"
-OUT_METRICS = Path(METRICS_DIR) / "baseline_v1.json"
-OUT_IMPORTANCE = Path(METRICS_DIR) / "baseline_v1_feature_importance.csv"
-OUT_CV = Path(METRICS_DIR) / "baseline_v1_cv.csv"
+IN_PATH = Path("data/features/extended_features.csv")
+OUT_MODEL = Path(MODELS_DIR) / "baseline.joblib"
+OUT_METRICS = Path(METRICS_DIR) / "baseline.json"
+OUT_IMPORTANCE = Path(METRICS_DIR) / "baseline_feature_importance.csv"
+OUT_CV = Path(METRICS_DIR) / "baseline_cv.csv"
 
 
 def build_model() -> LGBMRegressor:
@@ -51,9 +48,7 @@ def prepare_xy(df: pd.DataFrame):
     return X, y
 
 
-def rolling_season_cv(df: pd.DataFrame, seasons: list[str]) -> pd.DataFrame:
-    # fold i: train on seasons[:i], test on seasons[i]  
-
+def rolling_season_cv(df: pd.DataFrame, seasons: list[str]) -> pd.DataFrame: 
     rows = []
     for i in range(MIN_TRAIN_SEASONS, len(seasons)):
         test_season = seasons[i]

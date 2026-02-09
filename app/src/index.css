@@ -1,3 +1,419 @@
+/* ===========================================
+   FANTASY FORESIGHT - GLOBAL STYLES
+   =========================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ===========================================
+   THEME VARIABLES
+   =========================================== */
+
+/* Light mode (default) */
+:root {
+  /* Surface — tuned for light mode readability */
+  --surface-50: 15 18 25;
+  --surface-100: 26 32 44;
+  --surface-200: 51 58 72;
+  --surface-300: 75 83 98;
+  --surface-400: 107 114 130;
+  --surface-500: 148 155 168;
+  --surface-600: 192 197 206;
+  --surface-700: 213 217 224;
+  --surface-800: 228 231 236;
+  --surface-900: 255 255 255;
+  --surface-950: 255 255 255;
+
+  /* Brand */
+  --brand-50: 236 253 245;
+  --brand-100: 209 250 229;
+  --brand-200: 167 243 208;
+  --brand-300: 110 231 183;
+  --brand-400: 5 150 105;
+  --brand-500: 16 185 129;
+  --brand-600: 5 150 105;
+  --brand-700: 4 120 87;
+  --brand-800: 6 95 70;
+  --brand-900: 6 78 59;
+  --brand-950: 2 44 34;
+
+  /* Success */
+  --success-400: 22 163 74;
+  --success-500: 34 197 94;
+  --success-600: 22 163 74;
+
+  /* Warning */
+  --warning-300: 252 211 77;
+  --warning-400: 217 119 6;
+  --warning-500: 245 158 11;
+  --warning-600: 217 119 6;
+
+  /* Danger */
+  --danger-400: 220 38 38;
+  --danger-500: 239 68 68;
+  --danger-600: 220 38 38;
+
+  /* Info */
+  --info-400: 8 145 178;
+  --info-500: 6 182 212;
+  --info-600: 8 145 178;
+
+  /* Layout */
+  --header-height: 56px;
+  --sidebar-width: 220px;
+}
+
+/* Dark mode */
+.dark {
+  --surface-50: 250 250 250;
+  --surface-100: 240 240 240;
+  --surface-200: 224 224 224;
+  --surface-300: 200 200 200;
+  --surface-400: 158 158 158;
+  --surface-500: 110 110 110;
+  --surface-600: 72 72 72;
+  --surface-700: 48 48 48;
+  --surface-800: 30 30 30;
+  --surface-900: 18 18 18;
+  --surface-950: 5 5 5;
+
+  --brand-400: 52 211 153;
+
+  --success-400: 74 222 128;
+  --warning-400: 251 191 36;
+  --danger-400: 248 113 113;
+  --info-400: 34 211 238;
+}
+
+/* ===========================================
+   BASE STYLES
+   =========================================== */
+@layer base {
+  html {
+    @apply antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  body {
+    @apply bg-surface-900 text-surface-100 font-sans text-sm;
+    min-height: 100vh;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-surface-600 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-surface-500;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(var(--surface-600)) transparent;
+  }
+
+  ::selection {
+    @apply bg-brand-700/50 text-white;
+  }
+
+  *:focus-visible {
+    @apply outline-none ring-2 ring-brand-500/50 ring-offset-1 ring-offset-surface-900;
+  }
+}
+
+/* ===========================================
+   COMPONENT CLASSES
+   =========================================== */
+@layer components {
+  /* Glass effect */
+  .glass {
+    @apply bg-surface-800/60 backdrop-blur-md border border-surface-700/50;
+  }
+
+  /* Cards — hierarchy system */
+  .card {
+    @apply bg-surface-800 border border-surface-700/70 rounded-lg;
+  }
+
+  /* Flush card — no border, lighter bg, for secondary content */
+  .card-flush {
+    @apply bg-surface-800/40 rounded-lg;
+  }
+
+  .card-stats {
+    @apply card p-4 flex flex-col gap-1;
+  }
+
+  /* Badges */
+  .badge {
+    @apply inline-flex items-center px-2 py-0.5 rounded text-xs font-medium;
+  }
+
+  .badge-success {
+    @apply bg-success-500/20 text-success-400;
+  }
+
+  .badge-warning {
+    @apply bg-warning-500/20 text-warning-400;
+  }
+
+  .badge-danger {
+    @apply bg-danger-500/20 text-danger-400;
+  }
+
+  .badge-info {
+    @apply bg-info-500/20 text-info-400;
+  }
+
+  .badge-brand {
+    @apply bg-brand-500/20 text-brand-400;
+  }
+
+  /* Status dots */
+  .status-dot {
+    @apply w-2 h-2 rounded-full;
+  }
+
+  .status-live {
+    @apply status-dot bg-success-500;
+    box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+
+  /* Sidebar navigation */
+  .nav-item {
+    @apply flex items-center gap-3 px-3 py-2 rounded-md text-sm text-surface-400
+           hover:text-surface-100 hover:bg-surface-800/60 transition-all duration-150 cursor-pointer;
+  }
+
+  .nav-item-active {
+    @apply flex items-center gap-3 px-3 py-2 rounded-md text-sm
+           text-surface-100 bg-surface-800 font-medium relative cursor-pointer;
+  }
+
+  .nav-item-active::before {
+    content: '';
+    @apply absolute left-0 top-1 bottom-1 w-[3px] bg-brand-500 rounded-r-full;
+  }
+
+  /* Table styles */
+  .table-header {
+    @apply text-xs font-medium text-surface-500;
+  }
+
+  .table-row {
+    @apply border-b border-surface-700/30 hover:bg-surface-800/50 transition-colors;
+  }
+
+  .table-cell {
+    @apply py-3 px-4;
+  }
+
+  /* Confidence bar */
+  .confidence-bar {
+    @apply h-1.5 bg-surface-700 rounded-full overflow-hidden;
+  }
+
+  .confidence-bar-fill {
+    @apply h-full bg-brand-500 rounded-full transition-all duration-500;
+  }
+
+  /* FDR (Fixture Difficulty) badges */
+  .fdr-1 { @apply bg-emerald-600 text-white; }
+  .fdr-2 { @apply bg-emerald-500/70 text-white; }
+  .fdr-3 { @apply bg-surface-600 text-surface-200; }
+  .fdr-4 { @apply bg-red-500/70 text-white; }
+  .fdr-5 { @apply bg-red-700 text-white; }
+
+  .fdr-badge {
+    @apply inline-flex items-center justify-center rounded text-2xs font-bold w-5 h-5;
+  }
+
+  /* Team badge */
+  .team-badge {
+    @apply inline-flex items-center justify-center w-10 h-6 rounded text-xs font-semibold;
+  }
+
+  /* Trend indicators */
+  .trend-up {
+    @apply text-success-400;
+  }
+
+  .trend-down {
+    @apply text-danger-400;
+  }
+
+  .trend-neutral {
+    @apply text-surface-500;
+  }
+
+  /* Position badges */
+  .pos-gk { @apply bg-warning-500/20 text-warning-400; }
+  .pos-def { @apply bg-success-500/20 text-success-400; }
+  .pos-mid { @apply bg-brand-500/20 text-brand-400; }
+  .pos-fwd { @apply bg-danger-500/20 text-danger-400; }
+
+  /* Search input */
+  .search-input {
+    @apply bg-surface-800/50 border border-surface-700 rounded-lg px-4 py-2 pl-10
+           text-surface-100 placeholder:text-surface-500 w-full
+           focus:border-surface-600 focus:bg-surface-800 transition-all;
+  }
+
+  /* Button variants */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg
+           font-medium text-sm transition-all duration-200 cursor-pointer
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-primary {
+    @apply btn bg-brand-600 text-white hover:bg-brand-500 active:bg-brand-700;
+  }
+
+  .btn-secondary {
+    @apply btn bg-surface-800 text-surface-100 border border-surface-700
+           hover:bg-surface-700 hover:border-surface-600;
+  }
+
+  .btn-ghost {
+    @apply btn text-surface-400 hover:text-surface-100 hover:bg-surface-800;
+  }
+
+  /* Light card variant */
+  .card-light {
+    @apply rounded-lg border border-surface-700 bg-surface-800/30;
+  }
+
+  /* Tab button */
+  .btn-tab {
+    @apply px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
+           bg-surface-800 text-surface-400 hover:text-surface-100;
+  }
+
+  .btn-tab-active {
+    @apply btn-tab bg-brand-600 text-white hover:text-white;
+  }
+
+  /* Skeleton loading */
+  .skeleton {
+    @apply bg-surface-700 animate-pulse rounded;
+  }
+}
+
+/* ===========================================
+   LIGHT MODE ENHANCEMENTS
+   =========================================== */
+
+/* Gray content area — white sidebar/header, white cards pop on gray */
+html:not(.dark) main {
+  background: #F1F3F6;
+}
+
+/* Cards: white with subtle shadow for elevation on gray bg */
+html:not(.dark) .card,
+html:not(.dark) .card-stats {
+  background: white;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.08), 0 1px 2px rgb(0 0 0 / 0.04);
+}
+
+/* Sidebar & header borders: stronger token for visibility */
+html:not(.dark) aside,
+html:not(.dark) aside > * {
+  border-color: rgb(var(--surface-700));
+}
+
+html:not(.dark) header {
+  border-color: rgb(var(--surface-700));
+}
+
+/* Nav hover: visible on white sidebar */
+html:not(.dark) .nav-item:hover {
+  background: rgb(var(--surface-800));
+}
+
+/* Table row hover inside white cards */
+html:not(.dark) table tbody tr:hover {
+  background-color: rgb(var(--surface-800));
+}
+
+/* Table header tint */
+html:not(.dark) thead {
+  background: rgb(var(--surface-800) / 0.6);
+}
+
+/* Separator lines (h-px) visible on gray content bg */
+html:not(.dark) .h-px {
+  background-color: rgb(var(--surface-700));
+}
+
+/* Selection contrast for light backgrounds */
+html:not(.dark) ::selection {
+  background: rgb(var(--brand-400) / 0.15);
+  color: rgb(var(--surface-100));
+}
+
+/* ===========================================
+   ANIMATIONS
+   =========================================== */
+@keyframes pulse-glow {
+  0%, 100% {
+    opacity: 1;
+    box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
+  }
+  50% {
+    opacity: 0.6;
+    box-shadow: 0 0 12px rgba(34, 197, 94, 0.8);
+  }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.2s ease-out;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out;
+}
+
+/* Stagger animation for lists */
+.stagger > * {
+  animation: slide-up 0.3s ease-out backwards;
+}
+
+.stagger > *:nth-child(1) { animation-delay: 0ms; }
+.stagger > *:nth-child(2) { animation-delay: 50ms; }
+.stagger > *:nth-child(3) { animation-delay: 100ms; }
+.stagger > *:nth-child(4) { animation-delay: 150ms; }
+.stagger > *:nth-child(5) { animation-delay: 200ms; }
+.stagger > *:nth-child(6) { animation-delay: 250ms; }
+.stagger > *:nth-child(7) { animation-delay: 300ms; }
+.stagger > *:nth-child(8) { animation-delay: 350ms; }
