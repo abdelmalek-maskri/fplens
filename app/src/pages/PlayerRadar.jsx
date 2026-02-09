@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 
 // ============================================================
 // MOCK DATA - Player percentile stats (vs position peers)

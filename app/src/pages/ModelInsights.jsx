@@ -651,7 +651,6 @@ function AblationTab() {
 // POSITIONS TAB
 // ============================================================
 function PositionsTab() {
-  const positions = ["GK", "DEF", "MID", "FWD"];
   const positionLabels = {
     GK: "Goalkeeper",
     DEF: "Defender",

@@ -1,5 +1,3 @@
-import { useState } from "react";
-
 // ============================================================
 // MOCK DATA - Season rank and points progression
 // Will be replaced with: GET /api/teams/my-team/season-history
@@ -35,8 +33,6 @@ const mockSeasonData = {
   ],
 };
 
-const maxRank = Math.max(...mockSeasonData.gw_history.map(g => g.rank));
-const minRank = Math.min(...mockSeasonData.gw_history.map(g => g.rank));
 const maxPts = Math.max(...mockSeasonData.gw_history.map(g => g.pts));
 const avgPts = mockSeasonData.gw_history.reduce((s, g) => s + g.pts, 0) / mockSeasonData.gw_history.length;
 const bestGW = [...mockSeasonData.gw_history].sort((a, b) => b.pts - a.pts)[0];

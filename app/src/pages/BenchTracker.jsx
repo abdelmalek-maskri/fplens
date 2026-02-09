@@ -1,5 +1,3 @@
-import { useState, useMemo } from "react";
-
 // ============================================================
 // MOCK DATA - Bench points per GW (your team)
 // Will be replaced with: GET /api/teams/my-team/bench-history
@@ -153,7 +151,7 @@ export default function BenchTracker() {
           <div className="space-y-2">
             {mockBenchHistory.flatMap(gw =>
               gw.bench.filter(p => p.points >= 6).map(p => ({ ...p, gw: gw.gw }))
-            ).sort((a, b) => b.points - a.points).slice(0, 6).map((p, idx) => (
+            ).sort((a, b) => b.points - a.points).slice(0, 6).map((p) => (
               <div key={`${p.gw}-${p.web_name}`} className="flex items-center justify-between py-1.5 border-b border-surface-800 last:border-0">
                 <div className="flex items-center gap-2">
                   <span className="badge bg-surface-700 text-surface-300 text-[10px]">GW{p.gw}</span>

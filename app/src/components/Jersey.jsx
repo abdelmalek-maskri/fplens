@@ -3,6 +3,7 @@ import { useId } from "react";
 // ============================================================
 // PREMIER LEAGUE 2024-25 KIT DEFINITIONS
 // ============================================================
+// eslint-disable-next-line react-refresh/only-export-components
 export const TEAM_KITS = {
   ARS: { body: "#EF0107", sleeves: "#FFFFFF", collar: "#FFFFFF", accent: "#9C824A", gk: "#e8d44d" },
   AVL: { body: "#670E36", sleeves: "#95BFE5", collar: "#FEE505", accent: "#95BFE5", gk: "#2ecc71" },
