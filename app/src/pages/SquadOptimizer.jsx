@@ -162,7 +162,6 @@ export default function SquadOptimizer() {
   const [squad] = useState(mockOptimalSquad);
 
   const totalValue = squad.reduce((sum, p) => sum + p.value, 0);
-  const remaining = BUDGET - totalValue;
   const starters = squad.filter((p) => p.starter);
   const bench = squad.filter((p) => !p.starter);
   const totalPredicted = starters.reduce(
