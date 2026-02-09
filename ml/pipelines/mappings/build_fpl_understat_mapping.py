@@ -9,7 +9,8 @@ Notes:
 
 from pathlib import Path
 import pandas as pd
-
+from ml.config.seasons import SEASONS_ALL
+from ml.utils.io import find_latest_snapshot
 from ml.utils.name_normalize import norm
 
 SNAPSHOT_ROOT = Path("data/raw/fpl")
@@ -17,21 +18,12 @@ UNDERSTAT_DIR = Path("data/processed/external/understat")
 OUT_DIR = Path("data/processed/mappings")
 
 
-def find_latest_snapshot(root: Path) -> Path:
-    """Return most recent Vaastav snapshot directory under data/raw/fpl/."""
-    snaps = sorted([p for p in root.glob("vaastav_snapshot_*") if p.is_dir()])
-    if not snaps:
-        raise FileNotFoundError("No snapshot found under data/raw/fpl/vaastav_snapshot_*")
-    return snaps[-1]
-
-
 def run_one(season: str, snapshot: Path) -> Path:
     """Build mapping CSV for a single season."""
     year = int(season.split("-")[0])
-
-    # ---- Resolve input paths ----
     season_dir = snapshot / season
     players_raw_path = season_dir / "players_raw.csv"
+    
     if not players_raw_path.exists():
         raise FileNotFoundError(f"Missing FPL players_raw.csv: {players_raw_path}")
 
@@ -89,7 +81,7 @@ def run_one(season: str, snapshot: Path) -> Path:
 
     # =========================
     # 3) Restrict Understat players to those with match rows
-    #    (prevents mapping to players that never appear in matches file)
+    #  prevents mapping to players that never appear in matches file
     # =========================
     matches = pd.read_csv(understat_matches_path, low_memory=False)
 
@@ -104,6 +96,7 @@ def run_one(season: str, snapshot: Path) -> Path:
     # =========================
     # 4) Name-based merges (candidate mappings)
     # =========================
+
     # Strategy A: match FPL normalized full name to Understat normalized player_name
     m1 = fpl.merge(
         us,
@@ -136,6 +129,7 @@ def run_one(season: str, snapshot: Path) -> Path:
     #     Handles "Gabriel Fernando de Jesus" <-> "Gabriel Jesus" by checking
     #     if the shorter name's tokens are all contained in the longer name.
     # =========================
+
     # Identify elements already matched by A or B
     matched_by_ab = set()
     for df in [out1, out2]:
@@ -143,7 +137,7 @@ def run_one(season: str, snapshot: Path) -> Path:
 
     unmatched_fpl = fpl[~fpl["element"].isin(matched_by_ab)].copy()
 
-    # Also identify Understat players already claimed by A or B
+    #also identify Understat players already claimed by A or B
     claimed_us_ids = set()
     for df in [out1, out2]:
         claimed_us_ids |= set(df["us_player_id"].dropna().astype(int))
@@ -239,19 +233,11 @@ def run_one(season: str, snapshot: Path) -> Path:
 
 
 def main() -> None:
-    SEASON = [
-        "2016-17", "2017-18", "2018-19",
-        "2019-20", "2020-21", "2021-22",
-        "2022-23", "2023-24", "2024-25",
-        "2025-26",
-    ]
-
     snap = find_latest_snapshot(SNAPSHOT_ROOT)
 
-    for season in SEASON:
+    for season in SEASONS_ALL:
         print("\n=== Processing season:", season, "===")
         run_one(season, snap)
-
 
 if __name__ == "__main__":
     main()

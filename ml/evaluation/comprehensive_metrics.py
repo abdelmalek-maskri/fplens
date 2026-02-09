@@ -10,15 +10,43 @@ Addresses key gaps in standard MAE/RMSE evaluation:
 5. Stability across seasons
 """
 
+import argparse
 import json
 from dataclasses import dataclass, asdict
 from pathlib import Path
 from typing import Optional
-
 import numpy as np
 import pandas as pd
+import joblib
 from scipy import stats
 from sklearn.metrics import mean_absolute_error, mean_squared_error
+
+from ml.config.eval_config import (
+    HOLDOUT_SEASON,
+    DROP_COLS,
+    CAT_COLS,
+    TARGET_COL,
+)
+
+# Import model classes for unpickling saved joblib files.
+# Keep these optional to avoid hard deps (e.g., xgboost) when not needed.
+try:  
+    from ml.pipelines.train.train_stacked_ensemble import StackedEnsemble  
+except Exception:  
+    class StackedEnsemble:  
+        pass
+
+try:  
+    from ml.pipelines.train.train_twohead_model import TwoHeadModel  
+except Exception:  
+    class TwoHeadModel:  
+        pass
+
+try:  
+    from ml.pipelines.train.train_position_specific import PositionSpecificLGBMModel  
+except Exception:  
+    class PositionSpecificLGBMModel:  
+        pass
 
 
 @dataclass
@@ -338,7 +366,7 @@ class ComprehensiveEvaluator:
         print(f"{'='*60}")
 
         strat = results["stratified"]
-        print(f"\n📊 STRATIFIED METRICS")
+        print(f"\nSTRATIFIED METRICS")
         print(f"  Overall MAE:     {strat['mae_overall']:.4f}")
         print(f"  Overall RMSE:    {strat['rmse_overall']:.4f}")
         print(f"  Played MAE:      {strat['mae_played']:.4f} (n={strat['n_played']:,})")
@@ -355,7 +383,7 @@ class ComprehensiveEvaluator:
             print(f"    FWD: {strat['mae_fwd']:.4f}")
 
         calib = results["calibration"]
-        print(f"\n📈 CALIBRATION")
+        print(f"\nCALIBRATION")
         print(f"  Mean predicted: {calib['mean_predicted']:.4f}")
         print(f"  Mean actual:    {calib['mean_actual']:.4f}")
         print(f"  Correlation:    {calib['correlation']:.4f}")
@@ -363,14 +391,14 @@ class ComprehensiveEvaluator:
 
         if "business" in results:
             biz = results["business"]
-            print(f"\n🎯 BUSINESS METRICS (Captain Picks)")
+            print(f"\nBUSINESS METRICS (Captain Picks)")
             print(f"  Top-1 accuracy: {biz['top1_accuracy']*100:.1f}%")
             print(f"  Top-3 accuracy: {biz['top3_accuracy']*100:.1f}%")
             print(f"  Top-5 accuracy: {biz['top5_accuracy']*100:.1f}%")
             print(f"  Captain efficiency: {biz['captain_efficiency']*100:.1f}%")
 
         base = results["baselines"]
-        print(f"\n📏 BASELINES (for context)")
+        print(f"\nBASELINES (for context)")
         print(f"  Zero baseline MAE:        {base['zero_mae']:.4f}")
         print(f"  Mean baseline MAE:        {base['mean_mae']:.4f}")
         print(f"  Played-cond mean MAE:     {base['played_cond_mean_mae']:.4f}")
@@ -380,7 +408,7 @@ class ComprehensiveEvaluator:
         delta_mean = base['mean_mae'] - strat['mae_overall']
         delta_played = base['played_cond_mean_mae'] - strat['mae_overall']
 
-        print(f"\n📉 MODEL IMPROVEMENT")
+        print(f"\nMODEL IMPROVEMENT")
         print(f"  vs Zero:        {delta_zero:+.4f} ({delta_zero/base['zero_mae']*100:+.1f}%)")
         print(f"  vs Mean:        {delta_mean:+.4f} ({delta_mean/base['mean_mae']*100:+.1f}%)")
         print(f"  vs Played-cond: {delta_played:+.4f} ({delta_played/base['played_cond_mean_mae']*100:+.1f}%)")
@@ -388,21 +416,109 @@ class ComprehensiveEvaluator:
         print(f"\n{'='*60}\n")
 
 
+def _prepare_xy(df: pd.DataFrame):
+    y = df[TARGET_COL].values
+    drop = set([TARGET_COL] + DROP_COLS)
+    X = df.drop(columns=[c for c in drop if c in df.columns])
+    return X, y
+
+
+def _load_holdout_data(features_path: Path) -> tuple[pd.DataFrame, np.ndarray, np.ndarray, np.ndarray]:
+    df = pd.read_csv(features_path, low_memory=False)
+
+    # Convert categoricals for models that expect category dtype (e.g., LightGBM)
+    for c in CAT_COLS:
+        if c in df.columns:
+            df[c] = df[c].astype("category")
+
+    if HOLDOUT_SEASON not in set(df["season"].dropna().unique()):
+        raise ValueError(f"Holdout season {HOLDOUT_SEASON} not in data")
+
+    holdout_df = df[df["season"] == HOLDOUT_SEASON].copy().reset_index(drop=True)
+
+    positions = holdout_df["position"].values if "position" in holdout_df.columns else None
+    gameweek_ids = holdout_df["GW"].values if "GW" in holdout_df.columns else None
+
+    X, y = _prepare_xy(holdout_df)
+    return X, y, positions, gameweek_ids
+
+
+def _align_features_for_model(X: pd.DataFrame, model) -> pd.DataFrame:
+    if hasattr(model, "feature_name_"):
+        feature_names = list(model.feature_name_)
+        missing = [c for c in feature_names if c not in X.columns]
+        if missing:
+            raise ValueError(f"Missing features required by model: {missing}")
+        return X[feature_names]
+    return X
+
+
+def _predict_model(model, X: pd.DataFrame, positions: Optional[np.ndarray]) -> np.ndarray:
+    try:
+        preds = model.predict(X)
+    except TypeError:
+        if positions is None:
+            raise
+        preds = model.predict(X, positions)
+    if isinstance(preds, tuple):
+        primary = preds[0]
+        return np.asarray(primary)
+    if isinstance(preds, dict):
+        if "soft" in preds:
+            return np.asarray(preds["soft"])
+        if "stacked" in preds:
+            return np.asarray(preds["stacked"])
+        if "mean" in preds:
+            return np.asarray(preds["mean"])
+    return np.asarray(preds)
+
+
+def run_from_cli() -> None:
+    parser = argparse.ArgumentParser(description="Run comprehensive evaluation on holdout data.")
+    parser.add_argument("--model-path", required=True, help="Path to trained model (joblib).")
+    parser.add_argument(
+        "--features-path",
+        default="data/features/baseline_features.csv",
+        help="Path to baseline features CSV.",
+    )
+    parser.add_argument(
+        "--output-dir",
+        default="outputs/metrics/comprehensive",
+        help="Directory to save comprehensive metrics JSON.",
+    )
+    parser.add_argument(
+        "--experiment-name",
+        default=None,
+        help="Optional name for output file. Defaults to model filename.",
+    )
+
+    args = parser.parse_args()
+
+    model_path = Path(args.model_path)
+    features_path = Path(args.features_path)
+    output_dir = Path(args.output_dir)
+
+    if not model_path.exists():
+        raise FileNotFoundError(f"Model not found: {model_path}")
+    if not features_path.exists():
+        raise FileNotFoundError(f"Features not found: {features_path}")
+
+    model = joblib.load(model_path)
+    X, y_true, positions, gameweek_ids = _load_holdout_data(features_path)
+    X = _align_features_for_model(X, model)
+    y_pred = _predict_model(model, X, positions)
+
+    evaluator = ComprehensiveEvaluator(output_dir)
+    experiment_name = args.experiment_name or model_path.stem
+    results = evaluator.evaluate_holdout(
+        y_true=y_true,
+        y_pred=y_pred,
+        positions=positions,
+        gameweek_ids=gameweek_ids,
+        experiment_name=experiment_name,
+    )
+    evaluator.print_summary(results, experiment_name)
+
+
 if __name__ == "__main__":
-    # Demo usage
-    print("Comprehensive Metrics Module - Demo")
-
-    # Simulate predictions
-    np.random.seed(42)
-    n = 1000
-    y_true = np.random.exponential(1.5, n)
-    y_true = np.where(np.random.random(n) < 0.6, 0, y_true)  # 60% zero
-    y_pred = y_true + np.random.normal(0, 0.5, n)
-    y_pred = np.clip(y_pred, 0, None)
-
-    positions = np.random.choice(["GK", "DEF", "MID", "FWD"], n, p=[0.1, 0.35, 0.35, 0.2])
-    gw_ids = np.repeat(range(20), n // 20)
-
-    evaluator = ComprehensiveEvaluator(Path("outputs/test_metrics"))
-    results = evaluator.evaluate_holdout(y_true, y_pred, positions, gw_ids, "demo")
-    evaluator.print_summary(results, "Demo Experiment")
+    run_from_cli()

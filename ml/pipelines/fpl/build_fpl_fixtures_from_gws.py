@@ -1,19 +1,14 @@
 # ml/pipelines/fpl/build_fpl_fixtures_from_gws.py
-import argparse
+
 from pathlib import Path
-
 import pandas as pd
-
 from ml.config.seasons import SEASONS_ALL
 from ml.utils.io import find_latest_snapshot, safe_read_csv
 
 SNAPSHOT_ROOT = Path("data/raw/fpl")
 
-
 def build_element_to_team_map(season_dir: Path) -> pd.Series:
-
     # Build mapping: element_id -> team_id (FPL team integer)
-
     players_path = season_dir / "players_raw.csv"
     players = safe_read_csv(players_path)
 
@@ -37,21 +32,14 @@ def build_element_to_team_map(season_dir: Path) -> pd.Series:
     m[elem_col] = pd.to_numeric(m[elem_col], errors="coerce")
     m[team_col] = pd.to_numeric(m[team_col], errors="coerce")
     m = m.dropna(subset=[elem_col, team_col]).drop_duplicates(subset=[elem_col])
-
     m[elem_col] = m[elem_col].astype(int)
 
     return m.set_index(elem_col)[team_col]
 
 
 def _coerce_was_home(s: pd.Series) -> pd.Series:
-    """
-    Vaastav gw files store was_home inconsistently across seasons:
-      - True/False (bool)
-      - 1/0 (int/float)
-      - "True"/"False" (string)
-      - "1"/"0" (string)
-    Normalize to boolean.
-    """
+
+    # Vaastav gw files store was_home inconsistently across seasons,normalize to boolean.
     if s.dtype == bool:
         return s.fillna(False)
 
@@ -71,8 +59,8 @@ def run_one(season: str, snapshot: Path) -> Path:
 
     out = Path(f"data/processed/mappings/fpl_fixtures_{season}.csv")
     out.parent.mkdir(parents=True, exist_ok=True)
-
     gw_files = sorted(gws_dir.glob("gw*.csv"))
+
     if not gw_files:
         raise FileNotFoundError(f"No gw*.csv files found in {gws_dir}")
 
@@ -84,15 +72,14 @@ def run_one(season: str, snapshot: Path) -> Path:
 
     for f in gw_files:
         df = safe_read_csv(f)
-
         required = ["fixture", "kickoff_time", "team_h_score", "team_a_score", "was_home", "opponent_team", "element"]
         missing = [c for c in required if c not in df.columns]
+
         if missing:
             raise ValueError(f"{f} missing {missing}. cols={list(df.columns)}")
 
         df["kickoff_time"] = pd.to_datetime(df["kickoff_time"], errors="coerce", utc=True)
         df["was_home"] = _coerce_was_home(df["was_home"])
-
         df["fixture"] = pd.to_numeric(df["fixture"], errors="coerce")
         df["element"] = pd.to_numeric(df["element"], errors="coerce")
         df["opponent_team"] = pd.to_numeric(df["opponent_team"], errors="coerce")
@@ -104,6 +91,7 @@ def run_one(season: str, snapshot: Path) -> Path:
             df["team"] = team_from_map
         else:
             df["team"] = pd.to_numeric(df["team"], errors="coerce")
+            
             # if team is mostly missing, replace it entirely
             if df["team"].isna().mean() > 0.50:
                 df["team"] = team_from_map
@@ -112,7 +100,6 @@ def run_one(season: str, snapshot: Path) -> Path:
                 df["team"] = df["team"].fillna(team_from_map)
 
         df["team"] = pd.to_numeric(df["team"], errors="coerce")
-
         # keep only usable rows
         dfx = df.dropna(subset=["fixture", "kickoff_time", "team", "opponent_team"]).copy()
 
@@ -149,7 +136,6 @@ def run_one(season: str, snapshot: Path) -> Path:
 
         one_per_fixture["season"] = season
         one_per_fixture["date"] = one_per_fixture["kickoff_time"].dt.date
-
         kept_rows += len(one_per_fixture)
         rows.append(one_per_fixture)
 
@@ -165,21 +151,16 @@ def run_one(season: str, snapshot: Path) -> Path:
     #one row per fixture 
     fx = fx.sort_values(["fixture", "kickoff_time"]).drop_duplicates(subset=["fixture"], keep="first")
     fx = fx.sort_values(["kickoff_time", "fixture"]).reset_index(drop=True)
-
     fx.to_csv(out, index=False)
     print(f"Saved: {out}")
     print("rows:", len(fx))
     print(fx.head(8).to_string(index=False))
     return out
 
-
 def main():
     snap = find_latest_snapshot(SNAPSHOT_ROOT)
-
     for season in SEASONS_ALL:
         run_one(season, snap)
-    # run_one(args.season, snap)
-
 
 if __name__ == "__main__":
     main()

@@ -1,6 +1,6 @@
 # ml/utils/name_normalize.py
-from __future__ import annotations
 
+from __future__ import annotations
 import html
 import re
 import unicodedata
@@ -24,54 +24,41 @@ _EXTRA_TRANSLITERATE = str.maketrans({
 # Canonical aliases AFTER basic cleaning (lowercase, punctuation removed, etc.)
 # Keep keys in their "cleaned" form (spaces only, no punctuation).
 ALIASES = {
-    # Spurs / Tottenham
     "tottenham": "spurs",
     "tottenham hotspur": "spurs",
 
-    # Manchester clubs
     "manchester united": "man utd",
     "man united": "man utd",
     "manchester utd": "man utd",
     "manchester city": "man city",
 
-    # Wolves
     "wolverhampton": "wolves",
     "wolverhampton wanderers": "wolves",
 
-    # West Brom naming variants
     "west bromwich albion": "west brom",
     "west bromwich": "west brom",
 
-    # Sheffield United variants
     "sheffield united": "sheffield utd",
 
-    # Nottingham Forest variants (just in case)
     "nottingham forest": "nottm forest",
     "notts forest": "nottm forest",
     "nott m forest": "nottm forest",
 
-    # Brighton variants
     "brighton and hove albion": "brighton",
 
-    # Newcastle variants
     "newcastle united": "newcastle",
 
-    # Stoke variants (older seasons)
     "stoke city": "stoke",
 
-    # Swansea variants
     "swansea city": "swansea",
 
-    # Hull variants (older seasons)
     "hull city": "hull",
 
-    # Cardiff
     "cardiff city": "cardiff",
 
-    # Leicester / Everton etc usually consistent, but you can add here as needed
 }
 
-# Words to drop when cleaning names (keep conservative)
+# Words to drop when cleaning names 
 STOPWORDS = {
     "fc",
     "afc",
@@ -97,13 +84,13 @@ def _basic_clean(s: str) -> str:
 
     s = s.replace("&", " and ")
 
-    # Replace any non-alphanumeric with spaces (keep digits/letters)
+    # Replace any non-alphanumeric with spaces
     s = re.sub(r"[^a-z0-9]+", " ", s)
 
     # Collapse whitespace
     s = re.sub(r"\s+", " ", s).strip()
 
-    # Drop stopwords (conservative)
+    # Drop stopwords
     if s:
         parts = [p for p in s.split(" ") if p and p not in STOPWORDS]
         s = " ".join(parts)
@@ -114,7 +101,6 @@ def _basic_clean(s: str) -> str:
 def norm(s: str) -> str:
     """
     Canonical normalization used across the pipeline to join team/player names.
-
     Example:
       - "Tottenham" -> "spurs"
       - "Wolverhampton Wanderers" -> "wolves"

@@ -6,9 +6,7 @@ import pandas as pd
 
 IN_PATH = Path("data/processed/merged/fpl_with_target.csv")
 OUT_PATH = Path("data/features/baseline_features.csv")
-
 ROLL_WINDOWS = [3, 5]
-
 BASE_NUM_COLS = [
     "total_points",
     "minutes",
@@ -58,7 +56,9 @@ def run() -> None:
     # Rolling mean features (history only)
     for w in ROLL_WINDOWS:
         for col in num_cols:
-            df[f"{col}_roll{w}"] = g[col].shift(1).rolling(window=w, min_periods=1).mean()
+            df[f"{col}_roll{w}"] = g[col].transform(
+                lambda x: x.shift(1).rolling(window=w, min_periods=1).mean()
+            )
 
     # Played last GW
     if "minutes_lag1" in df.columns:
