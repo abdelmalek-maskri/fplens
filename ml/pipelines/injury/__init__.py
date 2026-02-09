@@ -1,12 +1,15 @@
 """
 Injury data pipeline for FPL prediction.
 
-This module handles:
-1. Downloading historical injury data from vaastav's FPL repository
-2. Extracting and processing injury features
-3. Merging injury data with main FPL dataset
+Pipeline steps (run in order):
+    1. download_historical  — fetch per-GW injury snapshots from vaastav's repo
+    2. merge_with_fpl       — align with main FPL dataset (+1 GW temporal shift)
+    3. build_injury_features — engineer structured, NLP, and embedding features
 
-Key insight: The vaastav repository updates players_raw.csv after each
-gameweek. By fetching historical commits, we can reconstruct per-GW
-injury states without temporal leakage.
+Anti-leakage design: vaastav commits players_raw.csv AFTER each gameweek.
+The merge step shifts by +1 GW so that GW N predictions only use injury
+status known after GW N-1.
+
+Seasons covered: 2018-19 onwards (earlier seasons lack per-GW commits).
+2019-20 COVID ghost commits (GW30-37) are harmlessly dropped during merge.
 """

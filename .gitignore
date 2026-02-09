@@ -18,5 +18,7 @@ venv/
 .env.*
 
 .DS_Store
+.vscode/
+.mcp.json
 
 *.log
