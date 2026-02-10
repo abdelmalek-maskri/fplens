@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { FDR_COLORS, POSITION_COLORS } from "../lib/constants";
 import TeamBadge from "../components/TeamBadge";
 import RadarChart from "../components/RadarChart";
@@ -212,6 +213,7 @@ function ComparisonBar({ label, valueA, valueB, format, higherIsBetter = true, s
 // MAIN PAGE
 // ============================================================
 export default function PlayerComparison() {
+  const navigate = useNavigate();
   const [playerA, setPlayerA] = useState(2); // Haaland default
   const [playerB, setPlayerB] = useState(50); // Isak default
   const [viewMode, setViewMode] = useState("bars");
@@ -285,7 +287,7 @@ export default function PlayerComparison() {
                     <div className="flex items-center gap-3">
                       <TeamBadge team={p.team} size="lg" />
                       <div>
-                        <p className="text-lg font-bold text-surface-100">{p.web_name}</p>
+                        <p className="text-lg font-bold text-surface-100 hover:text-brand-400 transition-colors cursor-pointer" onClick={() => navigate(`/player/${p.id}`)}>{p.web_name}</p>
                         <p className="text-sm text-surface-500">
                           {p.name} · <span className={POSITION_COLORS[p.position]}>{p.position}</span>
                         </p>
@@ -494,7 +496,7 @@ export default function PlayerComparison() {
           </div>
 
           {/* Uncertainty Comparison */}
-          <div className="mt-8">
+          <div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               {[a, b].map((p) => {
                 const low = Math.max(0, p.predicted_points - p.uncertainty);

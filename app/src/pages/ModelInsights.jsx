@@ -139,15 +139,15 @@ export default function ModelInsights() {
   return (
     <div className="space-y-6 stagger">
       {/* Tab Navigation */}
-      <div className="flex items-center gap-1 bg-surface-800/50 rounded-lg p-1 w-fit">
+      <div className="flex items-center gap-0 border-b border-surface-700">
         {TABS.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+            className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
               activeTab === tab.id
-                ? "bg-brand-600 text-white"
-                : "text-surface-400 hover:text-surface-100"
+                ? "border-brand-400 text-brand-400"
+                : "border-transparent text-surface-500 hover:text-surface-300"
             }`}
           >
             {tab.label}
@@ -197,11 +197,11 @@ function OverviewTab() {
       </div>
 
       {/* Model Comparison Table */}
-      <div className="card overflow-y-hidden overflow-x-auto">
-        <div className="px-4 py-3 border-b border-surface-700 bg-surface-800/50">
-          <h3 className="text-sm font-semibold text-surface-100">
+      <div className="overflow-x-auto">
+        <div className="py-3 border-b border-surface-700">
+          <span className="text-xs font-medium text-surface-500 uppercase tracking-wide">
             Prediction Methods Compared
-          </h3>
+          </span>
         </div>
         <table className="w-full">
           <thead className="bg-surface-800/30">
@@ -269,7 +269,7 @@ function OverviewTab() {
       </div>
 
       {/* Ensemble Weights */}
-      <div className="mt-8">
+      <div>
         <div className="space-y-3">
           {ensembleWeights.map((m) => (
             <div key={m.model} className="flex items-center gap-3">
@@ -294,7 +294,7 @@ function OverviewTab() {
       </div>
 
       {/* Dataset Breakdown */}
-      <div className="mt-8">
+      <div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           <div>
             <p className="text-xs text-surface-500 uppercase tracking-wide mb-2">
@@ -412,7 +412,7 @@ function ShapTab() {
       </div>
 
       {/* Key Insights */}
-      <div className="mt-8">
+      <div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="p-3 rounded-lg bg-surface-800/50 border border-surface-700">
             <p className="text-2xl font-bold text-brand-400">20.7%</p>
@@ -436,9 +436,9 @@ function ShapTab() {
       </div>
 
       {/* Per-Player Breakdown */}
-      <div className="mt-8">
-        <p className="text-xs text-surface-500 uppercase tracking-wide mb-3">Per-Player Breakdown</p>
-        <div className="flex gap-2 mb-4">
+      <div>
+        <span className="text-xs font-medium text-surface-500 uppercase tracking-wide">Per-Player Breakdown</span>
+        <div className="flex items-center gap-0 border-b border-surface-700 mt-3 mb-4">
           {[
             { id: 2, name: "Haaland" },
             { id: 3, name: "Salah" },
@@ -447,10 +447,10 @@ function ShapTab() {
             <button
               key={p.id}
               onClick={() => setExamplePlayer(examplePlayer === p.id ? null : p.id)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+              className={`px-3 py-1.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
                 examplePlayer === p.id
-                  ? "bg-brand-500/20 text-brand-400"
-                  : "bg-surface-800 text-surface-400 hover:text-surface-200"
+                  ? "border-brand-400 text-brand-400"
+                  : "border-transparent text-surface-500 hover:text-surface-300"
               }`}
             >
               {p.name}
@@ -551,7 +551,7 @@ function AblationTab() {
       </div>
 
       {/* Improvement Visualization */}
-      <div className="mt-8">
+      <div>
         <div className="space-y-4">
           {ablationConfigs.map((config) => {
             const barWidth = ((1.15 - config.mae) / (1.15 - 1.04)) * 100;
@@ -606,7 +606,7 @@ function AblationTab() {
       </div>
 
       {/* Findings */}
-      <div className="mt-8">
+      <div>
         <div className="space-y-3">
           <div className="flex items-start gap-3">
             <span className="badge bg-success-500/20 text-success-400 shrink-0 mt-0.5">RQ1</span>
@@ -697,11 +697,11 @@ function PositionsTab() {
       </div>
 
       {/* Detailed Comparison Table */}
-      <div className="card overflow-y-hidden overflow-x-auto">
-        <div className="px-4 py-3 border-b border-surface-700 bg-surface-800/50">
-          <h3 className="text-sm font-semibold text-surface-100">
+      <div className="overflow-x-auto">
+        <div className="py-3 border-b border-surface-700">
+          <span className="text-xs font-medium text-surface-500 uppercase tracking-wide">
             MAE by Position × Model
-          </h3>
+          </span>
         </div>
         <table className="w-full">
           <thead className="bg-surface-800/30">
@@ -766,7 +766,7 @@ function PositionsTab() {
       </div>
 
       {/* Position Insights */}
-      <div className="mt-8">
+      <div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="p-3 rounded-lg bg-success-500/5 border border-success-500/20">
             <p className="text-sm font-medium text-surface-200">
