@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { FDR_COLORS, POSITION_COLORS } from "../lib/constants";
 import MiniSparkline from "../components/MiniSparkline";
 import TeamBadge from "../components/TeamBadge";
@@ -27,6 +28,7 @@ const allPlayers = [
 // MAIN COMPONENT
 // ============================================================
 export default function Watchlist() {
+  const navigate = useNavigate();
   const [watchedIds, setWatchedIds] = useState([50, 60, 62, 65, 5]);
   const [search, setSearch] = useState("");
   const [showAdd, setShowAdd] = useState(false);
@@ -54,7 +56,7 @@ export default function Watchlist() {
     <div className="space-y-6 stagger">
       <div className="flex items-center justify-end">
         <button onClick={() => setShowAdd(!showAdd)}
-          className={`btn-primary text-sm ${showAdd ? "bg-surface-700 text-surface-100" : ""}`}>
+          className={`px-3 py-1.5 text-sm font-medium rounded transition-colors ${showAdd ? "bg-surface-700 text-surface-200" : "bg-brand-600 text-white hover:bg-brand-700"}`}>
           {showAdd ? "Done" : "+ Add Player"}
         </button>
       </div>
@@ -102,7 +104,7 @@ export default function Watchlist() {
                   <div className="flex items-center gap-3 w-48">
                     <TeamBadge team={p.team} />
                     <div>
-                      <p className="text-sm font-semibold text-surface-100">{p.web_name}</p>
+                      <p className="text-sm font-semibold text-surface-100 hover:text-brand-400 transition-colors cursor-pointer" onClick={() => navigate(`/player/${p.element}`)}>{p.web_name}</p>
                       <p className="text-2xs text-surface-500"><span className={POSITION_COLORS[p.position]}>{p.position}</span> · £{p.value}m</p>
                     </div>
                   </div>
