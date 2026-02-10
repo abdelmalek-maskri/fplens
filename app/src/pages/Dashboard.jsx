@@ -1,11 +1,12 @@
 import { useState, useMemo, Fragment } from "react";
+import { useNavigate } from "react-router-dom";
 import { POSITION_COLORS } from "../lib/constants";
 import MiniSparkline from "../components/MiniSparkline";
 import StatusBadge from "../components/StatusBadge";
 import FdrBadge from "../components/FdrBadge";
 import SortHeader from "../components/SortHeader";
 import TeamBadge from "../components/TeamBadge";
-import UncertaintyBar from "../components/UncertaintyBar";
+
 import ShapBreakdown from "../components/ShapBreakdown";
 
 // ============================================================
@@ -84,12 +85,6 @@ const MODEL_OPTIONS = [
 ];
 
 // ============================================================
-// SUB-COMPONENTS
-// ============================================================
-
-
-
-// ============================================================
 // EFFECTIVE OWNERSHIP & DIFFERENTIAL HELPERS
 // EO = ownership% + captain_pct% (captaincy doubles points)
 // Differential score = predicted_pts × (1 - ownership/100)
@@ -115,6 +110,7 @@ const POS_TAB_UNDERLINE = {
 // DASHBOARD PAGE
 // ============================================================
 export default function Dashboard() {
+  const navigate = useNavigate();
   const [positionFilter, setPositionFilter] = useState("ALL");
   const [sortBy, setSortBy] = useState("predicted_points");
   const [sortDesc, setSortDesc] = useState(true);
@@ -215,13 +211,11 @@ export default function Dashboard() {
               <th className="table-header text-left py-2.5 px-3">#</th>
               <th className="table-header text-left py-2.5 px-3">Player</th>
               <SortHeader field="predicted_points" sortBy={sortBy} sortDesc={sortDesc} onSort={handleSort}>Predicted</SortHeader>
-              <th className="table-header text-left py-2.5 px-3">Range</th>
               <th className="table-header text-left py-2.5 px-3">Status</th>
               <SortHeader field="form" sortBy={sortBy} sortDesc={sortDesc} onSort={handleSort}>Form</SortHeader>
               <SortHeader field="value" sortBy={sortBy} sortDesc={sortDesc} onSort={handleSort}>Price</SortHeader>
               <SortHeader field="selected_by_percent" sortBy={sortBy} sortDesc={sortDesc} onSort={handleSort}>Own%</SortHeader>
               <th className="table-header text-left py-2.5 px-3">EO%</th>
-              <th className="table-header text-left py-2.5 px-3">Diff.</th>
               <th className="table-header text-left py-2.5 px-3">Fixture</th>
             </tr>
           </thead>
@@ -245,7 +239,10 @@ export default function Dashboard() {
                     <div className="flex items-center gap-2.5">
                       <TeamBadge team={player.team_name} />
                       <div>
-                        <p className="font-medium text-surface-100">
+                        <p
+                          className="font-medium text-surface-100 hover:text-brand-400 transition-colors cursor-pointer"
+                          onClick={(e) => { e.stopPropagation(); navigate(`/player/${player.element}`); }}
+                        >
                           {player.web_name}
                         </p>
                         <p className="text-xs text-surface-500">
@@ -261,12 +258,9 @@ export default function Dashboard() {
                     }`}>
                       {player.predicted_points.toFixed(1)}
                     </span>
-                  </td>
-                  <td className="py-2.5 px-3">
-                    <UncertaintyBar
-                      predicted={player.predicted_points}
-                      uncertainty={player.uncertainty}
-                    />
+                    <span className="block text-2xs text-surface-500 font-data tabular-nums">
+                      {Math.max(0, player.predicted_points - player.uncertainty).toFixed(1)}–{(player.predicted_points + player.uncertainty).toFixed(1)}
+                    </span>
                   </td>
                   <td className="py-2.5 px-3">
                     <StatusBadge
@@ -291,9 +285,7 @@ export default function Dashboard() {
                   <td className="py-2.5 px-3 text-surface-300 font-data tabular-nums">
                     £{player.value}m
                   </td>
-                  <td className={`py-2.5 px-3 font-data tabular-nums ${
-                    player.selected_by_percent > 50 ? "text-surface-600" : player.selected_by_percent < 15 ? "text-surface-200" : "text-surface-400"
-                  }`}>
+                  <td className="py-2.5 px-3 text-surface-300 font-data tabular-nums">
                     {player.selected_by_percent}%
                   </td>
                   <td className="py-2.5 px-3">
@@ -304,19 +296,12 @@ export default function Dashboard() {
                     </span>
                   </td>
                   <td className="py-2.5 px-3">
-                    <span className={`text-sm font-data tabular-nums ${
-                      calcDifferential(player) > 3.5 ? "text-surface-100 font-semibold" : "text-surface-400"
-                    }`}>
-                      {calcDifferential(player).toFixed(2)}
-                    </span>
-                  </td>
-                  <td className="py-2.5 px-3">
                     <FdrBadge opponent={player.opponent_name} fdrMap={FDR_MAP} />
                   </td>
                 </tr>
                 {expandedPlayer === player.element && (
                   <tr key={`${player.element}-shap`}>
-                    <td colSpan={11}>
+                    <td colSpan={9}>
                       <ShapBreakdown shapData={mockLocalShap[player.element] || defaultShap} />
                     </td>
                   </tr>
@@ -357,40 +342,62 @@ export default function Dashboard() {
         </div>
 
         <div className="pt-4">
-          {bottomTab === "differentials" && (
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-surface-800/60">
-                  <th className="text-xs text-surface-500 text-left py-1.5 font-normal w-8">#</th>
-                  <th className="text-xs text-surface-500 text-left py-1.5 font-normal">Player</th>
-                  <th className="text-xs text-surface-500 text-right py-1.5 font-normal w-16">Own%</th>
-                  <th className="text-xs text-surface-500 text-right py-1.5 font-normal w-16">Pred.</th>
-                  <th className="text-xs text-surface-500 text-right py-1.5 font-normal w-16">Score</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[...mockPredictions]
-                  .filter((p) => p.status === "a" && p.selected_by_percent < 30)
-                  .sort((a, b) => calcDifferential(b) - calcDifferential(a))
-                  .slice(0, 5)
-                  .map((p, idx) => (
-                    <tr key={p.element} className="border-b border-surface-800/40">
-                      <td className="py-2 text-xs text-surface-600 font-data">{idx + 1}</td>
-                      <td className="py-2">
-                        <div className="flex items-center gap-2">
-                          <TeamBadge team={p.team_name} size="sm" />
-                          <span className="text-sm text-surface-100">{p.web_name}</span>
-                          <span className={`text-xs ${POSITION_COLORS[p.position] || "text-surface-500"}`}>{p.position}</span>
-                        </div>
-                      </td>
-                      <td className="py-2 text-xs text-surface-500 text-right font-data tabular-nums">{p.selected_by_percent}%</td>
-                      <td className="py-2 text-sm text-surface-300 text-right font-data tabular-nums">{p.predicted_points.toFixed(1)}</td>
-                      <td className="py-2 text-sm font-semibold text-surface-100 text-right font-data tabular-nums">{calcDifferential(p).toFixed(2)}</td>
+          {bottomTab === "differentials" && (() => {
+            const diffs = [...mockPredictions]
+              .filter((p) => p.status === "a" && p.selected_by_percent < 30)
+              .sort((a, b) => calcDifferential(b) - calcDifferential(a))
+              .slice(0, 5);
+            const maxImpact = Math.max(...diffs.map((p) => calcDifferential(p)));
+            return (
+              <>
+                <p className="text-xs text-surface-500 mb-3">
+                  Low-ownership players your opponents likely don't have. High impact = high predicted points at low ownership.
+                </p>
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-surface-800/60">
+                      <th className="text-xs text-surface-500 text-left py-1.5 font-normal w-8">#</th>
+                      <th className="text-xs text-surface-500 text-left py-1.5 font-normal">Player</th>
+                      <th className="text-xs text-surface-500 text-right py-1.5 font-normal w-16">Own%</th>
+                      <th className="text-xs text-surface-500 text-right py-1.5 font-normal w-16">Pred.</th>
+                      <th className="text-xs text-surface-500 text-right py-1.5 font-normal w-24">Impact</th>
                     </tr>
-                  ))}
-              </tbody>
-            </table>
-          )}
+                  </thead>
+                  <tbody>
+                    {diffs.map((p, idx) => {
+                      const impact = calcDifferential(p);
+                      const barPct = (impact / maxImpact) * 100;
+                      return (
+                        <tr key={p.element} className="border-b border-surface-800/40">
+                          <td className="py-2 text-xs text-surface-600 font-data">{idx + 1}</td>
+                          <td className="py-2">
+                            <div className="flex items-center gap-2">
+                              <TeamBadge team={p.team_name} size="sm" />
+                              <span
+                                className="text-sm text-surface-100 hover:text-brand-400 transition-colors cursor-pointer"
+                                onClick={() => navigate(`/player/${p.element}`)}
+                              >{p.web_name}</span>
+                              <span className={`text-xs ${POSITION_COLORS[p.position] || "text-surface-500"}`}>{p.position}</span>
+                            </div>
+                          </td>
+                          <td className="py-2 text-xs text-surface-500 text-right font-data tabular-nums">{p.selected_by_percent}%</td>
+                          <td className="py-2 text-sm text-surface-300 text-right font-data tabular-nums">{p.predicted_points.toFixed(1)}</td>
+                          <td className="py-2 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <div className="w-12 h-1.5 bg-surface-800 rounded overflow-hidden">
+                                <div className="h-full bg-brand-500/60 rounded" style={{ width: `${barPct}%` }} />
+                              </div>
+                              <span className="text-sm font-semibold text-surface-100 font-data tabular-nums w-8">{impact.toFixed(1)}</span>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </>
+            );
+          })()}
 
           {bottomTab === "xg" && (
             <div className="space-y-2">
@@ -405,7 +412,7 @@ export default function Dashboard() {
                   const barPct = Math.min((Math.abs(diff) / maxBar) * 100, 100);
                   return (
                     <div key={p.element} className="flex items-center gap-3">
-                      <span className="text-sm text-surface-300 w-28 truncate">{p.web_name}</span>
+                      <span className="text-sm text-surface-300 w-28 truncate hover:text-brand-400 transition-colors cursor-pointer" onClick={() => navigate(`/player/${p.element}`)}>{p.web_name}</span>
                       <span className="text-xs text-surface-500 w-20 text-right shrink-0">
                         {p.goals}G / {p.xG}xG
                       </span>
@@ -454,7 +461,7 @@ export default function Dashboard() {
                         <span className={`inline-flex items-center justify-center w-5 h-5 rounded text-2xs font-bold ${t.cls}`}>
                           {t.icon}
                         </span>
-                        <span className="text-sm text-surface-200">{p.web_name}</span>
+                        <span className="text-sm text-surface-200 hover:text-brand-400 transition-colors cursor-pointer" onClick={() => navigate(`/player/${p.element}`)}>{p.web_name}</span>
                         <span className="text-xs text-surface-500">£{p.value}m</span>
                       </div>
                       <div className="flex items-center gap-3">

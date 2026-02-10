@@ -13,7 +13,6 @@ Feature groups:
 import re
 from pathlib import Path
 from datetime import datetime
-
 import numpy as np
 import pandas as pd
 
@@ -92,7 +91,7 @@ FILL_DEFAULTS = {
 
 def add_structured_features(df: pd.DataFrame) -> pd.DataFrame:
     """Encode raw status/chance fields into numeric features."""
-    print("  Adding structured features (Group B)...")
+    print("Adding structured features...")
     df = df.copy()
 
     df["status_encoded"] = df["status"].map(STATUS_MAP).fillna(0).astype(int)
@@ -115,7 +114,7 @@ def add_structured_features(df: pd.DataFrame) -> pd.DataFrame:
 
 def add_temporal_features(df: pd.DataFrame) -> pd.DataFrame:
     """Compute per-player temporal patterns from consecutive GW status history."""
-    print("  Adding temporal features (Group B)...")
+    print("Adding temporal features...")
     df = df.copy()
     df = df.sort_values(["season", "element", "GW"])
 
@@ -255,21 +254,21 @@ def news_sentiment(news: str) -> float:
 
 def add_nlp_features(df: pd.DataFrame) -> pd.DataFrame:
     """Extract NLP features from news text: injury type, return weeks, sentiment."""
-    print("  Adding NLP features (Group C)...")
+    print("Adding NLP features...")
     df = df.copy()
 
-    print("    Classifying injury types...")
+    print("Classifying injury types...")
     df["injury_type"] = df["news"].apply(extract_injury_type)
     injury_dummies = pd.get_dummies(df["injury_type"], prefix="injury")
     df = pd.concat([df, injury_dummies], axis=1)
 
-    print("    Estimating return dates...")
+    print("Estimating return dates...")
     df["expected_return_weeks"] = df.apply(
         lambda row: extract_return_weeks(row["news"], row.get("snapshot_date")),
         axis=1,
     )
 
-    print("    Scoring sentiment...")
+    print("Scoring sentiment...")
     df["news_sentiment"] = df["news"].apply(news_sentiment)
 
     return df
@@ -303,7 +302,7 @@ def _merge_with_extended(df: pd.DataFrame) -> pd.DataFrame:
     # Drop stale injury columns from previous runs
     overlap = set(extended_df.columns) & set(injury_subset.columns) - set(merge_keys)
     if overlap:
-        print(f"  Dropping {len(overlap)} stale columns from base: {sorted(overlap)[:5]}...")
+        print(f"Dropping {len(overlap)} stale columns from base: {sorted(overlap)[:5]}...")
         extended_df = extended_df.drop(columns=overlap)
 
     combined = extended_df.merge(injury_subset, on=merge_keys, how="left")
@@ -323,8 +322,8 @@ def _merge_with_extended(df: pd.DataFrame) -> pd.DataFrame:
 
     n_real = has_injury.sum()
     n_nan = (~has_injury).sum()
-    print(f"  Seasons with real injury data: {n_real:,} rows")
-    print(f"  Pre-injury seasons (set to NaN): {n_nan:,} rows")
+    print(f"Seasons with real injury data: {n_real:,} rows")
+    print(f"Pre-injury seasons (set to NaN): {n_nan:,} rows")
 
     # Fill defaults only for injury seasons (GW1 gaps, missing snapshots)
     for col, default in FILL_DEFAULTS.items():
@@ -384,10 +383,10 @@ def run() -> None:
     print(f"Output: {OUTPUT_DIR / 'extended_with_injury.csv'}")
     print(f"Shape:  {combined.shape}")
     print(f"\nInjury feature summary:")
-    print(f"  Injury types found:      {df['injury_type'].nunique()}")
-    print(f"  Players with news:       {(df['has_news'] == 1).sum():,}")
-    print(f"  Max consecutive GWs out: {df['consecutive_gws_out'].max()}")
-    print(f"  Players ever injured:    {(df['injury_count_season'] > 0).sum():,}")
+    print(f"Injury types found:      {df['injury_type'].nunique()}")
+    print(f"Players with news:       {(df['has_news'] == 1).sum():,}")
+    print(f"Max consecutive GWs out: {df['consecutive_gws_out'].max()}")
+    print(f"Players ever injured:    {(df['injury_count_season'] > 0).sum():,}")
     print(f"\nInjury type distribution (top 10):")
     print(df["injury_type"].value_counts().head(10).to_string())
 

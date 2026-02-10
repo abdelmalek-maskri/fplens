@@ -1,11 +1,21 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { POSITION_COLORS } from "../lib/constants";
 import Jersey from "../components/Jersey";
 import StatusBadge from "../components/StatusBadge";
+import TeamBadge from "../components/TeamBadge";
+import FdrBadge from "../components/FdrBadge";
 
 // ============================================================
 // MOCK DATA - matches real FPL API structure for user's team
 // Will be replaced with: GET /api/team/{fpl_id}
 // ============================================================
+
+const FDR_MAP = {
+  ARS: 5, AVL: 3, BOU: 2, BRE: 2, BHA: 3, CHE: 4, CRY: 2, EVE: 2,
+  FUL: 2, IPS: 1, LEI: 2, LIV: 5, MCI: 4, MUN: 3, NEW: 3, NFO: 2,
+  SOU: 1, TOT: 3, WHU: 2, WOL: 2,
+};
 
 const mockUserTeam = {
   manager: "Abdelmalek Maskri",
@@ -38,14 +48,14 @@ const mockUserTeam = {
 
 const mockTransferSuggestions = [
   {
-    out: { web_name: "Watkins", team_name: "AVL", position: "FWD", predicted_points: 1.8, status: "i", value: 9.0, selling_price: 8.8 },
-    in: { web_name: "Cunha", team_name: "WOL", position: "FWD", predicted_points: 5.8, status: "a", value: 7.2 },
+    out: { element: 10, web_name: "Watkins", team_name: "AVL", position: "FWD", predicted_points: 1.8, status: "i", value: 9.0, selling_price: 8.8 },
+    in: { element: 70, web_name: "Cunha", team_name: "WOL", position: "FWD", predicted_points: 5.8, status: "a", value: 7.2 },
     points_gain: 4.0,
     cost_saving: 1.6,
   },
   {
-    out: { web_name: "Saka", team_name: "ARS", position: "MID", predicted_points: 4.2, status: "d", value: 10.1, selling_price: 9.9 },
-    in: { web_name: "Son", team_name: "TOT", position: "MID", predicted_points: 5.8, status: "a", value: 10.0 },
+    out: { element: 5, web_name: "Saka", team_name: "ARS", position: "MID", predicted_points: 4.2, status: "d", value: 10.1, selling_price: 9.9 },
+    in: { element: 71, web_name: "Son", team_name: "TOT", position: "MID", predicted_points: 5.8, status: "a", value: 10.0 },
     points_gain: 1.6,
     cost_saving: -0.1,
   },
@@ -55,7 +65,7 @@ const mockTransferSuggestions = [
 // ============================================================
 // PLAYER CARD ON PITCH
 // ============================================================
-const PitchPlayerCard = ({ player }) => (
+const PitchPlayerCard = ({ player, onClick }) => (
   <div
     className={`flex flex-col items-center gap-0.5 transition-opacity ${
       player.status === "i" ? "opacity-50" : ""
@@ -68,7 +78,10 @@ const PitchPlayerCard = ({ player }) => (
       isVice={player.is_vice}
       status={player.status}
     />
-    <div className="bg-white/95 px-2.5 py-0.5 rounded text-[11px] font-bold text-gray-900 text-center min-w-[72px] max-w-[100px] truncate shadow-sm">
+    <div
+      className="bg-white/95 px-2.5 py-0.5 rounded text-[11px] font-bold text-gray-900 text-center min-w-[72px] max-w-[100px] truncate shadow-sm cursor-pointer hover:bg-white transition-colors"
+      onClick={() => onClick(player.element)}
+    >
       {player.web_name}
     </div>
     <div className="bg-gray-900/80 backdrop-blur-sm px-2 py-0.5 rounded text-2xs text-center whitespace-nowrap">
@@ -82,77 +95,46 @@ const PitchPlayerCard = ({ player }) => (
 );
 
 // ============================================================
-// PITCH VIEW COMPONENT - Modern pitch with premium grass
+// PITCH VIEW COMPONENT
 // ============================================================
-const PitchView = ({ starters, bench }) => {
+const PitchView = ({ starters, bench, onPlayerClick }) => {
   const gk = starters.filter((p) => p.position === "GK");
   const def = starters.filter((p) => p.position === "DEF");
   const mid = starters.filter((p) => p.position === "MID");
   const fwd = starters.filter((p) => p.position === "FWD");
-  const formation = `${def.length}-${mid.length}-${fwd.length}`;
 
   return (
     <div className="card overflow-hidden">
-      {/* Pitch header */}
-      <div className="px-4 py-2.5 border-b border-surface-700 flex items-center justify-between bg-surface-800/50">
-        <div className="flex items-center gap-3">
-          <span className="text-sm font-semibold text-surface-100">
-            Pitch View
-          </span>
-          <span className="badge bg-surface-700 text-surface-300">
-            {formation}
-          </span>
-        </div>
-        <span className="text-xs text-surface-500">
-          Predicted pts shown per player
-        </span>
-      </div>
-
-      {/* The pitch - modern grass with SVG pattern */}
+      {/* The pitch */}
       <div className="relative overflow-hidden">
         <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none">
           <defs>
-            {/* Grass stripe pattern */}
-            <pattern id="grass" width="100%" height="90" patternUnits="userSpaceOnUse">
+            <pattern id="grass-myteam" width="100%" height="90" patternUnits="userSpaceOnUse">
               <rect width="100%" height="45" fill="#1b7a35" />
               <rect y="45" width="100%" height="45" fill="#1a7030" />
             </pattern>
-            {/* Subtle noise overlay */}
-            <filter id="grassNoise">
+            <filter id="grassNoise-myteam">
               <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="4" result="noise" />
               <feColorMatrix type="saturate" values="0" in="noise" result="grayNoise" />
               <feBlend in="SourceGraphic" in2="grayNoise" mode="multiply" />
             </filter>
           </defs>
-          <rect width="100%" height="100%" fill="url(#grass)" />
-          {/* Vignette / depth at edges */}
-          <rect width="100%" height="100%" fill="url(#grass)" opacity="0.3" filter="url(#grassNoise)" />
+          <rect width="100%" height="100%" fill="url(#grass-myteam)" />
+          <rect width="100%" height="100%" fill="url(#grass-myteam)" opacity="0.3" filter="url(#grassNoise-myteam)" />
         </svg>
 
-        {/* Pitch markings - cleaner, crisper */}
+        {/* Pitch markings */}
         <div className="absolute inset-0 pointer-events-none">
-          {/* Outer boundary */}
           <div className="absolute inset-[16px] border-2 border-white/20 rounded-[3px]" />
-          {/* Half-way line */}
           <div className="absolute left-[16px] right-[16px] top-1/2 h-[2px] bg-white/20" />
-          {/* Center circle */}
           <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[100px] h-[100px] rounded-full border-2 border-white/20" />
-          {/* Center dot */}
           <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-white/25" />
-
-          {/* Top penalty box */}
           <div className="absolute top-[16px] left-1/2 -translate-x-1/2 w-[220px] h-[65px] border-b-2 border-l-2 border-r-2 border-white/15 rounded-b-[2px]" />
           <div className="absolute top-[16px] left-1/2 -translate-x-1/2 w-[100px] h-[28px] border-b-2 border-l-2 border-r-2 border-white/12 rounded-b-[2px]" />
-          {/* Top penalty arc */}
           <div className="absolute top-[68px] left-1/2 -translate-x-1/2 w-[70px] h-[35px] border-b-2 border-white/10 rounded-b-full" />
-
-          {/* Bottom penalty box */}
           <div className="absolute bottom-[16px] left-1/2 -translate-x-1/2 w-[220px] h-[65px] border-t-2 border-l-2 border-r-2 border-white/15 rounded-t-[2px]" />
           <div className="absolute bottom-[16px] left-1/2 -translate-x-1/2 w-[100px] h-[28px] border-t-2 border-l-2 border-r-2 border-white/12 rounded-t-[2px]" />
-          {/* Bottom penalty arc */}
           <div className="absolute bottom-[68px] left-1/2 -translate-x-1/2 w-[70px] h-[35px] border-t-2 border-white/10 rounded-t-full" />
-
-          {/* Corner arcs */}
           <div className="absolute top-[16px] left-[16px] w-5 h-5 border-r-2 border-b-2 border-white/10 rounded-br-full" />
           <div className="absolute top-[16px] right-[16px] w-5 h-5 border-l-2 border-b-2 border-white/10 rounded-bl-full" />
           <div className="absolute bottom-[16px] left-[16px] w-5 h-5 border-r-2 border-t-2 border-white/10 rounded-tr-full" />
@@ -160,29 +142,18 @@ const PitchView = ({ starters, bench }) => {
         </div>
 
         {/* Player formation rows */}
-        <div
-          className="relative z-10 flex flex-col justify-around py-8 px-4"
-          style={{ minHeight: "560px" }}
-        >
+        <div className="relative z-10 flex flex-col justify-around py-8 px-4" style={{ minHeight: "560px" }}>
           <div className="flex justify-center gap-8">
-            {gk.map((p) => (
-              <PitchPlayerCard key={p.element} player={p} />
-            ))}
+            {gk.map((p) => <PitchPlayerCard key={p.element} player={p} onClick={onPlayerClick} />)}
           </div>
           <div className="flex justify-center gap-4 sm:gap-6 lg:gap-10">
-            {def.map((p) => (
-              <PitchPlayerCard key={p.element} player={p} />
-            ))}
+            {def.map((p) => <PitchPlayerCard key={p.element} player={p} onClick={onPlayerClick} />)}
           </div>
           <div className="flex justify-center gap-3 sm:gap-5 lg:gap-8">
-            {mid.map((p) => (
-              <PitchPlayerCard key={p.element} player={p} />
-            ))}
+            {mid.map((p) => <PitchPlayerCard key={p.element} player={p} onClick={onPlayerClick} />)}
           </div>
           <div className="flex justify-center gap-4 sm:gap-6 lg:gap-10">
-            {fwd.map((p) => (
-              <PitchPlayerCard key={p.element} player={p} />
-            ))}
+            {fwd.map((p) => <PitchPlayerCard key={p.element} player={p} onClick={onPlayerClick} />)}
           </div>
         </div>
       </div>
@@ -205,7 +176,10 @@ const PitchView = ({ starters, bench }) => {
                 isVice={false}
                 status={p.status}
               />
-              <div className="bg-surface-700/80 px-2 py-0.5 rounded-sm text-[11px] font-semibold text-surface-300 text-center min-w-[72px] max-w-[100px] truncate">
+              <div
+                className="bg-surface-700/80 px-2 py-0.5 rounded-sm text-[11px] font-semibold text-surface-300 text-center min-w-[72px] max-w-[100px] truncate cursor-pointer hover:text-brand-400 transition-colors"
+                onClick={() => onPlayerClick(p.element)}
+              >
                 {p.web_name}
               </div>
               <div className="text-2xs text-surface-500 whitespace-nowrap">
@@ -256,9 +230,11 @@ const FplIdHelp = () => (
 // MY TEAM PAGE
 // ============================================================
 export default function MyTeam() {
+  const navigate = useNavigate();
   const [fplId, setFplId] = useState("");
   const [teamLoaded, setTeamLoaded] = useState(false);
   const [team, setTeam] = useState(null);
+  const [viewMode, setViewMode] = useState("pitch"); // "pitch" | "table"
 
   const handleLoadTeam = (e) => {
     e.preventDefault();
@@ -266,18 +242,8 @@ export default function MyTeam() {
     setTeamLoaded(true);
   };
 
-  const getCaptainPick = (picks) => {
-    const starters = picks.filter((p) => p.multiplier >= 1);
-    return [...starters].sort(
-      (a, b) => b.predicted_points - a.predicted_points
-    )[0];
-  };
-
-  const getVicePick = (picks) => {
-    const starters = picks.filter((p) => p.multiplier >= 1);
-    return [...starters].sort(
-      (a, b) => b.predicted_points - a.predicted_points
-    )[1];
+  const handlePlayerClick = (elementId) => {
+    navigate(`/player/${elementId}`);
   };
 
   // ---- FPL ID input screen ----
@@ -313,20 +279,56 @@ export default function MyTeam() {
   // ---- Team loaded ----
   const starters = team.picks.filter((p) => p.multiplier >= 1);
   const bench = team.picks.filter((p) => p.multiplier === 0);
-  const captainPick = getCaptainPick(team.picks);
-  const vicePick = getVicePick(team.picks);
+
+  // Captain recommendations based on predicted points
+  const sortedByPredicted = [...starters].sort((a, b) => b.predicted_points - a.predicted_points);
+  const recommendedCaptain = sortedByPredicted[0];
+  const recommendedVice = sortedByPredicted[1];
+  const currentCaptain = starters.find((p) => p.is_captain);
+  const captainMismatch = recommendedCaptain && currentCaptain && recommendedCaptain.element !== currentCaptain.element;
+
   const totalPredicted = starters.reduce(
     (sum, p) => sum + p.predicted_points * p.multiplier,
     0
   );
-  const injuredStarters = starters.filter(
-    (p) => p.status === "i" || p.status === "d"
+
+  // Alerts: injuries, doubtful, tough fixtures, bench outscoring starters
+  const injuredStarters = starters.filter((p) => p.status === "i");
+  const doubtfulStarters = starters.filter((p) => p.status === "d");
+  const toughFixtureStarters = starters.filter(
+    (p) => p.status !== "i" && FDR_MAP[p.opponent_name] >= 4
   );
+  const benchOutscoring = bench.filter((bp) =>
+    starters.some(
+      (sp) =>
+        sp.position === bp.position &&
+        sp.status === "a" &&
+        bp.predicted_points > sp.predicted_points
+    )
+  );
+
+  const hasAlerts = injuredStarters.length > 0 || doubtfulStarters.length > 0 || toughFixtureStarters.length > 0 || benchOutscoring.length > 0;
+
+  const formation = `${starters.filter((p) => p.position === "DEF").length}-${starters.filter((p) => p.position === "MID").length}-${starters.filter((p) => p.position === "FWD").length}`;
 
   return (
     <div className="space-y-6 stagger">
       {/* Controls */}
-      <div className="flex items-center justify-end">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate("/optimal-xi")}
+            className="btn-ghost text-sm"
+          >
+            Optimal XI
+          </button>
+          <button
+            onClick={() => navigate("/transfers")}
+            className="btn-ghost text-sm"
+          >
+            Plan Transfers
+          </button>
+        </div>
         <button
           onClick={() => setTeamLoaded(false)}
           className="btn-ghost text-sm"
@@ -338,121 +340,252 @@ export default function MyTeam() {
       {/* Team Overview — horizontal stat strip */}
       <div className="flex items-center gap-5 flex-wrap py-3 border-b border-surface-800">
         <div>
-          <span className="text-xl font-bold text-surface-100">{team.overallRank.toLocaleString()}</span>
+          <span className="text-xl font-bold text-surface-100 font-data tabular-nums">{team.overallRank.toLocaleString()}</span>
           <span className="text-xs text-surface-500 ml-1.5">rank</span>
         </div>
         <div className="w-px h-5 bg-surface-700" />
         <div>
-          <span className="text-xl font-bold text-brand-400">{totalPredicted.toFixed(1)}</span>
+          <span className="text-xl font-bold text-brand-400 font-data tabular-nums">{totalPredicted.toFixed(1)}</span>
           <span className="text-xs text-surface-500 ml-1.5">predicted pts</span>
         </div>
         <div className="w-px h-5 bg-surface-700" />
         <div>
-          <span className="text-xl font-bold text-surface-100">£{team.budget}m</span>
+          <span className="text-sm font-semibold text-surface-100">{formation}</span>
+          <span className="text-xs text-surface-500 ml-1.5">formation</span>
+        </div>
+        <div className="w-px h-5 bg-surface-700" />
+        <div>
+          <span className="text-xl font-bold text-surface-100 font-data tabular-nums">£{team.budget}m</span>
           <span className="text-xs text-surface-500 ml-1.5">ITB</span>
         </div>
         <div className="w-px h-5 bg-surface-700" />
         <div>
-          <span className="text-xl font-bold text-surface-100">{team.freeTransfers}</span>
+          <span className="text-xl font-bold text-surface-100 font-data tabular-nums">{team.freeTransfers}</span>
           <span className="text-xs text-surface-500 ml-1.5">FT{team.freeTransfers !== 1 ? "s" : ""}</span>
+        </div>
+
+        {/* View toggle */}
+        <div className="ml-auto flex items-center border border-surface-700 rounded overflow-hidden">
+          <button
+            onClick={() => setViewMode("pitch")}
+            className={`px-3 py-1.5 text-xs font-medium transition-colors ${viewMode === "pitch" ? "bg-surface-700 text-surface-100" : "text-surface-500 hover:text-surface-300"}`}
+          >
+            Pitch
+          </button>
+          <button
+            onClick={() => setViewMode("table")}
+            className={`px-3 py-1.5 text-xs font-medium transition-colors ${viewMode === "table" ? "bg-surface-700 text-surface-100" : "text-surface-500 hover:text-surface-300"}`}
+          >
+            Table
+          </button>
         </div>
       </div>
 
-      {/* Flagged starters — left-border list */}
-      {injuredStarters.length > 0 && (
+      {/* Alerts — left-border list */}
+      {hasAlerts && (
         <div className="space-y-0.5">
           {injuredStarters.map((p) => (
-            <div key={p.element} className={`flex items-center gap-2 py-1 pl-3 border-l-2 ${p.status === "i" ? "border-danger-500" : "border-warning-500"}`}>
+            <div key={`inj-${p.element}`} className="flex items-center gap-2 py-1 pl-3 border-l-2 border-danger-500">
               <span className="text-sm text-surface-300">
-                <span className="font-medium text-surface-100">{p.web_name}</span>
+                <span className="font-medium text-surface-100 cursor-pointer hover:text-brand-400 transition-colors" onClick={() => handlePlayerClick(p.element)}>{p.web_name}</span>
                 {" "}<span className="text-surface-500">{p.team_name}</span>
-                {" — "}{p.news || (p.status === "i" ? "Injured" : "Doubtful")}
+                {" — "}{p.news || "Injured"}
+              </span>
+            </div>
+          ))}
+          {doubtfulStarters.map((p) => (
+            <div key={`dbt-${p.element}`} className="flex items-center gap-2 py-1 pl-3 border-l-2 border-warning-500">
+              <span className="text-sm text-surface-300">
+                <span className="font-medium text-surface-100 cursor-pointer hover:text-brand-400 transition-colors" onClick={() => handlePlayerClick(p.element)}>{p.web_name}</span>
+                {" "}<span className="text-surface-500">{p.team_name}</span>
+                {" — "}{p.news || "Doubtful"}
+              </span>
+            </div>
+          ))}
+          {toughFixtureStarters.map((p) => (
+            <div key={`fdr-${p.element}`} className="flex items-center gap-2 py-1 pl-3 border-l-2 border-surface-600">
+              <span className="text-sm text-surface-300">
+                <span className="font-medium text-surface-100 cursor-pointer hover:text-brand-400 transition-colors" onClick={() => handlePlayerClick(p.element)}>{p.web_name}</span>
+                {" — tough fixture vs "}<span className="text-surface-200">{p.opponent_name}</span>
+                {` (FDR ${FDR_MAP[p.opponent_name]})`}
+              </span>
+            </div>
+          ))}
+          {benchOutscoring.map((p) => (
+            <div key={`bench-${p.element}`} className="flex items-center gap-2 py-1 pl-3 border-l-2 border-brand-500">
+              <span className="text-sm text-surface-300">
+                <span className="font-medium text-surface-100 cursor-pointer hover:text-brand-400 transition-colors" onClick={() => handlePlayerClick(p.element)}>{p.web_name}</span>
+                {" "}<span className="text-surface-500">(bench)</span>
+                {" — predicted "}<span className="text-brand-400 font-data">{p.predicted_points.toFixed(1)}</span>{" pts, outscoring a starter"}
               </span>
             </div>
           ))}
         </div>
       )}
 
-      {/* Pitch Formation View */}
-      <PitchView starters={starters} bench={bench} />
+      {/* Pitch or Table View */}
+      {viewMode === "pitch" ? (
+        <PitchView starters={starters} bench={bench} onPlayerClick={handlePlayerClick} />
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-surface-700">
+                <th className="table-header text-left py-2.5 px-3 w-8"></th>
+                <th className="table-header text-left py-2.5 px-3">Player</th>
+                <th className="table-header text-left py-2.5 px-3">Predicted</th>
+                <th className="table-header text-left py-2.5 px-3">Form</th>
+                <th className="table-header text-left py-2.5 px-3">Fixture</th>
+                <th className="table-header text-left py-2.5 px-3">Value</th>
+                <th className="table-header text-left py-2.5 px-3">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {/* Starters sorted by position then predicted */}
+              {[...starters]
+                .sort((a, b) => {
+                  const posOrder = { GK: 0, DEF: 1, MID: 2, FWD: 3 };
+                  return posOrder[a.position] - posOrder[b.position] || b.predicted_points - a.predicted_points;
+                })
+                .map((p) => (
+                  <tr key={p.element} className="border-t border-surface-800/60 hover:bg-surface-800/40 transition-colors">
+                    <td className="py-2.5 px-3">
+                      <div className={`w-1 h-8 rounded-full ${p.is_captain ? "bg-warning-400" : p.is_vice ? "bg-surface-400" : "bg-brand-500/40"}`} />
+                    </td>
+                    <td className="py-2.5 px-3">
+                      <div className="flex items-center gap-2.5">
+                        <TeamBadge team={p.team_name} />
+                        <div>
+                          <p
+                            className="font-medium text-surface-100 hover:text-brand-400 transition-colors cursor-pointer"
+                            onClick={() => handlePlayerClick(p.element)}
+                          >
+                            {p.web_name}
+                          </p>
+                          <p className="text-xs text-surface-500">
+                            <span className={POSITION_COLORS[p.position]}>{p.position}</span>
+                            {" · "}{p.team_name}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-2.5 px-3">
+                      <span className={`text-base font-semibold font-data tabular-nums ${p.predicted_points >= 6 ? "text-brand-400" : "text-surface-100"}`}>
+                        {p.predicted_points.toFixed(1)}
+                      </span>
+                      {p.is_captain && <span className="text-xs text-warning-400 ml-1">×2</span>}
+                    </td>
+                    <td className="py-2.5 px-3 text-surface-300 font-data tabular-nums">{p.form}</td>
+                    <td className="py-2.5 px-3">
+                      <FdrBadge opponent={p.opponent_name} fdrMap={FDR_MAP} />
+                    </td>
+                    <td className="py-2.5 px-3 text-surface-300 font-data tabular-nums">£{p.value}m</td>
+                    <td className="py-2.5 px-3">
+                      {p.status !== "a" ? (
+                        <StatusBadge status={p.status} chance={p.chance_of_playing} compact />
+                      ) : (
+                        <span className="text-xs text-surface-600">OK</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              {/* Bench divider */}
+              <tr>
+                <td colSpan={7} className="py-2 px-3">
+                  <div className="flex items-center gap-2">
+                    <div className="h-px flex-1 bg-surface-700" />
+                    <span className="text-2xs text-surface-500 uppercase tracking-wider">Bench</span>
+                    <div className="h-px flex-1 bg-surface-700" />
+                  </div>
+                </td>
+              </tr>
+              {/* Bench players */}
+              {bench.map((p, idx) => (
+                <tr key={p.element} className="border-t border-surface-800/60 opacity-60">
+                  <td className="py-2.5 px-3 text-xs text-surface-600 font-data">{idx + 1}</td>
+                  <td className="py-2.5 px-3">
+                    <div className="flex items-center gap-2.5">
+                      <TeamBadge team={p.team_name} />
+                      <div>
+                        <p
+                          className="font-medium text-surface-300 hover:text-brand-400 transition-colors cursor-pointer"
+                          onClick={() => handlePlayerClick(p.element)}
+                        >
+                          {p.web_name}
+                        </p>
+                        <p className="text-xs text-surface-600">
+                          <span className={POSITION_COLORS[p.position]}>{p.position}</span>
+                          {" · "}{p.team_name}
+                        </p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="py-2.5 px-3 text-surface-500 font-data tabular-nums">{p.predicted_points.toFixed(1)}</td>
+                  <td className="py-2.5 px-3 text-surface-500 font-data tabular-nums">{p.form}</td>
+                  <td className="py-2.5 px-3">
+                    <FdrBadge opponent={p.opponent_name} fdrMap={FDR_MAP} />
+                  </td>
+                  <td className="py-2.5 px-3 text-surface-500 font-data tabular-nums">£{p.value}m</td>
+                  <td className="py-2.5 px-3">
+                    <span className="text-xs text-surface-600">Bench {idx + 1}</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {/* Captain Recommendation */}
-      <div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {/* AI Captain Pick */}
-          <div
-            className={`p-4 rounded-lg border-2 ${
-              captainPick?.element ===
-              starters.find((p) => p.is_captain)?.element
-                ? "border-success-500/30 bg-success-500/5"
-                : "border-brand-500/30 bg-brand-500/5"
-            }`}
-          >
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-brand-400 uppercase tracking-wide">
-                Recommended Captain
-              </span>
-              {captainPick?.element !==
-                starters.find((p) => p.is_captain)?.element && (
-                <span className="badge bg-brand-500/20 text-brand-400">
-                  Change suggested
-                </span>
-              )}
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-brand-600 flex items-center justify-center text-white font-bold text-sm">
-                C
-              </div>
-              <div>
-                <p className="font-semibold text-surface-100">
-                  {captainPick?.web_name}
-                </p>
-                <p className="text-xs text-surface-500">
-                  {captainPick?.position} · {captainPick?.team_name} vs{" "}
-                  {captainPick?.opponent_name}
-                </p>
-              </div>
-              <div className="ml-auto text-right">
-                <p className="text-lg font-bold text-surface-100">
-                  {captainPick?.predicted_points.toFixed(1)} pts
-                </p>
-                <p className="text-xs text-surface-500">
-                  ×2 = {(captainPick?.predicted_points * 2).toFixed(1)}
-                </p>
-              </div>
-            </div>
+      <div className="flex items-start gap-4 py-4 border-t border-surface-800">
+        <div className="flex-1">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-xs font-medium text-brand-400 uppercase tracking-wide">Recommended Captain</span>
+            {captainMismatch && (
+              <span className="badge bg-brand-500/20 text-brand-400">Change suggested</span>
+            )}
           </div>
-
-          {/* Vice Captain Pick */}
-          <div className="p-4 rounded-lg border border-surface-700 bg-surface-800/50">
-            <span className="text-xs font-medium text-surface-500 uppercase tracking-wide">
-              Vice Captain Pick
+          <div className="flex items-center gap-3">
+            <p
+              className="font-semibold text-surface-100 hover:text-brand-400 transition-colors cursor-pointer"
+              onClick={() => handlePlayerClick(recommendedCaptain.element)}
+            >
+              {recommendedCaptain.web_name}
+            </p>
+            <span className="text-xs text-surface-500">{recommendedCaptain.position} · {recommendedCaptain.team_name} vs {recommendedCaptain.opponent_name}</span>
+            <span className="text-sm font-bold text-surface-100 font-data tabular-nums ml-auto">
+              {recommendedCaptain.predicted_points.toFixed(1)} pts
+              <span className="text-xs text-surface-500 font-normal ml-1">×2 = {(recommendedCaptain.predicted_points * 2).toFixed(1)}</span>
             </span>
-            <div className="flex items-center gap-3 mt-2">
-              <div className="w-10 h-10 rounded-full bg-surface-600 flex items-center justify-center text-surface-300 font-bold text-sm">
-                V
-              </div>
-              <div>
-                <p className="font-semibold text-surface-100">
-                  {vicePick?.web_name}
-                </p>
-                <p className="text-xs text-surface-500">
-                  {vicePick?.position} · {vicePick?.team_name} vs{" "}
-                  {vicePick?.opponent_name}
-                </p>
-              </div>
-              <div className="ml-auto">
-                <p className="text-lg font-bold text-surface-100">
-                  {vicePick?.predicted_points.toFixed(1)} pts
-                </p>
-              </div>
-            </div>
+          </div>
+        </div>
+        <div className="w-px h-10 bg-surface-700 hidden sm:block" />
+        <div className="flex-1 hidden sm:block">
+          <span className="text-xs font-medium text-surface-500 uppercase tracking-wide">Vice Captain</span>
+          <div className="flex items-center gap-3 mt-1">
+            <p
+              className="font-semibold text-surface-100 hover:text-brand-400 transition-colors cursor-pointer"
+              onClick={() => handlePlayerClick(recommendedVice.element)}
+            >
+              {recommendedVice.web_name}
+            </p>
+            <span className="text-xs text-surface-500">{recommendedVice.position} · {recommendedVice.team_name} vs {recommendedVice.opponent_name}</span>
+            <span className="text-sm font-bold text-surface-100 font-data tabular-nums ml-auto">{recommendedVice.predicted_points.toFixed(1)} pts</span>
           </div>
         </div>
       </div>
 
       {/* Transfer Suggestions */}
       <div>
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-xs font-medium text-surface-500 uppercase tracking-wide">Suggested Transfers</span>
+          <button
+            onClick={() => navigate("/transfers")}
+            className="text-xs text-brand-400 hover:text-brand-300 transition-colors"
+          >
+            View all →
+          </button>
+        </div>
         <div className="space-y-3">
           {mockTransferSuggestions.map((transfer, idx) => (
             <div
@@ -461,33 +594,25 @@ export default function MyTeam() {
             >
               {/* Out */}
               <div className="flex-1">
-                <p className="text-xs text-danger-400 font-medium uppercase mb-1">
-                  Sell
-                </p>
-                <p className="font-medium text-surface-100">
+                <p className="text-xs text-danger-400 font-medium uppercase mb-1">Sell</p>
+                <p
+                  className="font-medium text-surface-100 hover:text-brand-400 transition-colors cursor-pointer"
+                  onClick={() => handlePlayerClick(transfer.out.element)}
+                >
                   {transfer.out.web_name}
                 </p>
                 <p className="text-xs text-surface-500">
-                  {transfer.out.position} · {transfer.out.team_name} ·{" "}
-                  {transfer.out.predicted_points.toFixed(1)} pts
+                  {transfer.out.position} · {transfer.out.team_name} · {transfer.out.predicted_points.toFixed(1)} pts
                 </p>
-                <StatusBadge status={transfer.out.status} chance={0} compact />
+                {transfer.out.status !== "a" && (
+                  <StatusBadge status={transfer.out.status} chance={0} compact />
+                )}
               </div>
 
               {/* Arrow */}
               <div className="flex flex-col items-center gap-1">
-                <svg
-                  className="w-5 h-5 text-brand-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M13 7l5 5m0 0l-5 5m5-5H6"
-                  />
+                <svg className="w-5 h-5 text-brand-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                 </svg>
                 <span className="text-xs font-semibold text-success-400">
                   +{transfer.points_gain.toFixed(1)} pts
@@ -496,23 +621,15 @@ export default function MyTeam() {
 
               {/* In */}
               <div className="flex-1">
-                <p className="text-xs text-success-400 font-medium uppercase mb-1">
-                  Buy
-                </p>
-                <p className="font-medium text-surface-100">
-                  {transfer.in.web_name}
-                </p>
+                <p className="text-xs text-success-400 font-medium uppercase mb-1">Buy</p>
+                <p className="font-medium text-surface-100">{transfer.in.web_name}</p>
                 <p className="text-xs text-surface-500">
-                  {transfer.in.position} · {transfer.in.team_name} ·{" "}
-                  {transfer.in.predicted_points.toFixed(1)} pts
+                  {transfer.in.position} · {transfer.in.team_name} · {transfer.in.predicted_points.toFixed(1)} pts
                 </p>
                 <p className="text-xs text-surface-500 mt-1">
                   £{transfer.in.value}m
                   {transfer.cost_saving > 0 && (
-                    <span className="text-success-400">
-                      {" "}
-                      (save £{transfer.cost_saving.toFixed(1)}m)
-                    </span>
+                    <span className="text-success-400"> (save £{transfer.cost_saving.toFixed(1)}m)</span>
                   )}
                 </p>
               </div>

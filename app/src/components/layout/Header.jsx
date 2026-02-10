@@ -4,25 +4,16 @@ import { useTheme } from "../../lib/theme";
 
 const PAGE_TITLES = {
   "/": "Gameweek 24",
+  "/optimal-xi": "Optimal XI",
   "/my-team": "My Team",
-  "/captain": "Captain Pick",
-  "/insights": "Prediction Insights",
-  "/squad": "Squad Optimizer",
+  "/transfers": "Transfers",
+  "/chip-advisor": "Chip Advisor",
   "/fixtures": "Fixture Ticker",
   "/compare": "Player Compare",
-  "/radar": "Player Radar",
-  "/what-if": "What If?",
-  "/transfers": "Transfer Planner",
-  "/lineups": "Predicted Lineups",
-  "/set-pieces": "Set Piece Takers",
-  "/clean-sheets": "Clean Sheets",
-  "/rival": "Rival Tracker",
-  "/rotation": "Rotation Planner",
-  "/bench": "Bench Tracker",
-  "/template": "Top 10k Template",
-  "/season": "Season Progress",
+  "/news": "News & Sentiment",
   "/watchlist": "Watchlist",
-  "/wrapped": "FPL Wrapped",
+  "/insights": "Model Insights",
+  "/season-planner": "Season Planner",
 };
 
 export default function Header({ onMenuToggle }) {
@@ -31,7 +22,7 @@ export default function Header({ onMenuToggle }) {
   const [lastUpdated, setLastUpdated] = useState("Just now");
   const [spinning, setSpinning] = useState(false);
 
-  const pageTitle = PAGE_TITLES[pathname] || "FPL Insights";
+  const pageTitle = PAGE_TITLES[pathname] || "Fantasy Foresight";
 
   const handleRefresh = useCallback(() => {
     setSpinning(true);

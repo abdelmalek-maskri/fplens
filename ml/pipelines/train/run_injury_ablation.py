@@ -2,26 +2,23 @@
 Injury & News Ablation Study — systematic feature group comparison.
 
 Trains the same stacked ensemble architecture on different feature sets
-to isolate the contribution of injury data (and later, Guardian news).
+to isolate the contribution of injury data and Guardian news features.
 
 Configs:
     A  Baseline (FPL stats only)         — extended_features.csv
     B  + Injury (FPL API)                — extended_with_injury.csv
-    C  + News (Guardian)                 — extended_with_news.csv         [Step 2]
-    D  + Injury + News (both)            — extended_with_injury_and_news.csv [Step 2]
+    C  + News (Guardian)                 — extended_with_news.csv
+    D  + Injury + News (both)            — extended_with_injury_and_news.csv
 
 Usage:
     python -m ml.pipelines.train.run_injury_ablation
-    python -m ml.pipelines.train.run_injury_ablation --configs A B
 """
 
 import json
 from pathlib import Path
-
 import joblib
 import numpy as np
 import pandas as pd
-from sklearn.metrics import mean_absolute_error
 
 from ml.config.eval_config import (
     HOLDOUT_SEASON,
@@ -32,13 +29,12 @@ from ml.config.eval_config import (
 )
 from ml.utils.eval_metrics import full_evaluation, print_final_summary
 from ml.utils.statistical_tests import print_comparison
-from ml.evaluation.comprehensive_metrics import (
-    ComprehensiveEvaluator,
-    compute_stratified_metrics,
-)
+from ml.evaluation.comprehensive_metrics import ComprehensiveEvaluator
 from ml.pipelines.injury.build_injury_features import FILL_DEFAULTS
+from ml.pipelines.news.build_news_features import NEWS_FEATURE_COLS
 from ml.pipelines.train.train_stacked_with_injury import (
     StackedEnsembleInjury,
+    evaluate_all_predictions,
     prepare_xy,
     to_numeric,
     N_INNER_FOLDS,
@@ -55,49 +51,76 @@ CONFIGS = {
         "name": "+ Injury (FPL API)",
         "data": Path("data/features/extended_with_injury.csv"),
     },
-    # Configs C and D added after Guardian news pipeline (Step 2)
+    "C": {
+        "name": "+ News (Guardian)",
+        "data": Path("data/features/extended_with_news.csv"),
+    },
+    "D": {
+        "name": "+ Injury + News (both)",
+        "data": Path("data/features/extended_with_injury_and_news.csv"),
+    },
 }
 
 
-def load_data(data_path: Path) -> pd.DataFrame:
-    """Load feature CSV and cast categoricals."""
+def train_config(config_key: str, config: dict, out_dir: Path) -> dict:
+    """Train one ablation config — same flow as train_stacked_with_injury.py."""
+    name = config["name"]
+    data_path = config["data"]
+    config_out_dir = out_dir / f"config_{config_key}"
+
+    # -- Banner (matches train_stacked_with_injury.py) --
+
+    print(f"\n{'=' * 70}")
+    print(f"ABLATION CONFIG {config_key}: {name}")
+    print("=" * 70)
+    print(f"Holdout season: {HOLDOUT_SEASON}")
+    print(f"Train seasons:  {CV_SEASONS}")
+    print(f"Input:          {data_path}")
+    print()
+
+    # -- Load data --
+
+    print("Loading data...")
     df = pd.read_csv(data_path, low_memory=False)
+
     for c in CAT_COLS:
         if c in df.columns:
             df[c] = df[c].astype("category")
-    return df
 
-
-def split_train_test(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, list]:
-    """Split into train/test by holdout season."""
     available = set(df["season"].dropna().unique())
     train_seasons = [s for s in CV_SEASONS if s in available]
 
     if HOLDOUT_SEASON not in available:
         raise ValueError(f"Holdout season {HOLDOUT_SEASON} not in data")
 
+    print(f"Total rows:    {len(df):,}")
+    print(f"Total columns: {len(df.columns)}")
+
+    # -- Feature group breakdown --
+
+    injury_structured = [c for c in df.columns if c in FILL_DEFAULTS]
+    injury_nlp = [c for c in df.columns if c.startswith("injury_") and c not in injury_structured]
+    news_cols = [c for c in df.columns if c in NEWS_FEATURE_COLS]
+    non_feature = set(injury_structured + injury_nlp + news_cols + [TARGET_COL] + DROP_COLS + ["GW"])
+    baseline_cols = [c for c in df.columns if c not in non_feature]
+
+    print(f"\nFeature groups:")
+    print(f"  Baseline features:           {len(baseline_cols)}")
+    print(f"  Injury structured + temporal: {len(injury_structured)}")
+    print(f"  Injury NLP (type dummies):    {len(injury_nlp)}")
+    print(f"  News (Guardian):              {len(news_cols)}")
+    print(f"  Total:                        {len(baseline_cols) + len(injury_structured) + len(injury_nlp) + len(news_cols)}")
+
+    if "status_encoded" in df.columns:
+        injury_seasons = sorted(df[df["status_encoded"].notna()]["season"].unique())
+        nan_seasons = sorted(df[df["status_encoded"].isna()]["season"].unique())
+        print(f"\nSeasons with real injury data: {injury_seasons}")
+        print(f"Seasons with NaN (pre-injury): {nan_seasons}")
+
+    # -- Split --
+
     train_df = df[df["season"].isin(train_seasons)]
     test_df = df[df["season"] == HOLDOUT_SEASON]
-
-    return train_df, test_df, train_seasons
-
-
-def train_config(
-    config_key: str,
-    config: dict,
-    out_dir: Path,
-) -> dict:
-    """Train one ablation config and return results dict."""
-    name = config["name"]
-    data_path = config["data"]
-
-    print(f"\n{'=' * 60}")
-    print(f"CONFIG {config_key}: {name}")
-    print(f"{'=' * 60}")
-    print(f"Data: {data_path}")
-
-    df = load_data(data_path)
-    train_df, test_df, train_seasons = split_train_test(df)
 
     X_train, y_train = prepare_xy(train_df)
     X_test, y_test = prepare_xy(test_df)
@@ -110,44 +133,54 @@ def train_config(
 
     cat_cols = [c for c in CAT_COLS if c in X_train.columns]
 
-    # Count feature groups
-    injury_cols = [c for c in X_train.columns if c in FILL_DEFAULTS or c.startswith("injury_")]
-    baseline_cols = [c for c in X_train.columns if c not in injury_cols
-                     and c not in CAT_COLS + ["GW"]]
+    print(f"\nFeatures: {len(X_train.columns)}")
+    print(f"Train:    {len(train_df):,}, Test: {len(test_df):,}")
 
-    print(f"Train: {len(train_df):,}  Test: {len(test_df):,}")
-    print(f"Features: {len(X_train.columns)} (baseline={len(baseline_cols)}, injury={len(injury_cols)})")
+    # -- Train --
 
-    print("\nTraining stacked ensemble...")
+    print(f"\nTraining stacked ensemble (Config {config_key})...")
     ensemble = StackedEnsembleInjury(n_inner_folds=N_INNER_FOLDS)
     ensemble.fit(X_train, y_train, cat_cols)
 
     print("Generating predictions...")
     stacked_pred, all_preds = ensemble.predict(X_test)
 
-    # Evaluate
+    # -- Per-method holdout results table --
+
+    results = evaluate_all_predictions(y_test, y_train, all_preds)
+    best_method = min(results.keys(), key=lambda k: results[k]["mae"])
+
+    print(f"\n{'=' * 60}")
+    print(f"HOLDOUT RESULTS (all methods) — Config {config_key}")
+    print(f"{'=' * 60}")
+    print(f"\n{'Method':<15} {'MAE':<10} {'RMSE':<10} {'R²':<10}")
+    print("-" * 45)
+    for method in sorted(results.keys(), key=lambda x: results[x]["mae"]):
+        r = results[method]
+        marker = " *" if method == best_method else ""
+        print(f"{method:<15} {r['mae']:.4f}     {r['rmse']:.4f}     {r['r2']:.4f}{marker}")
+
+    print(f"\nBest method: {best_method}")
+
+    # -- print_final_summary --
+
     holdout_eval = full_evaluation(y_test, stacked_pred, y_train)
-    mae = holdout_eval["model"]["mae"]
-    rmse = holdout_eval["model"]["rmse"]
-    r2 = holdout_eval["model"]["r2"]
 
-    print(f"\nConfig {config_key} holdout: MAE={mae:.4f}  RMSE={rmse:.4f}  R²={r2:.4f}")
+    print_final_summary(
+        model_name=f"ablation_{config_key}_{name}",
+        holdout_season=HOLDOUT_SEASON,
+        train_seasons=train_seasons,
+        n_train=len(train_df),
+        n_test=len(test_df),
+        eval_result=holdout_eval,
+        output_dir=str(config_out_dir),
+    )
 
-    # Per-method results
-    all_results = {}
-    for method_name, preds in all_preds.items():
-        eval_r = full_evaluation(y_test, preds, y_train)
-        all_results[method_name] = {
-            **eval_r["model"],
-            "improve_vs_zero_mae": eval_r["improvements"]["vs_zero"]["mae_improve"],
-            "improve_vs_mean_mae": eval_r["improvements"]["vs_mean"]["mae_improve"],
-        }
+    # -- Comprehensive evaluation --
 
-    # Comprehensive evaluation
     positions = test_df["position"].values if "position" in test_df.columns else None
     gameweek_ids = test_df["GW"].values if "GW" in test_df.columns else None
 
-    config_out_dir = out_dir / f"config_{config_key}"
     config_out_dir.mkdir(parents=True, exist_ok=True)
 
     evaluator = ComprehensiveEvaluator(config_out_dir)
@@ -158,42 +191,52 @@ def train_config(
         gameweek_ids=gameweek_ids,
         experiment_name=f"ablation_{config_key}",
     )
+    evaluator.print_summary(comprehensive, f"Ablation Config {config_key}: {name}")
 
-    # Per-base-learner OOF MAE (from meta_info)
-    base_oof = {}
-    for method_name in ensemble.base_names:
-        if method_name in all_results:
-            base_oof[method_name] = all_results[method_name]["mae"]
+    # -- Save outputs --
 
-    # Save model and predictions
+    meta_coefs = ensemble.meta_info.get("coefficients", {})
+
+    summary = {
+        "model_name": f"ablation_{config_key}",
+        "config": config_key,
+        "config_name": name,
+        "data_path": str(data_path),
+        "holdout_season": HOLDOUT_SEASON,
+        "train_seasons": train_seasons,
+        "rows_train": int(len(train_df)),
+        "rows_test": int(len(test_df)),
+        "n_features": len(X_train.columns),
+        "n_base_models": len(ensemble.base_names),
+        "base_models": ensemble.base_names,
+        "meta_learner": ensemble.meta_info,
+        "meta_coefficients": meta_coefs,
+        "feature_groups": {
+            "baseline": len(baseline_cols),
+            "injury_structured": len(injury_structured),
+            "injury_nlp": len(injury_nlp),
+            "news": len(news_cols),
+        },
+        "holdout": holdout_eval,
+        "all_methods": results,
+        "best_method": best_method,
+    }
+
     joblib.dump(ensemble, config_out_dir / "model.joblib")
     np.savez(
         config_out_dir / "holdout_predictions.npz",
         y_true=y_test,
         y_pred=stacked_pred,
     )
-
-    summary = {
-        "config": config_key,
-        "name": name,
-        "data_path": str(data_path),
-        "holdout_season": HOLDOUT_SEASON,
-        "train_seasons": train_seasons,
-        "n_train": int(len(train_df)),
-        "n_test": int(len(test_df)),
-        "n_features": len(X_train.columns),
-        "n_baseline_features": len(baseline_cols),
-        "n_injury_features": len(injury_cols),
-        "holdout": holdout_eval,
-        "all_methods": all_results,
-        "meta_learner": ensemble.meta_info,
-        "comprehensive": comprehensive,
-        "base_learner_holdout_mae": base_oof,
-    }
-
     (config_out_dir / "summary.json").write_text(
         json.dumps(summary, indent=2, default=str)
     )
+
+    print(f"\nOutputs saved to: {config_out_dir}")
+    print(f"model.joblib              — trained ensemble")
+    print(f"summary.json              — full metrics")
+    print(f"holdout_predictions.npz   — predictions for cross-config tests")
+    print(f"ablation_{config_key}_comprehensive.json — stratified + calibration + business")
 
     return {
         "config_key": config_key,
@@ -202,24 +245,28 @@ def train_config(
         "y_pred": stacked_pred,
         "all_preds": all_preds,
         "holdout_eval": holdout_eval,
-        "all_results": all_results,
+        "all_results": results,
         "comprehensive": comprehensive,
         "n_features": len(X_train.columns),
-        "base_oof": base_oof,
-        "meta_info": ensemble.meta_info,
+        "meta_coefs": meta_coefs,
+        "base_names": ensemble.base_names,
+        "best_method": best_method,
     }
 
 
+# -- Cross-config comparison --
+
 def print_comparison_table(results: dict) -> None:
-    """Print formatted ablation comparison table."""
+    """Print ablation comparison table (runs after all configs are trained)."""
     configs = sorted(results.keys())
 
     print(f"\n\n{'=' * 70}")
-    print("INJURY & NEWS ABLATION STUDY")
+    print("ABLATION COMPARISON")
     print(f"{'=' * 70}")
 
-    print(f"\n{'Config':<6} {'Description':<30} {'Feats':<8} {'MAE':<10} {'RMSE':<10} {'R²':<10} {'Spearman'}")
-    print("-" * 84)
+    # Main metrics
+    print(f"\n  {'Config':<6} {'Description':<30} {'Feats':<8} {'MAE':<10} {'RMSE':<10} {'R²':<10} {'Spearman'}")
+    print(f"  {'-'*6} {'-'*30} {'-'*8} {'-'*10} {'-'*10} {'-'*10} {'-'*10}")
 
     for key in configs:
         r = results[key]
@@ -227,35 +274,117 @@ def print_comparison_table(results: dict) -> None:
         rmse = r["holdout_eval"]["model"]["rmse"]
         r2 = r["holdout_eval"]["model"]["r2"]
         rho = r["comprehensive"]["calibration"]["spearman_rho"]
-        print(f"{key:<6} {r['name']:<30} {r['n_features']:<8} {mae:<10.4f} {rmse:<10.4f} {r2:<10.4f} {rho:.4f}")
+        print(f"  {key:<6} {r['name']:<30} {r['n_features']:<8} {mae:<10.4f} {rmse:<10.4f} {r2:<10.4f} {rho:.4f}")
 
-    # Per-position MAE breakdown
-    print(f"\n{'Config':<6} {'Overall':<10} {'GK':<10} {'DEF':<10} {'MID':<10} {'FWD':<10} {'High Ret':<10}")
-    print("-" * 66)
+    # Stratified MAE breakdown
+    print(f"\n  {'Config':<6} {'Overall':<10} {'Played':<10} {'Not Play':<10} {'GK':<10} {'DEF':<10} {'MID':<10} {'FWD':<10} {'High Ret'}")
+    print(f"  {'-'*6} {'-'*10} {'-'*10} {'-'*10} {'-'*10} {'-'*10} {'-'*10} {'-'*10} {'-'*10}")
 
     for key in configs:
         s = results[key]["comprehensive"]["stratified"]
-        print(f"{key:<6} {s['mae_overall']:<10.4f} "
+        print(f"  {key:<6} "
+              f"{s['mae_overall']:<10.4f} "
+              f"{s['mae_played']:<10.4f} "
+              f"{s['mae_not_played']:<10.4f} "
               f"{s.get('mae_gk', 0):<10.4f} "
               f"{s.get('mae_def', 0):<10.4f} "
               f"{s.get('mae_mid', 0):<10.4f} "
               f"{s.get('mae_fwd', 0):<10.4f} "
               f"{s.get('mae_high_return', 0):<10.4f}")
 
-    # Per-base-learner holdout MAE
+    # Per-base-learner holdout MAE (compensatory masquerade check)
     if len(configs) >= 2:
-        print(f"\n{'Base Learner':<15}", end="")
+        print(f"\n  {'Base Learner':<15}", end="")
         for key in configs:
-            print(f" {key:<12}", end="")
+            print(f" {'Config '+key:<12}", end="")
+        if len(configs) == 2:
+            print(f" {'Delta':<12}", end="")
         print()
-        print("-" * (15 + 12 * len(configs)))
+        print(f"  {'-'*15}", end="")
+        for _ in configs:
+            print(f" {'-'*12}", end="")
+        if len(configs) == 2:
+            print(f" {'-'*12}", end="")
+        print()
 
-        base_names = list(results[configs[0]]["base_oof"].keys())
-        for name in base_names:
-            print(f"{name:<15}", end="")
+        base_names = results[configs[0]]["base_names"]
+        for bname in base_names + ["mean", "median", "stacked"]:
+            if bname not in results[configs[0]]["all_results"]:
+                continue
+            print(f"  {bname:<15}", end="")
+            maes = []
             for key in configs:
-                mae = results[key]["base_oof"].get(name, 0)
+                mae = results[key]["all_results"][bname]["mae"]
+                maes.append(mae)
+                marker = " *" if bname == results[key]["best_method"] else ""
                 print(f" {mae:<12.4f}", end="")
+            if len(configs) == 2:
+                delta = maes[1] - maes[0]
+                print(f" {delta:+.4f}", end="")
+            print()
+
+    # Meta-learner coefficients
+    if len(configs) >= 2:
+        print(f"\n  {'Meta Coef':<15}", end="")
+        for key in configs:
+            print(f" {'Config '+key:<12}", end="")
+        print()
+        print(f"  {'-'*15}", end="")
+        for _ in configs:
+            print(f" {'-'*12}", end="")
+        print()
+
+        base_names = results[configs[0]]["base_names"]
+        for bname in base_names:
+            print(f"  {bname:<15}", end="")
+            for key in configs:
+                c = results[key]["meta_coefs"].get(bname, 0)
+                print(f" {c:<12.4f}", end="")
+            print()
+
+    # Calibration comparison
+    print(f"\n{'Calibration':<25}", end="")
+    for key in configs:
+        print(f" {'Config '+key:<12}", end="")
+    print()
+    print(f"  {'-'*25}", end="")
+    for _ in configs:
+        print(f" {'-'*12}", end="")
+    print()
+
+    for metric, label in [
+        ("correlation", "Pearson r"),
+        ("spearman_rho", "Spearman rho"),
+        ("mean_predicted", "Mean Predicted"),
+        ("mean_actual", "Mean Actual"),
+    ]:
+        print(f"{label:<25}", end="")
+        for key in configs:
+            val = results[key]["comprehensive"]["calibration"][metric]
+            print(f" {val:<12.4f}", end="")
+        print()
+
+    # Business metrics comparison
+    if "business" in results[configs[0]]["comprehensive"]:
+        print(f"\n{'Captain Picks':<25}", end="")
+        for key in configs:
+            print(f" {'Config '+key:<12}", end="")
+        print()
+        print(f"{'-'*25}", end="")
+        for _ in configs:
+            print(f" {'-'*12}", end="")
+        print()
+
+        for metric, label in [
+            ("top1_accuracy", "Top-1 Accuracy"),
+            ("top3_accuracy", "Top-3 Accuracy"),
+            ("top5_accuracy", "Top-5 Accuracy"),
+            ("captain_efficiency", "Captain Efficiency"),
+        ]:
+            print(f"{label:<25}", end="")
+            for key in configs:
+                val = results[key]["comprehensive"]["business"][metric]
+                print(f"{val*100:<11.1f}%", end="")
             print()
 
 
@@ -263,7 +392,7 @@ def print_statistical_tests(results: dict) -> dict:
     """Run pairwise statistical tests and print results."""
     configs = sorted(results.keys())
     if len(configs) < 2:
-        print("\n  Need at least 2 configs for statistical tests.")
+        print("\nNeed at least 2 configs for statistical tests.")
         return {}
 
     print(f"\n\n{'=' * 70}")
@@ -271,7 +400,7 @@ def print_statistical_tests(results: dict) -> dict:
     print(f"{'=' * 70}")
 
     test_results = {}
-    baseline_key = configs[0]  # Config A is always baseline
+    baseline_key = configs[0]
 
     for key in configs[1:]:
         pair_name = f"{baseline_key}_vs_{key}"
@@ -283,7 +412,7 @@ def print_statistical_tests(results: dict) -> dict:
             pred_b=results[key]["y_pred"],
         )
 
-    # Pairwise between non-baseline configs (B vs C, B vs D, C vs D)
+    # Pairwise between non-baseline configs
     for i, key_i in enumerate(configs[1:], 1):
         for key_j in configs[i + 1:]:
             pair_name = f"{key_i}_vs_{key_j}"
@@ -307,12 +436,12 @@ def print_statistical_tests(results: dict) -> dict:
         combined = mae_a - mae_d
         interaction = combined - (injury_alone + news_alone)
 
-        print(f"\n  INCREMENTAL ANALYSIS")
-        print(f"    Injury alone (A-B):          {injury_alone:+.4f}")
-        print(f"    News alone (A-C):            {news_alone:+.4f}")
-        print(f"    Combined (A-D):              {combined:+.4f}")
-        print(f"    Expected additive:           {injury_alone + news_alone:+.4f}")
-        print(f"    Interaction effect:           {interaction:+.4f}")
+        print(f"\nINCREMENTAL ANALYSIS")
+        print(f"Injury alone (A-B):    {injury_alone:+.4f}")
+        print(f"News alone (A-C):      {news_alone:+.4f}")
+        print(f"Combined (A-D):        {combined:+.4f}")
+        print(f"Expected additive:     {injury_alone + news_alone:+.4f}")
+        print(f"Interaction effect:     {interaction:+.4f}")
 
         if interaction > 0:
             print(f"    -> Complementary (combined > sum of parts)")
@@ -351,7 +480,7 @@ def run(config_keys: list[str] | None = None) -> None:
     print(f"Holdout season: {HOLDOUT_SEASON}")
     print(f"Configs to run: {config_keys}")
     for key in config_keys:
-        print(f"  {key}: {CONFIGS[key]['name']} -> {CONFIGS[key]['data']}")
+        print(f"{key}: {CONFIGS[key]['name']} -> {CONFIGS[key]['data']}")
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     results = {}
@@ -359,8 +488,12 @@ def run(config_keys: list[str] | None = None) -> None:
     for key in config_keys:
         results[key] = train_config(key, CONFIGS[key], OUT_DIR)
 
-    print_comparison_table(results)
-    test_results = print_statistical_tests(results)
+    # Cross-config comparison (only if multiple configs)
+    if len(results) >= 2:
+        print_comparison_table(results)
+        test_results = print_statistical_tests(results)
+    else:
+        test_results = {}
 
     # Save ablation summary
     ablation_summary = {
@@ -387,8 +520,12 @@ def run(config_keys: list[str] | None = None) -> None:
     print(f"{'=' * 70}")
     print(f"Outputs: {OUT_DIR}")
     for key in config_keys:
-        print(f"  config_{key}/  — model, predictions, comprehensive metrics")
-    print(f"  ablation_summary.json")
+        print(f"config_{key}/")
+        print(f"model.joblib              — trained ensemble")
+        print(f"summary.json              — full metrics")
+        print(f"holdout_predictions.npz   — for cross-config tests")
+        print(f"ablation_{key}_comprehensive.json")
+    print(f"ablation_summary.json        — cross-config comparison")
 
 
 if __name__ == "__main__":

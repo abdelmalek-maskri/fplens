@@ -239,18 +239,15 @@ export default function FixtureTicker() {
     <div className="space-y-6 stagger">
       {/* Controls */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-surface-500 uppercase tracking-wide mr-1">
-            FDR Mode
-          </span>
+        <div className="flex items-center gap-0 border-b border-surface-700">
           {["attack", "defence", "combined"].map((mode) => (
             <button
               key={mode}
               onClick={() => setFdrMode(mode)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium capitalize transition-colors ${
+              className={`px-3 py-1.5 text-sm font-medium capitalize transition-colors border-b-2 -mb-px ${
                 fdrMode === mode
-                  ? "bg-brand-600 text-white"
-                  : "bg-surface-800 text-surface-400 hover:text-surface-100"
+                  ? "border-brand-400 text-brand-400"
+                  : "border-transparent text-surface-500 hover:text-surface-300"
               }`}
             >
               {mode === "attack" ? "Attack" : mode === "defence" ? "Defence" : "Combined"}
@@ -258,29 +255,26 @@ export default function FixtureTicker() {
           ))}
         </div>
 
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-surface-500 uppercase tracking-wide mr-1">
-            Sort
-          </span>
+        <div className="flex items-center gap-0 border-b border-surface-700">
           <button
             onClick={() => setSortBy("name")}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+            className={`px-3 py-1.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
               sortBy === "name"
-                ? "bg-brand-600 text-white"
-                : "bg-surface-800 text-surface-400 hover:text-surface-100"
+                ? "border-brand-400 text-brand-400"
+                : "border-transparent text-surface-500 hover:text-surface-300"
             }`}
           >
             A-Z
           </button>
           <button
             onClick={() => setSortBy("easiest")}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+            className={`px-3 py-1.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
               sortBy === "easiest"
-                ? "bg-brand-600 text-white"
-                : "bg-surface-800 text-surface-400 hover:text-surface-100"
+                ? "border-brand-400 text-brand-400"
+                : "border-transparent text-surface-500 hover:text-surface-300"
             }`}
           >
-            Easiest First
+            Easiest
           </button>
         </div>
       </div>
@@ -310,7 +304,7 @@ export default function FixtureTicker() {
       </div>
 
       {/* Fixture Grid */}
-      <div className="card overflow-y-hidden overflow-x-auto">
+      <div className="overflow-x-auto">
         <table className="w-full">
           <thead className="bg-surface-800/50">
             <tr>
@@ -377,14 +371,18 @@ export default function FixtureTicker() {
       </div>
 
       {/* Quick Analysis */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div>
-          <div className="space-y-2">
+          <span className="text-xs font-medium text-surface-500 uppercase tracking-wide">
+            Easiest to attack (next 6 GWs)
+          </span>
+          <div className="mt-3 space-y-2">
             {[...teamData]
               .sort((a, b) => a.avgAtk - b.avgAtk)
               .slice(0, 5)
               .map((t, i) => (
-                <div key={t.team} className="flex items-center justify-between text-sm">
+                <div key={t.team} className="flex items-center justify-between text-sm"
+                  style={{ borderLeftColor: TEAM_COLORS[t.team], borderLeftWidth: 2, paddingLeft: 8 }}>
                   <span className="text-surface-300">
                     {i + 1}. {TEAM_FULL[t.team]}
                   </span>
@@ -396,12 +394,16 @@ export default function FixtureTicker() {
           </div>
         </div>
         <div>
-          <div className="space-y-2">
+          <span className="text-xs font-medium text-surface-500 uppercase tracking-wide">
+            Easiest to keep clean sheets (next 6 GWs)
+          </span>
+          <div className="mt-3 space-y-2">
             {[...teamData]
               .sort((a, b) => a.avgDef - b.avgDef)
               .slice(0, 5)
               .map((t, i) => (
-                <div key={t.team} className="flex items-center justify-between text-sm">
+                <div key={t.team} className="flex items-center justify-between text-sm"
+                  style={{ borderLeftColor: TEAM_COLORS[t.team], borderLeftWidth: 2, paddingLeft: 8 }}>
                   <span className="text-surface-300">
                     {i + 1}. {TEAM_FULL[t.team]}
                   </span>

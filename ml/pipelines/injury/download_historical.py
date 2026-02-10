@@ -13,7 +13,6 @@ import re
 import time
 from pathlib import Path
 from io import StringIO
-
 import pandas as pd
 import requests
 
@@ -44,12 +43,12 @@ def get_commits_for_file(season: str, per_page: int = 100) -> list[dict]:
         response = requests.get(url, params=params)
 
         if response.status_code == 403:
-            print("  Rate limited. Waiting 60 seconds...")
+            print("Rate limited. Waiting 60 seconds")
             time.sleep(60)
             continue
 
         if response.status_code != 200:
-            print(f"  Error fetching commits: {response.status_code}")
+            print(f"Error fetching commits: {response.status_code}")
             break
 
         commits = response.json()
@@ -96,13 +95,13 @@ def download_file_at_commit(season: str, sha: str) -> pd.DataFrame | None:
     )
     response = requests.get(url)
     if response.status_code != 200:
-        print(f"    Error downloading: {response.status_code}")
+        print(f"Error downloading: {response.status_code}")
         return None
 
     try:
         return pd.read_csv(StringIO(response.text))
     except Exception as e:
-        print(f"    Error parsing CSV: {e}")
+        print(f"Error parsing CSV: {e}")
         return None
 
 
@@ -134,9 +133,9 @@ def build_gw_commit_mapping(seasons: list[str]) -> pd.DataFrame:
     all_mappings = []
 
     for season in seasons:
-        print(f"\n  Season {season}:")
+        print(f"\nSeason {season}:")
         commits = get_commits_for_file(season)
-        print(f"    Found {len(commits)} commits")
+        print(f"Found {len(commits)} commits")
 
         for commit in commits:
             for gw in extract_gws_from_message(commit["message"]):
@@ -169,10 +168,10 @@ def download_all_snapshots(mapping_df: pd.DataFrame) -> pd.DataFrame:
         snapshot_file = SNAPSHOTS_DIR / f"{season}_gw{gw}.csv"
 
         if snapshot_file.exists():
-            print(f"  {season} GW{gw}: cached")
+            print(f"{season} GW{gw}: cached")
             df = pd.read_csv(snapshot_file)
         else:
-            print(f"  {season} GW{gw}: downloading {sha[:8]}...")
+            print(f"{season} GW{gw}: downloading {sha[:8]}...")
             df = download_file_at_commit(season, sha)
             if df is None:
                 continue
@@ -199,10 +198,10 @@ def validate_snapshots(
         backwards = dates.diff().dropna()
         backwards = backwards[backwards < pd.Timedelta(0)]
         if len(backwards) > 0:
-            print(f"  WARNING: {season} has {len(backwards)} commits out of order")
+            print(f"WARNING: {season} has {len(backwards)} commits out of order")
             ok = False
         else:
-            print(f"  {season}: chronologically ordered")
+            print(f"{season}: chronologically ordered")
 
     print()
     for season in mapping_df["season"].unique():
@@ -210,10 +209,10 @@ def validate_snapshots(
         full_range = set(range(min(gws), max(gws) + 1))
         gaps = sorted(full_range - set(gws))
         if gaps:
-            print(f"  WARNING: {season} has gaps in GW{min(gws)}-{max(gws)}: {gaps}")
+            print(f"WARNING: {season} has gaps in GW{min(gws)}-{max(gws)}: {gaps}")
             ok = False
         else:
-            print(f"  {season}: GW{min(gws)}-{max(gws)} ({len(gws)} GWs, contiguous)")
+            print(f"{season}: GW{min(gws)}-{max(gws)} ({len(gws)} GWs, contiguous)")
 
     print()
     m = mapping_df.copy()
@@ -221,23 +220,23 @@ def validate_snapshots(
     counts = m["weekday"].value_counts()
     total = len(m)
 
-    print("  Commit weekday distribution:")
+    print("Commit weekday distribution:")
     for day in ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]:
         n = counts.get(day, 0)
         bar = "#" * (n * 40 // total) if total > 0 else ""
-        print(f"    {day:>10}: {n:>3} {bar}")
+        print(f"{day:>10}: {n:>3} {bar}")
 
     pre_match = counts.get("Friday", 0) + counts.get("Saturday", 0)
     if pre_match > total * 0.3:
-        print(f"\n  WARNING: {pre_match}/{total} commits on Fri/Sat "
+        print(f"\nWARNING: {pre_match}/{total} commits on Fri/Sat "
               f"({pre_match / total * 100:.0f}%) — some may be pre-match")
         ok = False
     else:
-        print(f"\n  {pre_match}/{total} commits on Fri/Sat "
+        print(f"\n{pre_match}/{total} commits on Fri/Sat "
               f"({pre_match / total * 100:.0f}%) — consistent with post-match")
 
     if ok:
-        print("\n  All checks passed.")
+        print("\nAll checks passed.")
     return ok
 
 
@@ -284,9 +283,9 @@ def run() -> None:
     print(f"Seasons: {injury_df['season'].unique().tolist()}")
     print(f"GW range: {injury_df['GW'].min()}-{injury_df['GW'].max()}")
     print(f"\nOutput files:")
-    print(f"  {mapping_file}")
-    print(f"  {output_file}")
-    print(f"  {SNAPSHOTS_DIR}/ ({len(list(SNAPSHOTS_DIR.glob('*.csv')))} files)")
+    print(f"{mapping_file}")
+    print(f"{output_file}")
+    print(f"{SNAPSHOTS_DIR}/ ({len(list(SNAPSHOTS_DIR.glob('*.csv')))} files)")
     print(f"\nStatus distribution:")
     print(injury_df["status"].value_counts().to_string())
 
