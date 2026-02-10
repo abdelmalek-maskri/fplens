@@ -79,7 +79,23 @@ ml.train.all:
 	python3 -m ml.pipelines.train.train_stacked_ensemble
 	python3 -m ml.pipelines.train.train_position_specific
 
-# Stage 6b: Injury ablation study (A vs B, later + C, D)
+# Stage 5b: News pipeline (Guardian articles → per-GW features)
+.PHONY: ml.news ml.news.fetch ml.news.link ml.news.features ml.news.merge
+ml.news.fetch:
+	python3 -m ml.pipelines.news.fetch_guardian
+
+ml.news.link:
+	python3 -m ml.pipelines.news.link_articles_to_players
+
+ml.news.features:
+	python3 -m ml.pipelines.news.build_news_features
+
+ml.news.merge:
+	python3 -m ml.pipelines.news.merge_with_features
+
+ml.news: ml.news.fetch ml.news.link ml.news.features ml.news.merge
+
+# Stage 6b: Injury & news ablation study (A/B/C/D)
 .PHONY: ml.ablation.injury
 ml.ablation.injury:
 	python3 -m ml.pipelines.train.run_injury_ablation

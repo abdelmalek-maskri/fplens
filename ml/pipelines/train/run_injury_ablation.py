@@ -2,17 +2,16 @@
 Injury & News Ablation Study — systematic feature group comparison.
 
 Trains the same stacked ensemble architecture on different feature sets
-to isolate the contribution of injury data (and later, Guardian news).
+to isolate the contribution of injury data and Guardian news features.
 
 Configs:
     A  Baseline (FPL stats only)         — extended_features.csv
     B  + Injury (FPL API)                — extended_with_injury.csv
-    C  + News (Guardian)                 — extended_with_news.csv         [Step 2]
-    D  + Injury + News (both)            — extended_with_injury_and_news.csv [Step 2]
+    C  + News (Guardian)                 — extended_with_news.csv
+    D  + Injury + News (both)            — extended_with_injury_and_news.csv
 
 Usage:
     python -m ml.pipelines.train.run_injury_ablation
-    python -m ml.pipelines.train.run_injury_ablation --configs A B
 """
 
 import json
@@ -32,6 +31,7 @@ from ml.utils.eval_metrics import full_evaluation, print_final_summary
 from ml.utils.statistical_tests import print_comparison
 from ml.evaluation.comprehensive_metrics import ComprehensiveEvaluator
 from ml.pipelines.injury.build_injury_features import FILL_DEFAULTS
+from ml.pipelines.news.build_news_features import NEWS_FEATURE_COLS
 from ml.pipelines.train.train_stacked_with_injury import (
     StackedEnsembleInjury,
     evaluate_all_predictions,
@@ -51,7 +51,14 @@ CONFIGS = {
         "name": "+ Injury (FPL API)",
         "data": Path("data/features/extended_with_injury.csv"),
     },
-    # Configs C and D added after Guardian news pipeline (Step 2)
+    "C": {
+        "name": "+ News (Guardian)",
+        "data": Path("data/features/extended_with_news.csv"),
+    },
+    "D": {
+        "name": "+ Injury + News (both)",
+        "data": Path("data/features/extended_with_injury_and_news.csv"),
+    },
 }
 
 
@@ -93,14 +100,16 @@ def train_config(config_key: str, config: dict, out_dir: Path) -> dict:
 
     injury_structured = [c for c in df.columns if c in FILL_DEFAULTS]
     injury_nlp = [c for c in df.columns if c.startswith("injury_") and c not in injury_structured]
-    baseline_cols = [c for c in df.columns if c not in injury_structured + injury_nlp
-                     and c not in [TARGET_COL] + DROP_COLS + ["GW"]]
+    news_cols = [c for c in df.columns if c in NEWS_FEATURE_COLS]
+    non_feature = set(injury_structured + injury_nlp + news_cols + [TARGET_COL] + DROP_COLS + ["GW"])
+    baseline_cols = [c for c in df.columns if c not in non_feature]
 
     print(f"\nFeature groups:")
-    print(f"Baseline features:           {len(baseline_cols)}")
-    print(f"Injury structured + temporal: {len(injury_structured)}")
-    print(f"Injury NLP (type dummies):    {len(injury_nlp)}")
-    print(f"Total:                        {len(baseline_cols) + len(injury_structured) + len(injury_nlp)}")
+    print(f"  Baseline features:           {len(baseline_cols)}")
+    print(f"  Injury structured + temporal: {len(injury_structured)}")
+    print(f"  Injury NLP (type dummies):    {len(injury_nlp)}")
+    print(f"  News (Guardian):              {len(news_cols)}")
+    print(f"  Total:                        {len(baseline_cols) + len(injury_structured) + len(injury_nlp) + len(news_cols)}")
 
     if "status_encoded" in df.columns:
         injury_seasons = sorted(df[df["status_encoded"].notna()]["season"].unique())
@@ -206,6 +215,7 @@ def train_config(config_key: str, config: dict, out_dir: Path) -> dict:
             "baseline": len(baseline_cols),
             "injury_structured": len(injury_structured),
             "injury_nlp": len(injury_nlp),
+            "news": len(news_cols),
         },
         "holdout": holdout_eval,
         "all_methods": results,
