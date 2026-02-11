@@ -13,7 +13,7 @@ INJURY_DATA = Path("data/processed/injury/injury_states.csv")
 FPL_BASE = Path("data/processed/merged/fpl_base_enriched.csv")
 OUTPUT_PATH = Path("data/processed/injury/fpl_with_injury.csv")
 
-# snapshot_date needed downstream to parse absolute return dates ("Expected back 01 Mar")
+# snapshot_date needed downstream to parse absolute return dates 
 _INJURY_COLS = [
     "season", "GW", "element",
     "status", "chance_of_playing_this_round", "chance_of_playing_next_round",
@@ -98,7 +98,7 @@ def run() -> None:
     print(f"\nKey overlap (after shift):")
     print(f"FPL keys:    {len(fpl_keys):,}")
     print(f"Injury keys: {len(injury_keys):,}")
-    print(f"  Overlap:     {len(overlap):,} ({len(overlap) / len(fpl_keys) * 100:.1f}%)")
+    print(f"Overlap:     {len(overlap):,} ({len(overlap) / len(fpl_keys) * 100:.1f}%)")
 
     print("\nMerging...")
     merged = fpl_df.merge(injury_subset, on=["season", "GW", "element"], how="left")
@@ -116,8 +116,7 @@ def run() -> None:
     for season in sorted(merged["season"].unique()):
         gw1 = merged[(merged["season"] == season) & (merged["GW"] == 1)]
         gw1_news = gw1[gw1["news"].notna()]
-        print(f"{season} GW1: {len(gw1)} players, {len(gw1_news)} with injury data "
-              f"(expected ~0 due to shift)")
+        print(f"{season} GW1: {len(gw1)} players, {len(gw1_news)} with injury data " f"(expected ~0 due to shift)")
 
     print(f"\nStatus distribution:")
     print(merged["status"].value_counts().to_string())
