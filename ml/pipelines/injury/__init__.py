@@ -1,7 +1,7 @@
 """
 Injury data pipeline for FPL prediction.
 
-Pipeline steps (run in order):
+Pipeline steps:
     1. download_historical  — fetch per-GW injury snapshots from vaastav's repo
     2. merge_with_fpl       — align with main FPL dataset (+1 GW temporal shift)
     3. build_injury_features — engineer structured, NLP, and embedding features
