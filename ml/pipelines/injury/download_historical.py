@@ -1,9 +1,7 @@
 """
 Download historical injury/availability snapshots from vaastav's FPL repository.
 
-Uses GitHub API to walk the commit history of players_raw.csv for each season,
-giving per-GW snapshots of player injury status. Each commit corresponds to a
-post-match data update, so snapshot N reflects the state AFTER GW N.
+Uses GitHub API to walk the commit history of players_raw.csv for each season, giving per-GW snapshots of player injury status. Each commit corresponds to a post-match data update, so snapshot N reflects the state AFTER GW N.
 
 The downstream merge (merge_with_fpl.py) shifts these by +1 GW to prevent
 temporal leakage.
@@ -28,7 +26,7 @@ SEASONS = [
 
 OUTPUT_DIR = Path("data/processed/injury")
 SNAPSHOTS_DIR = OUTPUT_DIR / "historical_snapshots"
-_REQUEST_DELAY = 0.5
+_REQUEST_DELAY = 0.5    
 
 
 def get_commits_for_file(season: str, per_page: int = 100) -> list[dict]:
@@ -146,7 +144,7 @@ def build_gw_commit_mapping(seasons: list[str]) -> pd.DataFrame:
                     "commit_date": commit["date"],
                     "commit_message": commit["message"],
                 })
-                print(f"    GW{gw}: {commit['sha'][:8]} ({commit['date'][:10]})")
+                print(f"GW{gw}: {commit['sha'][:8]} ({commit['date'][:10]})")
 
         time.sleep(_REQUEST_DELAY)
 
@@ -154,7 +152,6 @@ def build_gw_commit_mapping(seasons: list[str]) -> pd.DataFrame:
     df = df.sort_values(["season", "GW"]).reset_index(drop=True)
     df = df.drop_duplicates(subset=["season", "GW"], keep="first")
     return df
-
 
 def download_all_snapshots(mapping_df: pd.DataFrame) -> pd.DataFrame:
     """Download players_raw.csv for each mapped GW and extract injury fields."""
