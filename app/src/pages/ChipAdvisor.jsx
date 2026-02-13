@@ -2,169 +2,10 @@ import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { FDR_COLORS } from "../lib/constants";
 import TeamBadge from "../components/TeamBadge";
+import { useChips } from "../hooks";
+import { SkeletonTable } from "../components/skeletons";
+import ErrorState from "../components/ErrorState";
 
-// ============================================================
-// MOCK DATA — multi-GW chip analysis
-// Will be replaced with: GET /api/chips/analysis
-// ============================================================
-const CURRENT_GW = 24;
-
-const mockGameweeks = [
-  {
-    gw: 24,
-    best_captain: { element: 2, web_name: "Haaland", team: "MCI", predicted: 7.2, opponent: "BOU", fdr: 2 },
-    second_captain: { element: 3, web_name: "Salah", team: "LIV", predicted: 6.8, opponent: "EVE", fdr: 2 },
-    bench_total: 11.6,
-    bench_players: [
-      { web_name: "Flekken", team: "BRE", predicted: 3.6 },
-      { web_name: "Mykolenko", team: "EVE", predicted: 3.1 },
-      { web_name: "Wharton", team: "CRY", predicted: 2.8 },
-      { web_name: "Archer", team: "SOU", predicted: 2.1 },
-    ],
-    team_total: 55.8,
-    team_avg_fdr: 3.1,
-    injured_count: 1,
-    hard_fixtures: 4,
-  },
-  {
-    gw: 25,
-    best_captain: { element: 3, web_name: "Salah", team: "LIV", predicted: 7.5, opponent: "SOU", fdr: 1 },
-    second_captain: { element: 2, web_name: "Haaland", team: "MCI", predicted: 5.8, opponent: "ARS", fdr: 5 },
-    bench_total: 12.8,
-    bench_players: [
-      { web_name: "Flekken", team: "BRE", predicted: 3.5 },
-      { web_name: "Mykolenko", team: "EVE", predicted: 3.8 },
-      { web_name: "Wharton", team: "CRY", predicted: 3.2 },
-      { web_name: "Archer", team: "SOU", predicted: 2.3 },
-    ],
-    team_total: 52.1,
-    team_avg_fdr: 2.8,
-    injured_count: 1,
-    hard_fixtures: 2,
-  },
-  {
-    gw: 26,
-    best_captain: { element: 2, web_name: "Haaland", team: "MCI", predicted: 8.1, opponent: "IPS", fdr: 1 },
-    second_captain: { element: 3, web_name: "Salah", team: "LIV", predicted: 6.2, opponent: "MUN", fdr: 3 },
-    bench_total: 14.5,
-    bench_players: [
-      { web_name: "Henderson", team: "CRY", predicted: 4.2 },
-      { web_name: "Mykolenko", team: "EVE", predicted: 3.5 },
-      { web_name: "Wharton", team: "CRY", predicted: 4.0 },
-      { web_name: "Archer", team: "SOU", predicted: 2.8 },
-    ],
-    team_total: 58.3,
-    team_avg_fdr: 2.3,
-    injured_count: 0,
-    hard_fixtures: 1,
-  },
-  {
-    gw: 27,
-    best_captain: { element: 3, web_name: "Salah", team: "LIV", predicted: 6.5, opponent: "BRE", fdr: 2 },
-    second_captain: { element: 7, web_name: "Palmer", team: "CHE", predicted: 5.8, opponent: "NFO", fdr: 2 },
-    bench_total: 10.2,
-    bench_players: [
-      { web_name: "Flekken", team: "BRE", predicted: 3.0 },
-      { web_name: "Mykolenko", team: "EVE", predicted: 2.5 },
-      { web_name: "Wharton", team: "CRY", predicted: 2.8 },
-      { web_name: "Archer", team: "SOU", predicted: 1.9 },
-    ],
-    team_total: 50.5,
-    team_avg_fdr: 2.6,
-    injured_count: 0,
-    hard_fixtures: 2,
-  },
-  {
-    gw: 28,
-    best_captain: { element: 2, web_name: "Haaland", team: "MCI", predicted: 6.8, opponent: "LEI", fdr: 2 },
-    second_captain: { element: 50, web_name: "Isak", team: "NEW", predicted: 6.2, opponent: "SOU", fdr: 1 },
-    bench_total: 11.0,
-    bench_players: [
-      { web_name: "Flekken", team: "BRE", predicted: 3.2 },
-      { web_name: "Mykolenko", team: "EVE", predicted: 2.8 },
-      { web_name: "Wharton", team: "CRY", predicted: 3.0 },
-      { web_name: "Archer", team: "SOU", predicted: 2.0 },
-    ],
-    team_total: 54.0,
-    team_avg_fdr: 2.5,
-    injured_count: 0,
-    hard_fixtures: 2,
-  },
-  {
-    gw: 29,
-    best_captain: { element: 3, web_name: "Salah", team: "LIV", predicted: 5.8, opponent: "CRY", fdr: 2 },
-    second_captain: { element: 2, web_name: "Haaland", team: "MCI", predicted: 5.5, opponent: "CHE", fdr: 4 },
-    bench_total: 10.5,
-    bench_players: [
-      { web_name: "Flekken", team: "BRE", predicted: 3.0 },
-      { web_name: "Mykolenko", team: "EVE", predicted: 2.5 },
-      { web_name: "Wharton", team: "CRY", predicted: 2.8 },
-      { web_name: "Archer", team: "SOU", predicted: 2.2 },
-    ],
-    team_total: 48.2,
-    team_avg_fdr: 3.4,
-    injured_count: 2,
-    hard_fixtures: 5,
-  },
-  {
-    gw: 30,
-    best_captain: { element: 7, web_name: "Palmer", team: "CHE", predicted: 7.0, opponent: "IPS", fdr: 1 },
-    second_captain: { element: 2, web_name: "Haaland", team: "MCI", predicted: 6.5, opponent: "WHU", fdr: 2 },
-    bench_total: 13.2,
-    bench_players: [
-      { web_name: "Henderson", team: "CRY", predicted: 3.8 },
-      { web_name: "Mykolenko", team: "EVE", predicted: 3.5 },
-      { web_name: "Wharton", team: "CRY", predicted: 3.5 },
-      { web_name: "Archer", team: "SOU", predicted: 2.4 },
-    ],
-    team_total: 56.8,
-    team_avg_fdr: 2.1,
-    injured_count: 0,
-    hard_fixtures: 1,
-  },
-];
-
-const mockChipsAvailable = {
-  triple_captain: true,
-  bench_boost: true,
-  free_hit: true,
-  wildcard: true,
-};
-
-const CHIP_META = {
-  triple_captain: {
-    name: "Triple Captain",
-    short: "TC",
-    color: "text-warning-400",
-    bg: "bg-warning-500/15",
-    border: "border-warning-500/30",
-    description: "Captain scores ×3 instead of ×2",
-  },
-  bench_boost: {
-    name: "Bench Boost",
-    short: "BB",
-    color: "text-brand-400",
-    bg: "bg-brand-500/15",
-    border: "border-brand-500/30",
-    description: "Bench players score points this GW",
-  },
-  free_hit: {
-    name: "Free Hit",
-    short: "FH",
-    color: "text-danger-400",
-    bg: "bg-danger-500/15",
-    border: "border-danger-500/30",
-    description: "Unlimited transfers for one GW",
-  },
-  wildcard: {
-    name: "Wildcard",
-    short: "WC",
-    color: "text-success-400",
-    bg: "bg-success-500/15",
-    border: "border-success-500/30",
-    description: "Unlimited free transfers, permanent",
-  },
-};
 
 // ============================================================
 // CHIP RECOMMENDATION LOGIC
@@ -242,16 +83,28 @@ function computeRecommendations(gameweeks, chipsAvailable) {
 // ============================================================
 export default function ChipAdvisor() {
   const navigate = useNavigate();
-  const [chipsAvailable, setChipsAvailable] = useState(mockChipsAvailable);
+  const { data: chipData, isLoading, error } = useChips();
+  const [chipsAvailable, setChipsAvailable] = useState(null);
   const [expandedChip, setExpandedChip] = useState(null);
 
+  const CURRENT_GW = chipData ? chipData.currentGw : 0;
+  const mockGameweeks = chipData ? chipData.gameweeks : [];
+  const mockChipsAvailable = chipData ? chipData.chipsAvailable : {};
+  const CHIP_META = chipData ? chipData.chipMeta : {};
+
+  // Initialize chipsAvailable from hook data when it first arrives
+  const effectiveChipsAvailable = chipsAvailable ?? mockChipsAvailable;
+
   const recommendations = useMemo(
-    () => computeRecommendations(mockGameweeks, chipsAvailable),
-    [chipsAvailable]
+    () => mockGameweeks.length > 0 ? computeRecommendations(mockGameweeks, effectiveChipsAvailable) : {},
+    [mockGameweeks, effectiveChipsAvailable]
   );
 
   const toggleChip = (chipKey) => {
-    setChipsAvailable((prev) => ({ ...prev, [chipKey]: !prev[chipKey] }));
+    setChipsAvailable((prev) => {
+      const current = prev ?? mockChipsAvailable;
+      return { ...current, [chipKey]: !current[chipKey] };
+    });
   };
 
   // Map GW → which chips are recommended for it
@@ -264,6 +117,21 @@ export default function ChipAdvisor() {
     return map;
   }, [recommendations]);
 
+  if (isLoading) return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        {Array.from({ length: 4 }, (_, i) => (
+          <div key={i} className="skeleton h-8 w-24 rounded" />
+        ))}
+      </div>
+      <SkeletonTable rows={7} cols={7} />
+    </div>
+  );
+
+  if (error) return <ErrorState message="Failed to load chip data." />;
+
+  if (!chipData) return null;
+
   return (
     <div className="space-y-6 stagger">
       {/* Chip toggles — mark which chips you still have */}
@@ -274,7 +142,7 @@ export default function ChipAdvisor() {
             key={key}
             onClick={() => toggleChip(key)}
             className={`px-3 py-1.5 rounded text-xs font-medium transition-colors border ${
-              chipsAvailable[key]
+              effectiveChipsAvailable[key]
                 ? `${meta.bg} ${meta.color} ${meta.border}`
                 : "bg-surface-800/50 text-surface-600 border-surface-700 line-through"
             }`}
@@ -293,7 +161,7 @@ export default function ChipAdvisor() {
             return (
               <div
                 key={gw.gw}
-                className={`flex flex-col items-center gap-2 px-4 py-3 rounded-lg border transition-colors min-w-[90px] ${
+                className={`flex flex-col items-center gap-2 px-4 py-3 rounded-md border transition-colors min-w-[90px] ${
                   chips.length > 0
                     ? "border-brand-500/30 bg-brand-500/5"
                     : "border-surface-700 bg-surface-800/30"
@@ -315,7 +183,7 @@ export default function ChipAdvisor() {
                       key={level}
                       className={`w-1.5 h-1.5 rounded-full ${
                         gw.team_avg_fdr >= level
-                          ? level <= 2 ? "bg-emerald-500" : level <= 3 ? "bg-gray-400" : "bg-red-500"
+                          ? level <= 2 ? "bg-success-500" : level <= 3 ? "bg-surface-400" : "bg-danger-500"
                           : "bg-surface-700"
                       }`}
                     />
@@ -350,7 +218,7 @@ export default function ChipAdvisor() {
           return (
             <div
               key={chipKey}
-              className={`border rounded-lg transition-colors ${meta.border} ${isExpanded ? meta.bg : "bg-surface-800/30"}`}
+              className={`border rounded-md transition-colors ${meta.border} ${isExpanded ? meta.bg : "bg-surface-800/30"}`}
             >
               {/* Header — always visible */}
               <button
@@ -514,7 +382,7 @@ export default function ChipAdvisor() {
                                     key={level}
                                     className={`w-1 h-1 rounded-full ${
                                       g.team_avg_fdr >= level
-                                        ? level <= 2 ? "bg-emerald-500" : level <= 3 ? "bg-gray-400" : "bg-red-500"
+                                        ? level <= 2 ? "bg-success-500" : level <= 3 ? "bg-surface-400" : "bg-danger-500"
                                         : "bg-surface-700"
                                     }`}
                                   />
@@ -537,13 +405,13 @@ export default function ChipAdvisor() {
         <table className="w-full">
           <thead>
             <tr className="border-b border-surface-700">
-              <th className="table-header text-left py-2.5 px-3">GW</th>
-              <th className="table-header text-left py-2.5 px-3">Best Captain</th>
-              <th className="table-header text-center py-2.5 px-3">TC Value</th>
-              <th className="table-header text-center py-2.5 px-3">BB Value</th>
-              <th className="table-header text-center py-2.5 px-3">Avg FDR</th>
-              <th className="table-header text-center py-2.5 px-3">Team Pts</th>
-              <th className="table-header text-center py-2.5 px-3">Chips</th>
+              <th scope="col" className="table-header text-left py-2.5 px-3">GW</th>
+              <th scope="col" className="table-header text-left py-2.5 px-3">Best Captain</th>
+              <th scope="col" className="table-header text-center py-2.5 px-3">TC Value</th>
+              <th scope="col" className="table-header text-center py-2.5 px-3">BB Value</th>
+              <th scope="col" className="table-header text-center py-2.5 px-3">Avg FDR</th>
+              <th scope="col" className="table-header text-center py-2.5 px-3">Team Pts</th>
+              <th scope="col" className="table-header text-center py-2.5 px-3">Chips</th>
             </tr>
           </thead>
           <tbody>

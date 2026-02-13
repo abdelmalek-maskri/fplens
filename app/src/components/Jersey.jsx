@@ -116,7 +116,7 @@ export default function Jersey({ teamName, position, isCaptain, isVice, status }
           opacity="0.85"
           fontSize="11"
           fontWeight="800"
-          fontFamily="Inter, system-ui, sans-serif"
+          fontFamily="Outfit, system-ui, sans-serif"
           letterSpacing="0.5"
         >
           {teamName}

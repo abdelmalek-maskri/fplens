@@ -4,11 +4,17 @@
 // ============================================================
 
 export const FDR_COLORS = {
-  1: { bg: "bg-emerald-600", text: "text-white", label: "Very Easy" },
-  2: { bg: "bg-emerald-500/70", text: "text-white", label: "Easy" },
-  3: { bg: "bg-gray-500", text: "text-white", label: "Medium" },
-  4: { bg: "bg-red-500/70", text: "text-white", label: "Hard" },
-  5: { bg: "bg-red-700", text: "text-white", label: "Very Hard" },
+  1: { bg: "bg-success-600", text: "text-white", label: "Very Easy" },
+  2: { bg: "bg-success-500/70", text: "text-white", label: "Easy" },
+  3: { bg: "bg-surface-600", text: "text-surface-200", label: "Medium" },
+  4: { bg: "bg-danger-500/70", text: "text-white", label: "Hard" },
+  5: { bg: "bg-danger-700", text: "text-white", label: "Very Hard" },
+};
+
+export const FDR_MAP = {
+  ARS: 5, AVL: 3, BOU: 2, BRE: 2, BHA: 3, CHE: 4, CRY: 2, EVE: 2,
+  FUL: 2, IPS: 1, LEI: 2, LIV: 5, MCI: 4, MUN: 3, NEW: 3, NFO: 2,
+  SOU: 1, TOT: 3, WHU: 2, WOL: 2,
 };
 
 export const TEAM_COLORS = {

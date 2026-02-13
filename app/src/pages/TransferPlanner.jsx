@@ -4,43 +4,10 @@ import { FDR_COLORS, POSITION_COLORS } from "../lib/constants";
 import MiniSparkline from "../components/MiniSparkline";
 import TeamBadge from "../components/TeamBadge";
 import StatusBadge from "../components/StatusBadge";
+import { useTransfers } from "../hooks";
+import { SkeletonStatStrip, SkeletonTable } from "../components/skeletons";
+import ErrorState from "../components/ErrorState";
 
-// ============================================================
-// MOCK DATA - Transfer planner
-// Will be replaced with: GET /api/transfers/plan + GET /api/predictions/multi-gw
-// ============================================================
-const mockMyTeam = [
-  { element: 20, web_name: "Raya", team: "ARS", position: "GK", value: 5.5, selling_price: 5.3, predicted: [4.2, 3.8, 4.5], form: 4.8, status: "a", fdr: [4, 2, 3], pts_last5: [6, 2, 6, 1, 6] },
-  { element: 15, web_name: "Alexander-Arnold", team: "LIV", position: "DEF", value: 7.1, selling_price: 7.0, predicted: [5.4, 4.8, 5.1], form: 6.1, status: "a", fdr: [2, 3, 2], pts_last5: [2, 9, 6, 1, 8] },
-  { element: 12, web_name: "Gabriel", team: "ARS", position: "DEF", value: 6.2, selling_price: 6.0, predicted: [5.1, 4.2, 4.8], form: 5.8, status: "a", fdr: [4, 2, 3], pts_last5: [6, 2, 8, 6, 6] },
-  { element: 25, web_name: "Saliba", team: "ARS", position: "DEF", value: 5.8, selling_price: 5.6, predicted: [4.8, 4.0, 4.5], form: 5.5, status: "a", fdr: [4, 2, 3], pts_last5: [6, 1, 6, 2, 6] },
-  { element: 61, web_name: "Mykolenko", team: "EVE", position: "DEF", value: 4.3, selling_price: 4.1, predicted: [3.1, 2.5, 3.0], form: 3.5, status: "a", fdr: [5, 3, 2], pts_last5: [1, 2, 6, 1, 2] },
-  { element: 3, web_name: "Salah", team: "LIV", position: "MID", value: 13.2, selling_price: 13.0, predicted: [6.8, 5.5, 6.2], form: 7.2, status: "a", fdr: [2, 3, 2], pts_last5: [12, 3, 8, 5, 15] },
-  { element: 7, web_name: "Palmer", team: "CHE", position: "MID", value: 9.5, selling_price: 9.3, predicted: [6.1, 5.8, 4.2], form: 9.2, status: "a", fdr: [5, 2, 3], pts_last5: [5, 13, 2, 10, 8] },
-  { element: 5, web_name: "Saka", team: "ARS", position: "MID", value: 10.1, selling_price: 9.9, predicted: [4.2, 5.8, 5.5], form: 6.5, status: "d", fdr: [4, 2, 3], pts_last5: [8, 2, 6, 3, 9] },
-  { element: 40, web_name: "Mbeumo", team: "BRE", position: "MID", value: 7.8, selling_price: 7.6, predicted: [4.5, 3.8, 5.2], form: 5.6, status: "a", fdr: [2, 3, 2], pts_last5: [3, 7, 2, 5, 6] },
-  { element: 62, web_name: "Wharton", team: "CRY", position: "MID", value: 4.8, selling_price: 4.6, predicted: [2.8, 3.0, 2.5], form: 2.9, status: "a", fdr: [3, 2, 2], pts_last5: [2, 1, 3, 2, 3] },
-  { element: 2, web_name: "Haaland", team: "MCI", position: "FWD", value: 15.3, selling_price: 15.1, predicted: [7.2, 5.8, 6.5], form: 8.8, status: "a", fdr: [2, 4, 2], pts_last5: [13, 2, 9, 5, 12] },
-  { element: 50, web_name: "Isak", team: "NEW", position: "FWD", value: 8.8, selling_price: 8.6, predicted: [5.5, 6.2, 5.0], form: 7.0, status: "a", fdr: [2, 3, 4], pts_last5: [8, 5, 2, 10, 6] },
-  { element: 10, web_name: "Watkins", team: "AVL", position: "FWD", value: 9.0, selling_price: 8.8, predicted: [1.8, 0.0, 3.5], form: 5.4, status: "i", fdr: [2, 3, 2], pts_last5: [2, 6, 3, 2, 5] },
-  { element: 60, web_name: "Flekken", team: "BRE", position: "GK", value: 4.5, selling_price: 4.3, predicted: [3.6, 3.2, 4.0], form: 3.2, status: "a", fdr: [2, 3, 2], pts_last5: [3, 6, 1, 3, 6] },
-  { element: 63, web_name: "Archer", team: "SOU", position: "FWD", value: 4.5, selling_price: 4.3, predicted: [2.1, 1.8, 2.0], form: 1.8, status: "a", fdr: [3, 4, 3], pts_last5: [1, 2, 1, 2, 1] },
-];
-
-const mockTransferTargets = [
-  { element: 70, web_name: "Cunha", team: "WOL", position: "FWD", value: 7.2, predicted: [5.8, 5.2, 4.5], form: 7.5, status: "a", fdr: [3, 2, 2], price_trend: "rise", pts_last5: [9, 2, 7, 5, 8] },
-  { element: 71, web_name: "Solanke", team: "TOT", position: "FWD", value: 7.5, predicted: [5.0, 5.5, 6.0], form: 6.2, status: "a", fdr: [2, 3, 2], price_trend: "stable", pts_last5: [5, 3, 6, 2, 7] },
-  { element: 72, web_name: "Son", team: "TOT", position: "MID", value: 10.0, predicted: [5.8, 6.2, 5.5], form: 6.8, status: "a", fdr: [2, 3, 2], price_trend: "stable", pts_last5: [6, 8, 5, 3, 10] },
-  { element: 73, web_name: "Gordon", team: "NEW", position: "MID", value: 7.5, predicted: [5.2, 5.8, 4.8], form: 6.8, status: "a", fdr: [2, 3, 4], price_trend: "rise", pts_last5: [6, 8, 2, 5, 7] },
-  { element: 74, web_name: "Gross", team: "BHA", position: "MID", value: 6.2, predicted: [4.5, 4.8, 5.0], form: 5.5, status: "a", fdr: [2, 2, 3], price_trend: "stable", pts_last5: [3, 5, 4, 6, 3] },
-  { element: 75, web_name: "Wood", team: "NFO", position: "FWD", value: 6.5, predicted: [4.8, 4.2, 5.5], form: 6.0, status: "a", fdr: [2, 4, 2], price_trend: "stable", pts_last5: [7, 2, 5, 8, 3] },
-  { element: 76, web_name: "Eze", team: "CRY", position: "MID", value: 6.8, predicted: [4.2, 5.0, 5.5], form: 5.8, status: "a", fdr: [3, 2, 2], price_trend: "rise", pts_last5: [4, 6, 2, 8, 5] },
-  { element: 77, web_name: "Schär", team: "NEW", position: "DEF", value: 5.2, predicted: [4.5, 4.0, 3.8], form: 5.2, status: "a", fdr: [2, 3, 4], price_trend: "stable", pts_last5: [6, 1, 2, 6, 2] },
-  { element: 78, web_name: "Henderson", team: "CRY", position: "GK", value: 4.5, predicted: [3.8, 4.2, 4.0], form: 4.5, status: "a", fdr: [3, 2, 2], price_trend: "stable", pts_last5: [3, 6, 1, 6, 3] },
-  { element: 79, web_name: "Munoz", team: "CRY", position: "DEF", value: 4.8, predicted: [3.8, 4.2, 3.5], form: 4.8, status: "a", fdr: [3, 2, 2], price_trend: "rise", pts_last5: [2, 6, 1, 5, 6] },
-];
-
-const GW_LABELS = ["GW24", "GW25", "GW26"];
 
 // ============================================================
 // SUGGESTED TRANSFERS — model-driven recommendations
@@ -103,12 +70,17 @@ function computeSuggestions(squad, targets, horizon) {
 // ============================================================
 export default function TransferPlanner() {
   const navigate = useNavigate();
+  const { data: transferData, isLoading, error } = useTransfers();
   const [horizon, setHorizon] = useState(3);
   const [transfers, setTransfers] = useState([]);
   const [freeTransfers, setFreeTransfers] = useState(1);
   const [showTargets, setShowTargets] = useState(false);
   const [transferOutId, setTransferOutId] = useState(null);
   const [posFilter, setPosFilter] = useState("ALL");
+
+  const mockMyTeam = transferData ? transferData.myTeam : [];
+  const mockTransferTargets = transferData ? transferData.targets : [];
+  const GW_LABELS = transferData ? transferData.gwLabels : [];
 
   const bankBalance = 2.3; // ITB from MyTeam
 
@@ -119,7 +91,7 @@ export default function TransferPlanner() {
       return s + ((out?.selling_price || 0) - (inP?.value || 0));
     }, 0);
     return (bankBalance + transferSavings).toFixed(1);
-  }, [transfers]);
+  }, [mockMyTeam, mockTransferTargets, transfers]);
 
   const hitCost = Math.max(0, transfers.length - freeTransfers) * 4;
 
@@ -132,20 +104,31 @@ export default function TransferPlanner() {
       }
       return p;
     });
-  }, [transfers]);
+  }, [mockMyTeam, mockTransferTargets, transfers]);
 
   const teamPredicted = useMemo(() => {
     return GW_LABELS.slice(0, horizon).map((_, gwIdx) => {
       return currentTeam.reduce((sum, p) => sum + (p.predicted[gwIdx] || 0), 0);
     });
-  }, [currentTeam, horizon]);
+  }, [GW_LABELS, currentTeam, horizon]);
 
   const totalPredicted = teamPredicted.reduce((s, v) => s + v, 0) - hitCost;
 
   const suggestions = useMemo(
     () => computeSuggestions(mockMyTeam, mockTransferTargets, horizon),
-    [horizon]
+    [mockMyTeam, mockTransferTargets, horizon]
   );
+
+  if (isLoading) return (
+    <div className="space-y-6">
+      <SkeletonStatStrip items={6} />
+      <SkeletonTable rows={15} cols={7} />
+    </div>
+  );
+
+  if (error) return <ErrorState message="Failed to load transfer data." />;
+
+  if (!transferData) return null;
 
   const handleTransferOut = (elementId) => {
     setTransferOutId(elementId);
@@ -236,7 +219,7 @@ export default function TransferPlanner() {
         </div>
         <div className="w-px h-5 bg-surface-700" />
         <div>
-          <span className="text-xl font-bold text-surface-100 font-data tabular-nums">
+          <span className="text-lg font-bold text-surface-100 font-data tabular-nums">
             {transfers.length}
           </span>
           <span className="text-xs text-surface-500 ml-1.5">made</span>
@@ -244,7 +227,7 @@ export default function TransferPlanner() {
         <div className="w-px h-5 bg-surface-700" />
         <div>
           <span
-            className={`text-xl font-bold font-data tabular-nums ${
+            className={`text-lg font-bold font-data tabular-nums ${
               hitCost > 0 ? "text-danger-400" : "text-success-400"
             }`}
           >
@@ -255,7 +238,7 @@ export default function TransferPlanner() {
         <div className="w-px h-5 bg-surface-700" />
         <div>
           <span
-            className={`text-xl font-bold font-data tabular-nums ${
+            className={`text-lg font-bold font-data tabular-nums ${
               Number(budget) >= 0 ? "text-surface-100" : "text-danger-400"
             }`}
           >
@@ -265,7 +248,7 @@ export default function TransferPlanner() {
         </div>
         <div className="w-px h-5 bg-surface-700" />
         <div>
-          <span className="text-xl font-bold text-brand-400 font-data tabular-nums">
+          <span className="text-lg font-bold text-brand-400 font-data tabular-nums">
             {totalPredicted.toFixed(1)}
           </span>
           <span className="text-xs text-surface-500 ml-1.5">
@@ -280,7 +263,7 @@ export default function TransferPlanner() {
       {/* Suggested Transfers */}
       {suggestions.length > 0 && transfers.length === 0 && (
         <div className="space-y-2">
-          <span className="text-xs font-medium text-surface-500 uppercase tracking-wide">
+          <span className="section-label">
             Suggested transfers
           </span>
           {suggestions.map((s) => {
@@ -290,7 +273,7 @@ export default function TransferPlanner() {
             return (
               <div
                 key={s.out.element}
-                className="flex items-center gap-4 p-3 bg-surface-800/50 border border-surface-700 rounded-lg"
+                className="flex items-center gap-4 p-3 bg-surface-800/50 border border-surface-700 rounded-md"
               >
                 {/* Out */}
                 <div className="flex-1 min-w-0">
@@ -409,16 +392,16 @@ export default function TransferPlanner() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-surface-700">
-                <th className="table-header text-left py-2.5 px-3">Player</th>
-                <th className="table-header text-left py-2.5 px-3">Price</th>
-                <th className="table-header text-left py-2.5 px-3">Form</th>
+                <th scope="col" className="table-header text-left py-2.5 px-3">Player</th>
+                <th scope="col" className="table-header text-left py-2.5 px-3">Price</th>
+                <th scope="col" className="table-header text-left py-2.5 px-3">Form</th>
                 {GW_LABELS.slice(0, horizon).map((gw) => (
-                  <th key={gw} className="table-header text-center py-2.5 px-3">
+                  <th key={gw} scope="col" className="table-header text-center py-2.5 px-3">
                     {gw}
                   </th>
                 ))}
-                <th className="table-header text-center py-2.5 px-3">Total</th>
-                <th className="table-header text-center py-2.5 px-3 w-24"></th>
+                <th scope="col" className="table-header text-center py-2.5 px-3">Total</th>
+                <th scope="col" className="table-header text-center py-2.5 px-3 w-24"></th>
               </tr>
             </thead>
             <tbody>
@@ -573,11 +556,11 @@ export default function TransferPlanner() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-surface-700">
-                  <th className="table-header text-left py-2.5 px-3">
+                  <th scope="col" className="table-header text-left py-2.5 px-3">
                     Player
                   </th>
-                  <th className="table-header text-left py-2.5 px-3">Price</th>
-                  <th className="table-header text-left py-2.5 px-3">Form</th>
+                  <th scope="col" className="table-header text-left py-2.5 px-3">Price</th>
+                  <th scope="col" className="table-header text-left py-2.5 px-3">Form</th>
                   {GW_LABELS.slice(0, horizon).map((gw) => (
                     <th
                       key={gw}
@@ -586,13 +569,13 @@ export default function TransferPlanner() {
                       {gw}
                     </th>
                   ))}
-                  <th className="table-header text-center py-2.5 px-3">
+                  <th scope="col" className="table-header text-center py-2.5 px-3">
                     Total
                   </th>
-                  <th className="table-header text-center py-2.5 px-3">
+                  <th scope="col" className="table-header text-center py-2.5 px-3">
                     vs {outPlayer.web_name}
                   </th>
-                  <th className="table-header text-center py-2.5 px-3 w-16"></th>
+                  <th scope="col" className="table-header text-center py-2.5 px-3 w-16"></th>
                 </tr>
               </thead>
               <tbody>
@@ -712,7 +695,7 @@ export default function TransferPlanner() {
       {/* Transfer Impact Summary */}
       {transfers.length > 0 && (
         <div className="border-t border-surface-800 pt-4">
-          <span className="text-xs font-medium text-surface-500 uppercase tracking-wide">
+          <span className="section-label">
             Transfer summary
           </span>
           <div className="space-y-2 mt-3">

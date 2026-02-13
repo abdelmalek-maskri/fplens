@@ -3,7 +3,6 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Layout from "./components/layout/Layout";
 import ErrorBoundary from "./components/ErrorBoundary";
 import Loading from "./components/Loading";
-import { ThemeProvider } from "./lib/theme";
 
 // Lazy-loaded pages — each becomes its own chunk
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -22,7 +21,6 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 
 export default function App() {
   return (
-    <ThemeProvider>
     <BrowserRouter>
       <ErrorBoundary>
         <Layout>
@@ -46,6 +44,5 @@ export default function App() {
         </Layout>
       </ErrorBoundary>
     </BrowserRouter>
-    </ThemeProvider>
   );
 }

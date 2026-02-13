@@ -1,7 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
-  darkMode: "class",
   theme: {
     extend: {
       colors: {
@@ -46,6 +45,7 @@ export default {
           400: "rgb(var(--danger-400) / <alpha-value>)",
           500: "rgb(var(--danger-500) / <alpha-value>)",
           600: "rgb(var(--danger-600) / <alpha-value>)",
+          700: "rgb(var(--danger-700) / <alpha-value>)",
         },
         info: {
           400: "rgb(var(--info-400) / <alpha-value>)",
@@ -55,44 +55,39 @@ export default {
       },
       fontFamily: {
         sans: [
-          "DM Sans",
+          "Outfit",
           "-apple-system",
           "BlinkMacSystemFont",
           "Segoe UI",
-          "Roboto",
           "sans-serif",
         ],
         data: [
-          "Inter",
-          "DM Sans",
-          "-apple-system",
-          "sans-serif",
+          "JetBrains Mono",
+          "Menlo",
+          "Monaco",
+          "monospace",
         ],
-        mono: ["Menlo", "Monaco", "Fira Code", "monospace"],
+        mono: ["JetBrains Mono", "Menlo", "Monaco", "Fira Code", "monospace"],
       },
       fontSize: {
         "2xs": ["0.625rem", { lineHeight: "0.875rem" }],
         xs: ["0.6875rem", { lineHeight: "1rem" }],
         sm: ["0.75rem", { lineHeight: "1rem" }],
-        base: ["0.875rem", { lineHeight: "1.25rem" }],
-        lg: ["1rem", { lineHeight: "1.5rem" }],
-        xl: ["1.25rem", { lineHeight: "1.75rem" }],
-        "2xl": ["1.5rem", { lineHeight: "2rem" }],
-        "3xl": ["1.75rem", { lineHeight: "2.25rem" }],
+        base: ["0.8125rem", { lineHeight: "1.25rem" }],
+        lg: ["0.9375rem", { lineHeight: "1.375rem" }],
+        xl: ["1.125rem", { lineHeight: "1.5rem" }],
+        "2xl": ["1.375rem", { lineHeight: "1.75rem" }],
+        "3xl": ["1.625rem", { lineHeight: "2rem" }],
         "4xl": ["2rem", { lineHeight: "2.5rem" }],
       },
       borderRadius: {
         "4xl": "2rem",
       },
-      backdropBlur: {
-        xs: "2px",
-      },
       transitionDuration: {
-        DEFAULT: "200ms",
+        DEFAULT: "150ms",
       },
       transitionTimingFunction: {
         DEFAULT: "cubic-bezier(0.4, 0, 0.2, 1)",
-        bounce: "cubic-bezier(0.68, -0.55, 0.265, 1.55)",
       },
     },
   },

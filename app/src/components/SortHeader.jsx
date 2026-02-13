@@ -9,6 +9,7 @@
 export default function SortHeader({ field, sortBy, sortDesc, onSort, children }) {
   return (
     <th
+      scope="col"
       className="table-header text-left py-2.5 px-3 cursor-pointer hover:text-surface-300 transition-colors"
       onClick={() => onSort(field)}
     >

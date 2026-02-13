@@ -1,197 +1,13 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { POSITION_COLORS } from "../lib/constants";
-import Jersey from "../components/Jersey";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { POSITION_COLORS, FDR_MAP } from "../lib/constants";
+import { PitchView } from "../components/pitch";
 import StatusBadge from "../components/StatusBadge";
 import TeamBadge from "../components/TeamBadge";
 import FdrBadge from "../components/FdrBadge";
-
-// ============================================================
-// MOCK DATA - matches real FPL API structure for user's team
-// Will be replaced with: GET /api/team/{fpl_id}
-// ============================================================
-
-const FDR_MAP = {
-  ARS: 5, AVL: 3, BOU: 2, BRE: 2, BHA: 3, CHE: 4, CRY: 2, EVE: 2,
-  FUL: 2, IPS: 1, LEI: 2, LIV: 5, MCI: 4, MUN: 3, NEW: 3, NFO: 2,
-  SOU: 1, TOT: 3, WHU: 2, WOL: 2,
-};
-
-const mockUserTeam = {
-  manager: "Abdelmalek Maskri",
-  teamName: "ML FC",
-  overallRank: 48201,
-  gameweekPoints: 62,
-  totalPoints: 1284,
-  budget: 2.3,
-  freeTransfers: 1,
-  picks: [
-    // Starting 11
-    { element: 20, web_name: "Raya", position: "GK", team_name: "ARS", value: 5.5, multiplier: 1, is_captain: false, is_vice: false, predicted_points: 4.2, form: 4.8, status: "a", chance_of_playing: 100, news: "", opponent_name: "CHE", selected_by_percent: 18.2, selling_price: 5.3 },
-    { element: 15, web_name: "Alexander-Arnold", position: "DEF", team_name: "LIV", value: 7.1, multiplier: 1, is_captain: false, is_vice: false, predicted_points: 5.4, form: 6.1, status: "a", chance_of_playing: 100, news: "", opponent_name: "EVE", selected_by_percent: 28.9, selling_price: 7.0 },
-    { element: 12, web_name: "Gabriel", position: "DEF", team_name: "ARS", value: 6.2, multiplier: 1, is_captain: false, is_vice: false, predicted_points: 5.1, form: 5.8, status: "a", chance_of_playing: 100, news: "", opponent_name: "CHE", selected_by_percent: 31.2, selling_price: 6.0 },
-    { element: 30, web_name: "Saliba", position: "DEF", team_name: "ARS", value: 6.0, multiplier: 1, is_captain: false, is_vice: false, predicted_points: 4.8, form: 5.2, status: "a", chance_of_playing: 100, news: "", opponent_name: "CHE", selected_by_percent: 22.1, selling_price: 5.8 },
-    { element: 3, web_name: "Salah", position: "MID", team_name: "LIV", value: 13.2, multiplier: 2, is_captain: true, is_vice: false, predicted_points: 6.8, form: 7.2, status: "a", chance_of_playing: 100, news: "", opponent_name: "EVE", selected_by_percent: 52.1, selling_price: 13.0 },
-    { element: 7, web_name: "Palmer", position: "MID", team_name: "CHE", value: 9.5, multiplier: 1, is_captain: false, is_vice: true, predicted_points: 6.1, form: 9.2, status: "a", chance_of_playing: 100, news: "", opponent_name: "ARS", selected_by_percent: 45.8, selling_price: 9.3 },
-    { element: 5, web_name: "Saka", position: "MID", team_name: "ARS", value: 10.1, multiplier: 1, is_captain: false, is_vice: false, predicted_points: 4.2, form: 6.5, status: "d", chance_of_playing: 75, news: "Muscle injury - 75% chance of playing", opponent_name: "CHE", selected_by_percent: 38.4, selling_price: 9.9 },
-    { element: 40, web_name: "Mbeumo", position: "MID", team_name: "BRE", value: 7.8, multiplier: 1, is_captain: false, is_vice: false, predicted_points: 4.5, form: 5.6, status: "a", chance_of_playing: 100, news: "", opponent_name: "NFO", selected_by_percent: 19.5, selling_price: 7.6 },
-    { element: 2, web_name: "Haaland", position: "FWD", team_name: "MCI", value: 15.3, multiplier: 1, is_captain: false, is_vice: false, predicted_points: 7.2, form: 8.8, status: "a", chance_of_playing: 100, news: "", opponent_name: "BOU", selected_by_percent: 85.2, selling_price: 15.1 },
-    { element: 50, web_name: "Isak", position: "FWD", team_name: "NEW", value: 8.8, multiplier: 1, is_captain: false, is_vice: false, predicted_points: 5.5, form: 7.0, status: "a", chance_of_playing: 100, news: "", opponent_name: "WOL", selected_by_percent: 24.3, selling_price: 8.6 },
-    { element: 10, web_name: "Watkins", position: "FWD", team_name: "AVL", value: 9.0, multiplier: 1, is_captain: false, is_vice: false, predicted_points: 1.8, form: 5.4, status: "i", chance_of_playing: 0, news: "Hamstring injury - Expected back in 2-3 weeks", opponent_name: "NFO", selected_by_percent: 22.3, selling_price: 8.8 },
-    // Bench
-    { element: 60, web_name: "Flekken", position: "GK", team_name: "BRE", value: 4.5, multiplier: 0, is_captain: false, is_vice: false, predicted_points: 3.6, form: 3.2, status: "a", chance_of_playing: 100, news: "", opponent_name: "NFO", selected_by_percent: 5.1, selling_price: 4.3 },
-    { element: 61, web_name: "Mykolenko", position: "DEF", team_name: "EVE", value: 4.3, multiplier: 0, is_captain: false, is_vice: false, predicted_points: 3.1, form: 3.5, status: "a", chance_of_playing: 100, news: "", opponent_name: "LIV", selected_by_percent: 4.2, selling_price: 4.1 },
-    { element: 62, web_name: "Wharton", position: "MID", team_name: "CRY", value: 4.8, multiplier: 0, is_captain: false, is_vice: false, predicted_points: 2.8, form: 2.9, status: "a", chance_of_playing: 100, news: "", opponent_name: "MUN", selected_by_percent: 3.8, selling_price: 4.6 },
-    { element: 63, web_name: "Archer", position: "FWD", team_name: "SOU", value: 4.5, multiplier: 0, is_captain: false, is_vice: false, predicted_points: 2.1, form: 1.8, status: "a", chance_of_playing: 100, news: "", opponent_name: "TOT", selected_by_percent: 1.2, selling_price: 4.3 },
-  ],
-};
-
-const mockTransferSuggestions = [
-  {
-    out: { element: 10, web_name: "Watkins", team_name: "AVL", position: "FWD", predicted_points: 1.8, status: "i", value: 9.0, selling_price: 8.8 },
-    in: { element: 70, web_name: "Cunha", team_name: "WOL", position: "FWD", predicted_points: 5.8, status: "a", value: 7.2 },
-    points_gain: 4.0,
-    cost_saving: 1.6,
-  },
-  {
-    out: { element: 5, web_name: "Saka", team_name: "ARS", position: "MID", predicted_points: 4.2, status: "d", value: 10.1, selling_price: 9.9 },
-    in: { element: 71, web_name: "Son", team_name: "TOT", position: "MID", predicted_points: 5.8, status: "a", value: 10.0 },
-    points_gain: 1.6,
-    cost_saving: -0.1,
-  },
-];
-
-
-// ============================================================
-// PLAYER CARD ON PITCH
-// ============================================================
-const PitchPlayerCard = ({ player, onClick }) => (
-  <div
-    className={`flex flex-col items-center gap-0.5 transition-opacity ${
-      player.status === "i" ? "opacity-50" : ""
-    }`}
-  >
-    <Jersey
-      teamName={player.team_name}
-      position={player.position}
-      isCaptain={player.is_captain}
-      isVice={player.is_vice}
-      status={player.status}
-    />
-    <div
-      className="bg-white/95 px-2.5 py-0.5 rounded text-[11px] font-bold text-gray-900 text-center min-w-[72px] max-w-[100px] truncate shadow-sm cursor-pointer hover:bg-white transition-colors"
-      onClick={() => onClick(player.element)}
-    >
-      {player.web_name}
-    </div>
-    <div className="bg-gray-900/80 backdrop-blur-sm px-2 py-0.5 rounded text-2xs text-center whitespace-nowrap">
-      <span className="text-emerald-400 font-semibold">
-        {player.predicted_points.toFixed(1)}
-      </span>
-      <span className="text-gray-400 mx-0.5">·</span>
-      <span className="text-gray-300">{player.opponent_name}</span>
-    </div>
-  </div>
-);
-
-// ============================================================
-// PITCH VIEW COMPONENT
-// ============================================================
-const PitchView = ({ starters, bench, onPlayerClick }) => {
-  const gk = starters.filter((p) => p.position === "GK");
-  const def = starters.filter((p) => p.position === "DEF");
-  const mid = starters.filter((p) => p.position === "MID");
-  const fwd = starters.filter((p) => p.position === "FWD");
-
-  return (
-    <div className="card overflow-hidden">
-      {/* The pitch */}
-      <div className="relative overflow-hidden">
-        <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none">
-          <defs>
-            <pattern id="grass-myteam" width="100%" height="90" patternUnits="userSpaceOnUse">
-              <rect width="100%" height="45" fill="#1b7a35" />
-              <rect y="45" width="100%" height="45" fill="#1a7030" />
-            </pattern>
-            <filter id="grassNoise-myteam">
-              <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="4" result="noise" />
-              <feColorMatrix type="saturate" values="0" in="noise" result="grayNoise" />
-              <feBlend in="SourceGraphic" in2="grayNoise" mode="multiply" />
-            </filter>
-          </defs>
-          <rect width="100%" height="100%" fill="url(#grass-myteam)" />
-          <rect width="100%" height="100%" fill="url(#grass-myteam)" opacity="0.3" filter="url(#grassNoise-myteam)" />
-        </svg>
-
-        {/* Pitch markings */}
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute inset-[16px] border-2 border-white/20 rounded-[3px]" />
-          <div className="absolute left-[16px] right-[16px] top-1/2 h-[2px] bg-white/20" />
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[100px] h-[100px] rounded-full border-2 border-white/20" />
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-white/25" />
-          <div className="absolute top-[16px] left-1/2 -translate-x-1/2 w-[220px] h-[65px] border-b-2 border-l-2 border-r-2 border-white/15 rounded-b-[2px]" />
-          <div className="absolute top-[16px] left-1/2 -translate-x-1/2 w-[100px] h-[28px] border-b-2 border-l-2 border-r-2 border-white/12 rounded-b-[2px]" />
-          <div className="absolute top-[68px] left-1/2 -translate-x-1/2 w-[70px] h-[35px] border-b-2 border-white/10 rounded-b-full" />
-          <div className="absolute bottom-[16px] left-1/2 -translate-x-1/2 w-[220px] h-[65px] border-t-2 border-l-2 border-r-2 border-white/15 rounded-t-[2px]" />
-          <div className="absolute bottom-[16px] left-1/2 -translate-x-1/2 w-[100px] h-[28px] border-t-2 border-l-2 border-r-2 border-white/12 rounded-t-[2px]" />
-          <div className="absolute bottom-[68px] left-1/2 -translate-x-1/2 w-[70px] h-[35px] border-t-2 border-white/10 rounded-t-full" />
-          <div className="absolute top-[16px] left-[16px] w-5 h-5 border-r-2 border-b-2 border-white/10 rounded-br-full" />
-          <div className="absolute top-[16px] right-[16px] w-5 h-5 border-l-2 border-b-2 border-white/10 rounded-bl-full" />
-          <div className="absolute bottom-[16px] left-[16px] w-5 h-5 border-r-2 border-t-2 border-white/10 rounded-tr-full" />
-          <div className="absolute bottom-[16px] right-[16px] w-5 h-5 border-l-2 border-t-2 border-white/10 rounded-tl-full" />
-        </div>
-
-        {/* Player formation rows */}
-        <div className="relative z-10 flex flex-col justify-around py-8 px-4" style={{ minHeight: "560px" }}>
-          <div className="flex justify-center gap-8">
-            {gk.map((p) => <PitchPlayerCard key={p.element} player={p} onClick={onPlayerClick} />)}
-          </div>
-          <div className="flex justify-center gap-4 sm:gap-6 lg:gap-10">
-            {def.map((p) => <PitchPlayerCard key={p.element} player={p} onClick={onPlayerClick} />)}
-          </div>
-          <div className="flex justify-center gap-3 sm:gap-5 lg:gap-8">
-            {mid.map((p) => <PitchPlayerCard key={p.element} player={p} onClick={onPlayerClick} />)}
-          </div>
-          <div className="flex justify-center gap-4 sm:gap-6 lg:gap-10">
-            {fwd.map((p) => <PitchPlayerCard key={p.element} player={p} onClick={onPlayerClick} />)}
-          </div>
-        </div>
-      </div>
-
-      {/* Bench */}
-      <div className="bg-surface-800/60 px-4 py-4 border-t border-surface-700">
-        <p className="text-xs font-medium text-surface-500 uppercase tracking-wider mb-4">
-          Substitutes
-        </p>
-        <div className="flex justify-around">
-          {bench.map((p, idx) => (
-            <div key={p.element} className="flex flex-col items-center gap-0.5">
-              <span className="text-2xs text-surface-500 font-medium mb-1">
-                {idx + 1}
-              </span>
-              <Jersey
-                teamName={p.team_name}
-                position={p.position}
-                isCaptain={false}
-                isVice={false}
-                status={p.status}
-              />
-              <div
-                className="bg-surface-700/80 px-2 py-0.5 rounded-sm text-[11px] font-semibold text-surface-300 text-center min-w-[72px] max-w-[100px] truncate cursor-pointer hover:text-brand-400 transition-colors"
-                onClick={() => onPlayerClick(p.element)}
-              >
-                {p.web_name}
-              </div>
-              <div className="text-2xs text-surface-500 whitespace-nowrap">
-                {p.predicted_points.toFixed(1)} · {p.opponent_name}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-};
+import ErrorState from "../components/ErrorState";
+import { SkeletonStatStrip, SkeletonPitch } from "../components/skeletons";
+import { useTeam } from "../hooks";
 
 
 // ============================================================
@@ -231,10 +47,25 @@ const FplIdHelp = () => (
 // ============================================================
 export default function MyTeam() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const viewMode = searchParams.get("view") || "pitch";
+  const setViewMode = (value) => {
+    setSearchParams(prev => { const p = new URLSearchParams(prev); p.set("view", value); return p; });
+  };
   const [fplId, setFplId] = useState("");
   const [teamLoaded, setTeamLoaded] = useState(false);
   const [team, setTeam] = useState(null);
-  const [viewMode, setViewMode] = useState("pitch"); // "pitch" | "table"
+
+  const { data: teamData, isLoading, error } = useTeam();
+  if (isLoading) return (
+    <div className="space-y-6">
+      <SkeletonStatStrip items={5} />
+      <SkeletonPitch id="myteam-sk" />
+    </div>
+  );
+  if (error) return <ErrorState message="Failed to load team data." />;
+  if (!teamData) return null;
+  const { team: mockUserTeam, transferSuggestions: mockTransferSuggestions } = teamData;
 
   const handleLoadTeam = (e) => {
     e.preventDefault();
@@ -340,12 +171,12 @@ export default function MyTeam() {
       {/* Team Overview — horizontal stat strip */}
       <div className="flex items-center gap-5 flex-wrap py-3 border-b border-surface-800">
         <div>
-          <span className="text-xl font-bold text-surface-100 font-data tabular-nums">{team.overallRank.toLocaleString()}</span>
+          <span className="text-lg font-bold text-surface-100 font-data tabular-nums">{team.overallRank.toLocaleString()}</span>
           <span className="text-xs text-surface-500 ml-1.5">rank</span>
         </div>
         <div className="w-px h-5 bg-surface-700" />
         <div>
-          <span className="text-xl font-bold text-brand-400 font-data tabular-nums">{totalPredicted.toFixed(1)}</span>
+          <span className="text-lg font-bold text-brand-400 font-data tabular-nums">{totalPredicted.toFixed(1)}</span>
           <span className="text-xs text-surface-500 ml-1.5">predicted pts</span>
         </div>
         <div className="w-px h-5 bg-surface-700" />
@@ -355,12 +186,12 @@ export default function MyTeam() {
         </div>
         <div className="w-px h-5 bg-surface-700" />
         <div>
-          <span className="text-xl font-bold text-surface-100 font-data tabular-nums">£{team.budget}m</span>
+          <span className="text-lg font-bold text-surface-100 font-data tabular-nums">£{team.budget}m</span>
           <span className="text-xs text-surface-500 ml-1.5">ITB</span>
         </div>
         <div className="w-px h-5 bg-surface-700" />
         <div>
-          <span className="text-xl font-bold text-surface-100 font-data tabular-nums">{team.freeTransfers}</span>
+          <span className="text-lg font-bold text-surface-100 font-data tabular-nums">{team.freeTransfers}</span>
           <span className="text-xs text-surface-500 ml-1.5">FT{team.freeTransfers !== 1 ? "s" : ""}</span>
         </div>
 
@@ -425,19 +256,19 @@ export default function MyTeam() {
 
       {/* Pitch or Table View */}
       {viewMode === "pitch" ? (
-        <PitchView starters={starters} bench={bench} onPlayerClick={handlePlayerClick} />
+        <PitchView starters={starters} bench={bench} onPlayerClick={handlePlayerClick} id="myteam" />
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b border-surface-700">
-                <th className="table-header text-left py-2.5 px-3 w-8"></th>
-                <th className="table-header text-left py-2.5 px-3">Player</th>
-                <th className="table-header text-left py-2.5 px-3">Predicted</th>
-                <th className="table-header text-left py-2.5 px-3">Form</th>
-                <th className="table-header text-left py-2.5 px-3">Fixture</th>
-                <th className="table-header text-left py-2.5 px-3">Value</th>
-                <th className="table-header text-left py-2.5 px-3">Status</th>
+                <th scope="col" className="table-header text-left py-2.5 px-3 w-8"></th>
+                <th scope="col" className="table-header text-left py-2.5 px-3">Player</th>
+                <th scope="col" className="table-header text-left py-2.5 px-3">Predicted</th>
+                <th scope="col" className="table-header text-left py-2.5 px-3">Form</th>
+                <th scope="col" className="table-header text-left py-2.5 px-3">Fixture</th>
+                <th scope="col" className="table-header text-left py-2.5 px-3">Value</th>
+                <th scope="col" className="table-header text-left py-2.5 px-3">Status</th>
               </tr>
             </thead>
             <tbody>
@@ -561,7 +392,7 @@ export default function MyTeam() {
         </div>
         <div className="w-px h-10 bg-surface-700 hidden sm:block" />
         <div className="flex-1 hidden sm:block">
-          <span className="text-xs font-medium text-surface-500 uppercase tracking-wide">Vice Captain</span>
+          <span className="section-label">Vice Captain</span>
           <div className="flex items-center gap-3 mt-1">
             <p
               className="font-semibold text-surface-100 hover:text-brand-400 transition-colors cursor-pointer"
@@ -578,7 +409,7 @@ export default function MyTeam() {
       {/* Transfer Suggestions */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <span className="text-xs font-medium text-surface-500 uppercase tracking-wide">Suggested Transfers</span>
+          <span className="section-label">Suggested Transfers</span>
           <button
             onClick={() => navigate("/transfers")}
             className="text-xs text-brand-400 hover:text-brand-300 transition-colors"
@@ -590,7 +421,7 @@ export default function MyTeam() {
           {mockTransferSuggestions.map((transfer, idx) => (
             <div
               key={idx}
-              className="flex items-center gap-4 p-3 rounded-lg bg-surface-800/50 border border-surface-700"
+              className="flex items-center gap-4 p-3 rounded-md bg-surface-800/50 border border-surface-700"
             >
               {/* Out */}
               <div className="flex-1">
