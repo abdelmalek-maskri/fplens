@@ -1,0 +1,28 @@
+// ============================================================
+// MOCK DATA — extended player pool for comparison
+// Will be replaced with: GET /api/predictions/all
+// ============================================================
+export const allPlayers = [
+  { id: 2, web_name: "Haaland", name: "Erling Haaland", team: "MCI", position: "FWD", value: 15.3, predicted_points: 7.2, form: 8.8, total_points: 156, selected_by_percent: 85.2, minutes: 2340, goals: 16, assists: 5, xG: 14.8, xA: 3.2, clean_sheets: 0, bonus: 28, ict_index: 312.4, opponent: "BOU", opponent_fdr: 2, uncertainty: 1.8, status: "a" },
+  { id: 3, web_name: "Salah", name: "Mohamed Salah", team: "LIV", position: "MID", value: 13.2, predicted_points: 6.8, form: 7.2, total_points: 168, selected_by_percent: 52.1, minutes: 2280, goals: 15, assists: 10, xG: 12.5, xA: 8.1, clean_sheets: 0, bonus: 32, ict_index: 340.8, opponent: "EVE", opponent_fdr: 2, uncertainty: 1.5, status: "a" },
+  { id: 7, web_name: "Palmer", name: "Cole Palmer", team: "CHE", position: "MID", value: 9.5, predicted_points: 6.1, form: 9.2, total_points: 158, selected_by_percent: 45.8, minutes: 2100, goals: 14, assists: 8, xG: 11.2, xA: 6.8, clean_sheets: 0, bonus: 26, ict_index: 298.5, opponent: "ARS", opponent_fdr: 5, uncertainty: 1.6, status: "a" },
+  { id: 50, web_name: "Isak", name: "Alexander Isak", team: "NEW", position: "FWD", value: 8.8, predicted_points: 5.5, form: 7.0, total_points: 130, selected_by_percent: 24.3, minutes: 1980, goals: 12, assists: 4, xG: 11.9, xA: 2.8, clean_sheets: 0, bonus: 18, ict_index: 265.2, opponent: "WOL", opponent_fdr: 2, uncertainty: 1.7, status: "a" },
+  { id: 15, web_name: "Alexander-Arnold", name: "Trent Alexander-Arnold", team: "LIV", position: "DEF", value: 7.1, predicted_points: 5.4, form: 6.1, total_points: 118, selected_by_percent: 28.9, minutes: 2160, goals: 2, assists: 8, xG: 1.4, xA: 6.5, clean_sheets: 10, bonus: 20, ict_index: 215.6, opponent: "EVE", opponent_fdr: 2, uncertainty: 1.4, status: "a" },
+  { id: 12, web_name: "Gabriel", name: "Gabriel Magalhães", team: "ARS", position: "DEF", value: 6.2, predicted_points: 5.1, form: 5.8, total_points: 129, selected_by_percent: 31.2, minutes: 2340, goals: 4, assists: 1, xG: 2.8, xA: 0.5, clean_sheets: 12, bonus: 24, ict_index: 178.3, opponent: "CHE", opponent_fdr: 4, uncertainty: 1.3, status: "a" },
+  { id: 20, web_name: "Raya", name: "David Raya", team: "ARS", position: "GK", value: 5.5, predicted_points: 4.2, form: 4.8, total_points: 98, selected_by_percent: 18.2, minutes: 2340, goals: 0, assists: 0, xG: 0, xA: 0, clean_sheets: 12, bonus: 14, ict_index: 42.8, opponent: "CHE", opponent_fdr: 4, uncertainty: 1.1, status: "a" },
+  { id: 40, web_name: "Mbeumo", name: "Bryan Mbeumo", team: "BRE", position: "MID", value: 7.8, predicted_points: 4.5, form: 5.6, total_points: 110, selected_by_percent: 19.5, minutes: 2160, goals: 10, assists: 5, xG: 8.2, xA: 4.1, clean_sheets: 0, bonus: 16, ict_index: 245.1, opponent: "NFO", opponent_fdr: 2, uncertainty: 1.3, status: "a" },
+  { id: 5, web_name: "Saka", name: "Bukayo Saka", team: "ARS", position: "MID", value: 10.1, predicted_points: 4.2, form: 6.5, total_points: 142, selected_by_percent: 38.4, minutes: 1800, goals: 8, assists: 10, xG: 7.5, xA: 8.8, clean_sheets: 0, bonus: 22, ict_index: 275.3, opponent: "CHE", opponent_fdr: 4, uncertainty: 2.4, status: "d" },
+  { id: 10, web_name: "Watkins", name: "Ollie Watkins", team: "AVL", position: "FWD", value: 9.0, predicted_points: 1.8, form: 5.4, total_points: 112, selected_by_percent: 22.3, minutes: 2070, goals: 10, assists: 6, xG: 11.0, xA: 4.5, clean_sheets: 0, bonus: 12, ict_index: 232.7, opponent: "NFO", opponent_fdr: 2, uncertainty: 3.1, status: "i" },
+  { id: 22, web_name: "Martinez", name: "Emiliano Martinez", team: "AVL", position: "GK", value: 5.0, predicted_points: 3.8, form: 4.2, total_points: 88, selected_by_percent: 12.4, minutes: 2340, goals: 0, assists: 0, xG: 0, xA: 0, clean_sheets: 8, bonus: 10, ict_index: 38.2, opponent: "NFO", opponent_fdr: 2, uncertainty: 1.0, status: "a" },
+  { id: 25, web_name: "Saliba", name: "William Saliba", team: "ARS", position: "DEF", value: 5.8, predicted_points: 4.8, form: 5.5, total_points: 120, selected_by_percent: 26.1, minutes: 2340, goals: 1, assists: 0, xG: 0.8, xA: 0.3, clean_sheets: 12, bonus: 18, ict_index: 145.6, opponent: "CHE", opponent_fdr: 4, uncertainty: 1.2, status: "a" },
+  { id: 30, web_name: "Son", name: "Heung-Min Son", team: "TOT", position: "MID", value: 9.8, predicted_points: 4.0, form: 4.5, total_points: 95, selected_by_percent: 10.3, minutes: 1980, goals: 8, assists: 5, xG: 7.8, xA: 5.2, clean_sheets: 0, bonus: 14, ict_index: 248.9, opponent: "LEI", opponent_fdr: 2, uncertainty: 1.6, status: "a" },
+  { id: 35, web_name: "Solanke", name: "Dominic Solanke", team: "TOT", position: "FWD", value: 7.5, predicted_points: 3.5, form: 3.8, total_points: 82, selected_by_percent: 8.1, minutes: 1800, goals: 7, assists: 3, xG: 8.5, xA: 2.8, clean_sheets: 0, bonus: 8, ict_index: 198.4, opponent: "LEI", opponent_fdr: 2, uncertainty: 1.5, status: "a" },
+  { id: 45, web_name: "Gordon", name: "Anthony Gordon", team: "NEW", position: "MID", value: 7.3, predicted_points: 4.3, form: 6.2, total_points: 105, selected_by_percent: 15.8, minutes: 2100, goals: 7, assists: 6, xG: 5.8, xA: 5.0, clean_sheets: 0, bonus: 12, ict_index: 235.7, opponent: "WOL", opponent_fdr: 2, uncertainty: 1.4, status: "a" },
+];
+
+export const STATUS_CONFIG = {
+  a: { label: "Available", cls: "text-success-400" },
+  d: { label: "Doubtful", cls: "text-warning-400" },
+  i: { label: "Injured", cls: "text-danger-400" },
+  u: { label: "Unavailable", cls: "text-surface-400" },
+};
