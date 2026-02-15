@@ -31,7 +31,7 @@ export default function Header({ onMenuToggle }) {
   }, []);
 
   return (
-    <header className="fixed top-0 left-0 lg:left-[200px] right-0 h-11 bg-surface-900/95 backdrop-blur-sm border-b border-surface-800/60 z-30 flex items-center justify-between px-4">
+    <header className="fixed top-0 left-0 lg:left-[200px] right-0 h-11 bg-surface-900/95 backdrop-blur-sm border-b border-surface-700 z-30 flex items-center justify-between px-4">
       <div className="flex items-center gap-2.5">
         <button onClick={onMenuToggle} aria-label="Toggle menu" className="lg:hidden text-surface-400 hover:text-surface-200 -ml-1 mr-0.5">
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

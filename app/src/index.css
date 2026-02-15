@@ -13,51 +13,51 @@
    ========================================= */
 
 :root {
-  /* Surface — true neutral dark, no blue tint */
-  --surface-50: 245 245 247;
-  --surface-100: 232 232 236;
-  --surface-200: 190 190 196;
-  --surface-300: 150 150 158;
-  --surface-400: 120 120 128;
-  --surface-500: 85 85 92;
-  --surface-600: 60 60 66;
-  --surface-700: 38 38 42;
-  --surface-800: 24 24 27;
-  --surface-900: 14 14 16;
-  --surface-950: 10 10 11;
+  /* Surface — warm light editorial, no blue tint */
+  --surface-50: 15 15 17;
+  --surface-100: 30 29 27;
+  --surface-200: 52 51 48;
+  --surface-300: 82 81 77;
+  --surface-400: 115 113 109;
+  --surface-500: 145 143 139;
+  --surface-600: 178 176 172;
+  --surface-700: 212 210 206;
+  --surface-800: 235 234 231;
+  --surface-900: 250 249 246;
+  --surface-950: 255 255 255;
 
-  /* Brand — emerald */
+  /* Brand — emerald, darkened for light backgrounds */
   --brand-50: 236 253 245;
   --brand-100: 209 250 229;
   --brand-200: 167 243 208;
-  --brand-300: 110 231 183;
-  --brand-400: 52 211 153;
-  --brand-500: 16 185 129;
-  --brand-600: 5 150 105;
-  --brand-700: 4 120 87;
-  --brand-800: 6 95 70;
+  --brand-300: 16 185 129;
+  --brand-400: 4 120 87;
+  --brand-500: 5 150 105;
+  --brand-600: 4 120 87;
+  --brand-700: 6 95 70;
+  --brand-800: 6 78 59;
   --brand-900: 6 78 59;
   --brand-950: 2 44 34;
 
-  /* Success */
-  --success-400: 74 222 128;
-  --success-500: 34 197 94;
+  /* Success — darkened for contrast */
+  --success-400: 21 128 61;
+  --success-500: 22 163 74;
   --success-600: 22 163 74;
 
-  /* Warning */
-  --warning-300: 252 211 77;
-  --warning-400: 251 191 36;
-  --warning-500: 245 158 11;
-  --warning-600: 217 119 6;
+  /* Warning — darkened for contrast */
+  --warning-300: 202 138 4;
+  --warning-400: 180 83 9;
+  --warning-500: 180 83 9;
+  --warning-600: 146 64 14;
 
-  /* Danger */
-  --danger-400: 248 113 113;
-  --danger-500: 239 68 68;
-  --danger-600: 220 38 38;
-  --danger-700: 185 28 28;
+  /* Danger — darkened for contrast */
+  --danger-400: 185 28 28;
+  --danger-500: 220 38 38;
+  --danger-600: 185 28 28;
+  --danger-700: 153 27 27;
 
-  /* Info */
-  --info-400: 56 189 248;
+  /* Info — darkened for contrast */
+  --info-400: 3 105 161;
   --info-500: 14 165 233;
   --info-600: 2 132 199;
 

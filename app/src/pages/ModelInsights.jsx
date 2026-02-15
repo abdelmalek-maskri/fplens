@@ -126,7 +126,7 @@ function OverviewTab({ modelVariants, baselines, ensembleWeights, datasetStats, 
               <span className="text-sm text-surface-300 w-28 shrink-0">{m.model}</span>
               <div className="flex-1 h-6 bg-surface-800 rounded-md overflow-hidden">
                 <div className="h-full bg-brand-500/60 rounded-md flex items-center pl-2" style={{ width: `${(m.weight / ensembleWeights[0].weight) * 100}%` }}>
-                  <span className="text-xs font-semibold text-white">{m.weight.toFixed(3)}</span>
+                  <span className="text-xs font-semibold text-surface-50">{m.weight.toFixed(3)}</span>
                 </div>
               </div>
             </div>
@@ -164,7 +164,7 @@ function OverviewTab({ modelVariants, baselines, ensembleWeights, datasetStats, 
             <p className="section-label mb-2">Training / Test Split</p>
             <div className="flex h-6 rounded-md overflow-hidden">
               <div className="bg-brand-500/60 flex items-center justify-center" style={{ width: "87.7%" }}>
-                <span className="text-2xs font-semibold text-white">Train: 185K</span>
+                <span className="text-2xs font-semibold text-surface-50">Train: 185K</span>
               </div>
               <div className="bg-surface-600 flex items-center justify-center flex-1">
                 <span className="text-2xs font-semibold text-surface-300">Test: 26K</span>
@@ -176,7 +176,7 @@ function OverviewTab({ modelVariants, baselines, ensembleWeights, datasetStats, 
             <p className="section-label mb-2">Played vs Not Played (Test Set)</p>
             <div className="flex h-6 rounded-md overflow-hidden">
               <div className="bg-success-500/60 flex items-center justify-center" style={{ width: `${datasetStats.playedPct}%` }}>
-                <span className="text-2xs font-semibold text-white">Played {datasetStats.playedPct}%</span>
+                <span className="text-2xs font-semibold text-surface-50">Played {datasetStats.playedPct}%</span>
               </div>
               <div className="bg-surface-600 flex items-center justify-center flex-1">
                 <span className="text-2xs font-semibold text-surface-300">Not played {datasetStats.notPlayedPct}%</span>
@@ -391,7 +391,7 @@ function AblationTab({ ablationConfigs, ablationSignificance, interactionEffect 
               <span className="text-sm text-surface-300 w-40 shrink-0">{item.label}</span>
               <div className="flex-1 h-6 bg-surface-800 rounded-md overflow-hidden">
                 <div className={`h-full ${item.color} rounded-md flex items-center pl-2`} style={{ width: `${(item.value / interactionEffect.expected) * 100}%` }}>
-                  <span className="text-xs font-semibold text-white font-data">{item.value.toFixed(2)}</span>
+                  <span className="text-xs font-semibold text-surface-50 font-data">{item.value.toFixed(2)}</span>
                 </div>
               </div>
               <span className="text-xs text-surface-500 w-10 text-right font-data">×10⁻³</span>

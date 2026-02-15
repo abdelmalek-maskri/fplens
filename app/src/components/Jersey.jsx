@@ -124,19 +124,19 @@ export default function Jersey({ teamName, position, isCaptain, isVice, status }
       </svg>
 
       {isCaptain && (
-        <div className="absolute -bottom-0.5 -right-1 w-[18px] h-[18px] rounded-full bg-warning-500 border-[1.5px] border-warning-300 text-surface-900 text-2xs font-black flex items-center justify-center shadow-lg">
+        <div className="absolute -bottom-0.5 -right-1 w-[18px] h-[18px] rounded-full bg-warning-500 border-[1.5px] border-warning-300 text-surface-50 text-2xs font-black flex items-center justify-center shadow-lg">
           C
         </div>
       )}
       {isVice && (
-        <div className="absolute -bottom-0.5 -right-1 w-[18px] h-[18px] rounded-full bg-surface-600 border-[1.5px] border-surface-400 text-white text-2xs font-bold flex items-center justify-center shadow-lg">
+        <div className="absolute -bottom-0.5 -right-1 w-[18px] h-[18px] rounded-full bg-surface-600 border-[1.5px] border-surface-400 text-surface-100 text-2xs font-bold flex items-center justify-center shadow-lg">
           V
         </div>
       )}
       {(status === "i" || status === "d") && (
         <div
           className={`absolute -top-0.5 -left-1 w-[16px] h-[16px] rounded-full text-2xs font-bold flex items-center justify-center shadow ${
-            status === "i" ? "bg-danger-500 text-white" : "bg-warning-500 text-surface-900"
+            status === "i" ? "bg-danger-500 text-white" : "bg-warning-500 text-surface-50"
           }`}
         >
           !

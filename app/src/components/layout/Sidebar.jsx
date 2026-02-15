@@ -39,9 +39,9 @@ const Sidebar = forwardRef(function Sidebar({ open, onClose }, ref) {
   const { pathname } = useLocation();
 
   return (
-    <aside ref={ref} className={`fixed left-0 top-0 h-screen w-[200px] bg-surface-900 border-r border-surface-800/60 flex flex-col z-50 transition-transform duration-150 ${open ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0`}>
+    <aside ref={ref} className={`fixed left-0 top-0 h-screen w-[200px] bg-surface-900 border-r border-surface-700 flex flex-col z-50 transition-transform duration-150 ${open ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0`}>
       {/* Logo */}
-      <div className="px-3 py-3 border-b border-surface-800/60">
+      <div className="px-3 py-3 border-b border-surface-700">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 rounded bg-brand-600 flex items-center justify-center">
@@ -63,7 +63,7 @@ const Sidebar = forwardRef(function Sidebar({ open, onClose }, ref) {
       {/* Navigation — flat, always open */}
       <nav className="flex-1 overflow-y-auto px-2 py-3">
         {navItems.map((group, idx) => (
-          <div key={group.section} className={idx > 0 ? "mt-1 pt-1 border-t border-surface-800/60" : ""}>
+          <div key={group.section} className={idx > 0 ? "mt-1 pt-1 border-t border-surface-700" : ""}>
             <p className="text-2xs font-medium text-surface-600 tracking-widest px-2.5 mb-1 mt-2">
               {group.section}
             </p>
@@ -87,7 +87,7 @@ const Sidebar = forwardRef(function Sidebar({ open, onClose }, ref) {
       </nav>
 
       {/* Footer */}
-      <div className="px-3 pb-2.5 pt-2 border-t border-surface-800/60">
+      <div className="px-3 pb-2.5 pt-2 border-t border-surface-700">
         <div className="flex items-center gap-1.5 px-0.5">
           <span className="status-live" />
           <span className="text-2xs text-surface-400">Live</span>
