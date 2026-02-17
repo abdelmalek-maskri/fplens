@@ -82,7 +82,7 @@ def run() -> None:
 
     # Config C: baseline + news
     if EXTENDED_PATH.exists():
-        print(f"\nBuilding Config C (baseline + news)...")
+        print("\nBuilding Config C (baseline + news)...")
         base_df = pd.read_csv(EXTENDED_PATH, low_memory=False)
         print(f"  Base: {base_df.shape}")
         combined_c = merge_news(base_df, news_df)
@@ -93,7 +93,7 @@ def run() -> None:
 
     # Config D: baseline + injury + news
     if INJURY_PATH.exists():
-        print(f"\nBuilding Config D (baseline + injury + news)...")
+        print("\nBuilding Config D (baseline + injury + news)...")
         injury_df = pd.read_csv(INJURY_PATH, low_memory=False)
         print(f"  Base: {injury_df.shape}")
         combined_d = merge_news(injury_df, news_df)

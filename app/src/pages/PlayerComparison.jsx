@@ -35,9 +35,7 @@ function PlayerSelector({ selected, onChange, label, excludeId, allPlayers }) {
 
   return (
     <div className="relative">
-      <p className="section-label mb-2">
-        {label}
-      </p>
+      <p className="section-label mb-2">{label}</p>
       <button
         onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between bg-surface-800 border border-surface-700 rounded-md px-4 py-3 text-left hover:border-surface-600 transition-colors"
@@ -46,11 +44,12 @@ function PlayerSelector({ selected, onChange, label, excludeId, allPlayers }) {
           <div className="flex items-center gap-3">
             <TeamBadge team={selectedPlayer.team} />
             <div>
-              <p className="text-sm font-medium text-surface-100">
-                {selectedPlayer.web_name}
-              </p>
+              <p className="text-sm font-medium text-surface-100">{selectedPlayer.web_name}</p>
               <p className="text-xs text-surface-500">
-                <span className={POSITION_COLORS[selectedPlayer.position]}>{selectedPlayer.position}</span> · £{selectedPlayer.value}m
+                <span className={POSITION_COLORS[selectedPlayer.position]}>
+                  {selectedPlayer.position}
+                </span>{" "}
+                · £{selectedPlayer.value}m
               </p>
             </div>
           </div>
@@ -96,19 +95,20 @@ function PlayerSelector({ selected, onChange, label, excludeId, allPlayers }) {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-surface-100 truncate">{p.web_name}</p>
                     <p className="text-xs text-surface-500">
-                      <span className={POSITION_COLORS[p.position]}>{p.position}</span> · £{p.value}m · {p.predicted_points.toFixed(1)} pts
+                      <span className={POSITION_COLORS[p.position]}>{p.position}</span> · £{p.value}
+                      m · {p.predicted_points.toFixed(1)} pts
                     </p>
                   </div>
-                  <span className={`text-xs font-medium ${STATUS_CONFIG[p.status]?.cls || "text-surface-400"}`}>
+                  <span
+                    className={`text-xs font-medium ${STATUS_CONFIG[p.status]?.cls || "text-surface-400"}`}
+                  >
                     {STATUS_CONFIG[p.status]?.label}
                   </span>
                 </button>
               </li>
             ))}
             {filtered.length === 0 && (
-              <li className="px-4 py-6 text-center text-surface-500 text-sm">
-                No players found
-              </li>
+              <li className="px-4 py-6 text-center text-surface-500 text-sm">No players found</li>
             )}
           </ul>
         </div>
@@ -144,7 +144,8 @@ function ComparisonBar({ label, valueA, valueB, format, higherIsBetter = true, s
             aWins ? "text-brand-400" : tie ? "text-surface-200" : "text-surface-400"
           }`}
         >
-          {formatVal(valueA)}{suffix}
+          {formatVal(valueA)}
+          {suffix}
         </span>
         <span className="section-label">{label}</span>
         <span
@@ -152,7 +153,8 @@ function ComparisonBar({ label, valueA, valueB, format, higherIsBetter = true, s
             bWins ? "text-brand-400" : tie ? "text-surface-200" : "text-surface-400"
           }`}
         >
-          {formatVal(valueB)}{suffix}
+          {formatVal(valueB)}
+          {suffix}
         </span>
       </div>
       <div className="flex items-center gap-1">
@@ -191,15 +193,16 @@ export default function PlayerComparison() {
   const [playerB, setPlayerB] = useState(50); // Isak default
   const [viewMode, setViewMode] = useState("bars");
 
-  if (isLoading) return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-[1fr_auto_1fr] gap-4">
-        <SkeletonCard lines={3} />
-        <div />
-        <SkeletonCard lines={3} />
+  if (isLoading)
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-[1fr_auto_1fr] gap-4">
+          <SkeletonCard lines={3} />
+          <div />
+          <SkeletonCard lines={3} />
+        </div>
       </div>
-    </div>
-  );
+    );
   if (error) return <ErrorState message="Failed to load player data." />;
   if (!poolData) return null;
   const allPlayers = poolData.players;
@@ -218,15 +221,38 @@ export default function PlayerComparison() {
   const valB = b ? (b.predicted_points / b.value).toFixed(2) : 0;
 
   // Determine winner count
-  const metrics = a && b ? [
-    { better: a.predicted_points > b.predicted_points ? "a" : a.predicted_points < b.predicted_points ? "b" : "tie" },
-    { better: a.form > b.form ? "a" : a.form < b.form ? "b" : "tie" },
-    { better: a.total_points > b.total_points ? "a" : a.total_points < b.total_points ? "b" : "tie" },
-    { better: parseFloat(valA) > parseFloat(valB) ? "a" : parseFloat(valA) < parseFloat(valB) ? "b" : "tie" },
-    { better: a.opponent_fdr < b.opponent_fdr ? "a" : a.opponent_fdr > b.opponent_fdr ? "b" : "tie" },
-    { better: a.xG > b.xG ? "a" : a.xG < b.xG ? "b" : "tie" },
-    { better: a.xA > b.xA ? "a" : a.xA < b.xA ? "b" : "tie" },
-  ] : [];
+  const metrics =
+    a && b
+      ? [
+          {
+            better:
+              a.predicted_points > b.predicted_points
+                ? "a"
+                : a.predicted_points < b.predicted_points
+                  ? "b"
+                  : "tie",
+          },
+          { better: a.form > b.form ? "a" : a.form < b.form ? "b" : "tie" },
+          {
+            better:
+              a.total_points > b.total_points ? "a" : a.total_points < b.total_points ? "b" : "tie",
+          },
+          {
+            better:
+              parseFloat(valA) > parseFloat(valB)
+                ? "a"
+                : parseFloat(valA) < parseFloat(valB)
+                  ? "b"
+                  : "tie",
+          },
+          {
+            better:
+              a.opponent_fdr < b.opponent_fdr ? "a" : a.opponent_fdr > b.opponent_fdr ? "b" : "tie",
+          },
+          { better: a.xG > b.xG ? "a" : a.xG < b.xG ? "b" : "tie" },
+          { better: a.xA > b.xA ? "a" : a.xA < b.xA ? "b" : "tie" },
+        ]
+      : [];
 
   const winsA = metrics.filter((m) => m.better === "a").length;
   const winsB = metrics.filter((m) => m.better === "b").length;
@@ -247,8 +273,18 @@ export default function PlayerComparison() {
           className="mb-1 p-2 rounded-md bg-surface-800 border border-surface-700 hover:border-brand-500 transition-colors"
           title="Swap players"
         >
-          <svg className="w-5 h-5 text-surface-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
+          <svg
+            className="w-5 h-5 text-surface-400"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"
+            />
           </svg>
         </button>
         <PlayerSelector
@@ -267,30 +303,33 @@ export default function PlayerComparison() {
             {[a, b].map((p, idx) => {
               const isWinner = idx === 0 ? winsA > winsB : winsB > winsA;
               return (
-                <div
-                  key={p.id}
-                  className={`${isWinner ? "ring-1 ring-brand-500/50" : ""}`}
-                >
+                <div key={p.id} className={`${isWinner ? "ring-1 ring-brand-500/50" : ""}`}>
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
                       <TeamBadge team={p.team} size="lg" />
                       <div>
-                        <p className="text-lg font-bold text-surface-100 hover:text-brand-400 transition-colors cursor-pointer" onClick={() => navigate(`/player/${p.id}`)}>{p.web_name}</p>
+                        <p
+                          className="text-lg font-bold text-surface-100 hover:text-brand-400 transition-colors cursor-pointer"
+                          onClick={() => navigate(`/player/${p.id}`)}
+                        >
+                          {p.web_name}
+                        </p>
                         <p className="text-sm text-surface-500">
-                          {p.name} · <span className={POSITION_COLORS[p.position]}>{p.position}</span>
+                          {p.name} ·{" "}
+                          <span className={POSITION_COLORS[p.position]}>{p.position}</span>
                         </p>
                       </div>
                     </div>
                     {isWinner && (
-                      <span className="badge bg-brand-500/20 text-brand-400">
-                        Favoured
-                      </span>
+                      <span className="badge bg-brand-500/20 text-brand-400">Favoured</span>
                     )}
                   </div>
 
                   <div className="flex items-center gap-5 flex-wrap py-3 border-b border-surface-800">
                     <div>
-                      <span className="text-xl font-bold text-surface-100">{p.predicted_points.toFixed(1)}</span>
+                      <span className="text-xl font-bold text-surface-100">
+                        {p.predicted_points.toFixed(1)}
+                      </span>
                       <span className="text-xs text-surface-500 ml-1.5">predicted</span>
                     </div>
                     <div className="w-px h-5 bg-surface-700" />
@@ -329,18 +368,20 @@ export default function PlayerComparison() {
           {/* Verdict Banner */}
           <div className="flex items-center justify-between border-t border-b border-surface-800 py-4">
             <div className="flex items-center gap-3">
-              <div className={`w-3 h-3 rounded-full ${winsA > winsB ? "bg-brand-500" : winsB > winsA ? "bg-brand-500" : "bg-surface-500"}`} />
+              <div
+                className={`w-3 h-3 rounded-full ${winsA > winsB ? "bg-brand-500" : winsB > winsA ? "bg-brand-500" : "bg-surface-500"}`}
+              />
               <div>
                 <p className="text-sm font-semibold text-surface-100">
                   {winsA > winsB
                     ? `${a.web_name} wins ${winsA} of 7 key metrics`
                     : winsB > winsA
-                    ? `${b.web_name} wins ${winsB} of 7 key metrics`
-                    : "Dead heat across key metrics"
-                  }
+                      ? `${b.web_name} wins ${winsB} of 7 key metrics`
+                      : "Dead heat across key metrics"}
                 </p>
                 <p className="text-xs text-surface-500 mt-0.5">
-                  Based on predicted points, form, season total, value, fixture difficulty, xG, and xA
+                  Based on predicted points, form, season total, value, fixture difficulty, xG, and
+                  xA
                 </p>
               </div>
             </div>
@@ -380,12 +421,35 @@ export default function PlayerComparison() {
                   <span className="text-sm font-semibold text-surface-300">{b.web_name}</span>
                 </div>
 
-                <ComparisonBar label="Predicted Points" valueA={a.predicted_points} valueB={b.predicted_points} />
+                <ComparisonBar
+                  label="Predicted Points"
+                  valueA={a.predicted_points}
+                  valueB={b.predicted_points}
+                />
                 <ComparisonBar label="Form" valueA={a.form} valueB={b.form} />
-                <ComparisonBar label="Total Points" valueA={a.total_points} valueB={b.total_points} />
-                <ComparisonBar label="Price" valueA={a.value} valueB={b.value} format="price" higherIsBetter={false} />
-                <ComparisonBar label="Pts / £m" valueA={parseFloat(valA)} valueB={parseFloat(valB)} />
-                <ComparisonBar label="Ownership" valueA={a.selected_by_percent} valueB={b.selected_by_percent} format="pct" />
+                <ComparisonBar
+                  label="Total Points"
+                  valueA={a.total_points}
+                  valueB={b.total_points}
+                />
+                <ComparisonBar
+                  label="Price"
+                  valueA={a.value}
+                  valueB={b.value}
+                  format="price"
+                  higherIsBetter={false}
+                />
+                <ComparisonBar
+                  label="Pts / £m"
+                  valueA={parseFloat(valA)}
+                  valueB={parseFloat(valB)}
+                />
+                <ComparisonBar
+                  label="Ownership"
+                  valueA={a.selected_by_percent}
+                  valueB={b.selected_by_percent}
+                  format="pct"
+                />
                 <ComparisonBar label="xG" valueA={a.xG} valueB={b.xG} />
                 <ComparisonBar label="xA" valueA={a.xA} valueB={b.xA} />
                 <ComparisonBar label="Goals" valueA={a.goals} valueB={b.goals} format="int" />
@@ -393,7 +457,12 @@ export default function PlayerComparison() {
                 <ComparisonBar label="Bonus" valueA={a.bonus} valueB={b.bonus} format="int" />
                 <ComparisonBar label="ICT Index" valueA={a.ict_index} valueB={b.ict_index} />
                 <ComparisonBar label="Minutes" valueA={a.minutes} valueB={b.minutes} format="int" />
-                <ComparisonBar label="Fixture Difficulty" valueA={a.opponent_fdr} valueB={b.opponent_fdr} higherIsBetter={false} />
+                <ComparisonBar
+                  label="Fixture Difficulty"
+                  valueA={a.opponent_fdr}
+                  valueB={b.opponent_fdr}
+                  higherIsBetter={false}
+                />
               </>
             ) : (
               <div className="flex flex-col items-center gap-4 py-4">
@@ -401,11 +470,17 @@ export default function PlayerComparison() {
                 {/* Legend */}
                 <div className="flex items-center gap-6">
                   <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full" style={{ background: "rgb(var(--brand-400))" }} />
+                    <span
+                      className="w-2.5 h-2.5 rounded-full"
+                      style={{ background: "rgb(var(--brand-400))" }}
+                    />
                     <span className="text-sm text-surface-300">{a.web_name}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full" style={{ background: "rgb(var(--info-400))" }} />
+                    <span
+                      className="w-2.5 h-2.5 rounded-full"
+                      style={{ background: "rgb(var(--info-400))" }}
+                    />
                     <span className="text-sm text-surface-300">{b.web_name}</span>
                   </div>
                 </div>
@@ -421,7 +496,10 @@ export default function PlayerComparison() {
                 const diff = p.goals - p.xG;
                 const overPerforming = diff > 0;
                 return (
-                  <div key={p.id} className="flex items-center justify-between py-2 border-b border-surface-800/50 last:border-0">
+                  <div
+                    key={p.id}
+                    className="flex items-center justify-between py-2 border-b border-surface-800/50 last:border-0"
+                  >
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-surface-300">{p.web_name}</span>
                     </div>
@@ -455,9 +533,7 @@ export default function PlayerComparison() {
                   <div key={p.id} className="py-2 border-b border-surface-800/50 last:border-0">
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-surface-300">{p.web_name}</span>
-                      <span className="text-sm font-bold text-surface-100">
-                        {ptsPerMil} pts/£m
-                      </span>
+                      <span className="text-sm font-bold text-surface-100">{ptsPerMil} pts/£m</span>
                     </div>
                     <div className="flex items-center justify-between mt-1">
                       <span className="text-xs text-surface-500">Season total</span>
@@ -520,7 +596,10 @@ export default function PlayerComparison() {
           </div>
         </>
       ) : (
-        <EmptyState title="No players selected" message="Select two players above to compare them." />
+        <EmptyState
+          title="No players selected"
+          message="Select two players above to compare them."
+        />
       )}
     </div>
   );

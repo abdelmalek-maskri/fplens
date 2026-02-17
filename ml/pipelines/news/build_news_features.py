@@ -30,8 +30,13 @@ FPL_DATA_PATH = Path("data/features/extended_features.csv")
 OUTPUT_PATH = Path("data/features/news_features.csv")
 
 NEWS_SEASONS = [
-    "2018-19", "2019-20", "2020-21", "2021-22",
-    "2022-23", "2023-24", "2024-25",
+    "2018-19",
+    "2019-20",
+    "2020-21",
+    "2021-22",
+    "2022-23",
+    "2023-24",
+    "2024-25",
 ]
 
 NEWS_FEATURE_COLS = [
@@ -68,8 +73,13 @@ def compute_gw_boundaries(season: str) -> pd.DataFrame:
     rows = []
     gws = sorted(gw_starts.index)
     for i, gw in enumerate(gws):
-        gw_start = gw_starts[gws[i - 1]] if i > 0 else pd.Timestamp(
-            f"{season[:4]}-07-01", tz="UTC",
+        gw_start = (
+            gw_starts[gws[i - 1]]
+            if i > 0
+            else pd.Timestamp(
+                f"{season[:4]}-07-01",
+                tz="UTC",
+            )
         )
         gw_end = gw_starts[gw]
         rows.append({"GW": gw, "gw_start": gw_start, "gw_end": gw_end})
@@ -91,15 +101,15 @@ def aggregate_links_to_gw(
         return pd.DataFrame()
 
     season_links["published_date"] = pd.to_datetime(
-        season_links["published_date"], utc=True,
+        season_links["published_date"],
+        utc=True,
     )
 
     rows = []
     for _, gw_row in gw_bounds.iterrows():
         gw = int(gw_row["GW"])
-        mask = (
-            (season_links["published_date"] >= gw_row["gw_start"])
-            & (season_links["published_date"] < gw_row["gw_end"])
+        mask = (season_links["published_date"] >= gw_row["gw_start"]) & (
+            season_links["published_date"] < gw_row["gw_end"]
         )
         window = season_links[mask]
 
@@ -107,18 +117,20 @@ def aggregate_links_to_gw(
             continue
 
         for element, group in window.groupby("element"):
-            rows.append({
-                "season": season,
-                "GW": gw,
-                "element": int(element),
-                "news_mentioned": 1,
-                "news_mention_count": len(group),
-                "news_title_mentions": int(group["in_title"].sum()),
-                "news_avg_relevance": round(group["relevance_score"].mean(), 4),
-                "news_sentiment_pos": round(group["sentiment_pos"].mean(), 4),
-                "news_sentiment_neg": round(group["sentiment_neg"].mean(), 4),
-                "news_injury_context": int(group["has_injury_context"].any()),
-            })
+            rows.append(
+                {
+                    "season": season,
+                    "GW": gw,
+                    "element": int(element),
+                    "news_mentioned": 1,
+                    "news_mention_count": len(group),
+                    "news_title_mentions": int(group["in_title"].sum()),
+                    "news_avg_relevance": round(group["relevance_score"].mean(), 4),
+                    "news_sentiment_pos": round(group["sentiment_pos"].mean(), 4),
+                    "news_sentiment_neg": round(group["sentiment_neg"].mean(), 4),
+                    "news_injury_context": int(group["has_injury_context"].any()),
+                }
+            )
 
     return pd.DataFrame(rows)
 
@@ -157,8 +169,7 @@ def run() -> None:
 
         n_gws = features["GW"].nunique() if not features.empty else 0
         n_players = features["element"].nunique() if not features.empty else 0
-        print(f"  {season}: {len(features):,} rows "
-              f"({n_players} players across {n_gws} GWs)")
+        print(f"  {season}: {len(features):,} rows ({n_players} players across {n_gws} GWs)")
 
     if not all_features:
         print("\nNo features generated. Check links and fixture data.")
@@ -192,12 +203,9 @@ def run() -> None:
     print(f"{'=' * 60}")
     print(f"Output: {OUTPUT_PATH}")
     print(f"Shape:  {full.shape}")
-    print(f"Player-GW rows with mentions: {len(mentioned):,} / {len(full):,} "
-          f"({len(mentioned)/len(full)*100:.1f}%)")
-    print(f"Mean articles per mentioned player-GW: "
-          f"{mentioned['news_mention_count'].mean():.2f}")
-    print(f"Players with injury context: "
-          f"{mentioned['news_injury_context'].sum():,}")
+    print(f"Player-GW rows with mentions: {len(mentioned):,} / {len(full):,} ({len(mentioned) / len(full) * 100:.1f}%)")
+    print(f"Mean articles per mentioned player-GW: {mentioned['news_mention_count'].mean():.2f}")
+    print(f"Players with injury context: {mentioned['news_injury_context'].sum():,}")
 
 
 if __name__ == "__main__":

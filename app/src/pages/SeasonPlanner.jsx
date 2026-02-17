@@ -28,23 +28,31 @@ export default function SeasonPlanner() {
   const remaining = BUDGET - spent;
   const posCounts = useMemo(() => {
     const c = { GK: 0, DEF: 0, MID: 0, FWD: 0 };
-    squad.forEach((p) => { c[p.position]++; });
+    squad.forEach((p) => {
+      c[p.position]++;
+    });
     return c;
   }, [squad]);
   const teamCounts = useMemo(() => {
     const c = {};
-    squad.forEach((p) => { c[p.team] = (c[p.team] || 0) + 1; });
+    squad.forEach((p) => {
+      c[p.team] = (c[p.team] || 0) + 1;
+    });
     return c;
   }, [squad]);
-  const totalPredicted = useMemo(() =>
-    squad.reduce((s, p) => s + (horizon === 1 ? p.predicted_1gw : p.predicted_6gw * (horizon / 6)), 0),
+  const totalPredicted = useMemo(
+    () =>
+      squad.reduce(
+        (s, p) => s + (horizon === 1 ? p.predicted_1gw : p.predicted_6gw * (horizon / 6)),
+        0
+      ),
     [squad, horizon]
   );
 
   // Get predicted pts based on horizon
   const getPredicted = (p) => {
     if (horizon === 1) return p.predicted_1gw;
-    return (p.predicted_6gw * (horizon / 6));
+    return p.predicted_6gw * (horizon / 6);
   };
 
   // Filtered & sorted player pool
@@ -54,18 +62,26 @@ export default function SeasonPlanner() {
     if (posFilter !== "ALL") pool = pool.filter((p) => p.position === posFilter);
     if (search) {
       const q = search.toLowerCase();
-      pool = pool.filter((p) => p.web_name.toLowerCase().includes(q) || p.team.toLowerCase().includes(q));
+      pool = pool.filter(
+        (p) => p.web_name.toLowerCase().includes(q) || p.team.toLowerCase().includes(q)
+      );
     }
-    const sortKey = sortBy === "predicted" ? (p) => getPredicted(p) : sortBy === "value" ? (p) => -p.value : (p) => p.form;
+    const sortKey =
+      sortBy === "predicted"
+        ? (p) => getPredicted(p)
+        : sortBy === "value"
+          ? (p) => -p.value
+          : (p) => p.form;
     return [...pool].sort((a, b) => sortKey(b) - sortKey(a));
   }, [playerPool, posFilter, sortBy, search, horizon]);
 
-  if (isLoading) return (
-    <div className="space-y-6">
-      <SkeletonStatStrip items={3} />
-      <SkeletonTable rows={10} cols={7} />
-    </div>
-  );
+  if (isLoading)
+    return (
+      <div className="space-y-6">
+        <SkeletonStatStrip items={3} />
+        <SkeletonTable rows={10} cols={7} />
+      </div>
+    );
   if (error) return <ErrorState message="Failed to load season data." />;
   if (!plannerData) return null;
 
@@ -106,7 +122,10 @@ export default function SeasonPlanner() {
     let budget = BUDGET - current.reduce((s, p) => s + p.value, 0);
     const counts = { GK: 0, DEF: 0, MID: 0, FWD: 0 };
     const teams = {};
-    current.forEach((p) => { counts[p.position]++; teams[p.team] = (teams[p.team] || 0) + 1; });
+    current.forEach((p) => {
+      counts[p.position]++;
+      teams[p.team] = (teams[p.team] || 0) + 1;
+    });
 
     // Sort pool by predicted pts per million (value metric)
     const sorted = [...playerPool]
@@ -132,7 +151,9 @@ export default function SeasonPlanner() {
       {/* Budget bar */}
       <div className="flex items-center gap-5 flex-wrap py-3 border-b border-surface-800">
         <div>
-          <span className="text-lg font-bold text-surface-100 font-data tabular-nums">£{spent.toFixed(1)}m</span>
+          <span className="text-lg font-bold text-surface-100 font-data tabular-nums">
+            £{spent.toFixed(1)}m
+          </span>
           <span className="text-xs text-surface-500 ml-1">spent</span>
         </div>
         <div className="flex-1 h-2 bg-surface-800 rounded-full overflow-hidden min-w-[120px]">
@@ -142,14 +163,18 @@ export default function SeasonPlanner() {
           />
         </div>
         <div>
-          <span className={`text-lg font-bold font-data tabular-nums ${remaining < 0 ? "text-danger-400" : "text-success-400"}`}>
+          <span
+            className={`text-lg font-bold font-data tabular-nums ${remaining < 0 ? "text-danger-400" : "text-success-400"}`}
+          >
             £{remaining.toFixed(1)}m
           </span>
           <span className="text-xs text-surface-500 ml-1">remaining</span>
         </div>
         <div className="w-px h-4 bg-surface-700" />
         <div>
-          <span className="text-lg font-bold text-brand-400 font-data tabular-nums">{totalPredicted.toFixed(1)}</span>
+          <span className="text-lg font-bold text-brand-400 font-data tabular-nums">
+            {totalPredicted.toFixed(1)}
+          </span>
           <span className="text-xs text-surface-500 ml-1">total predicted pts</span>
         </div>
       </div>
@@ -163,14 +188,18 @@ export default function SeasonPlanner() {
             return (
               <div key={pos} className="flex items-center gap-1.5">
                 <span className={`text-xs font-medium ${POSITION_COLORS[pos]}`}>{pos}</span>
-                <span className={`text-sm font-data tabular-nums ${full ? "text-success-400" : "text-surface-300"}`}>
+                <span
+                  className={`text-sm font-data tabular-nums ${full ? "text-success-400" : "text-surface-300"}`}
+                >
                   {count}/{limit}
                 </span>
               </div>
             );
           })}
           <div className="w-px h-4 bg-surface-700" />
-          <span className={`text-xs ${squad.length >= 15 ? "text-success-400" : "text-surface-500"}`}>
+          <span
+            className={`text-xs ${squad.length >= 15 ? "text-success-400" : "text-surface-500"}`}
+          >
             {squad.length}/15 players
           </span>
         </div>
@@ -217,11 +246,11 @@ export default function SeasonPlanner() {
       <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6">
         {/* Squad */}
         <div>
-          <span className="section-label">
-            Your squad
-          </span>
+          <span className="section-label">Your squad</span>
           {squad.length === 0 ? (
-            <p className="text-sm text-surface-600 mt-3 py-8 text-center">Add players from the pool</p>
+            <p className="text-sm text-surface-600 mt-3 py-8 text-center">
+              Add players from the pool
+            </p>
           ) : (
             <div className="mt-3 space-y-0">
               {["GK", "DEF", "MID", "FWD"].map((pos) => {
@@ -231,13 +260,19 @@ export default function SeasonPlanner() {
                   <div key={pos}>
                     <div className="flex items-center gap-2 py-1.5">
                       <span className={`text-2xs font-medium ${POSITION_COLORS[pos]}`}>{pos}</span>
-                      <span className="text-2xs text-surface-600">{posPlayers.length}/{POS_LIMITS[pos]}</span>
+                      <span className="text-2xs text-surface-600">
+                        {posPlayers.length}/{POS_LIMITS[pos]}
+                      </span>
                     </div>
                     {posPlayers.map((p) => (
                       <div
                         key={p.element}
                         className="flex items-center gap-2 py-1.5 border-b border-surface-800/40 last:border-0 group"
-                        style={{ borderLeftColor: TEAM_COLORS[p.team], borderLeftWidth: 2, paddingLeft: 8 }}
+                        style={{
+                          borderLeftColor: TEAM_COLORS[p.team],
+                          borderLeftWidth: 2,
+                          paddingLeft: 8,
+                        }}
                       >
                         <TeamBadge team={p.team} size="sm" />
                         <span
@@ -256,8 +291,18 @@ export default function SeasonPlanner() {
                           onClick={() => removePlayer(p.element)}
                           className="text-surface-600 hover:text-danger-400 transition-colors p-0.5 opacity-0 group-hover:opacity-100"
                         >
-                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          <svg
+                            className="w-3.5 h-3.5"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M6 18L18 6M6 6l12 12"
+                            />
                           </svg>
                         </button>
                       </div>
@@ -272,9 +317,7 @@ export default function SeasonPlanner() {
         {/* Player pool */}
         <div>
           <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-            <span className="section-label">
-              Player pool
-            </span>
+            <span className="section-label">Player pool</span>
             <div className="flex items-center gap-3">
               <input
                 type="text"
@@ -305,7 +348,9 @@ export default function SeasonPlanner() {
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-surface-700">
-                  <th scope="col" className="py-2 pr-2 text-xs text-surface-500 font-medium">Player</th>
+                  <th scope="col" className="py-2 pr-2 text-xs text-surface-500 font-medium">
+                    Player
+                  </th>
                   <th
                     className={`py-2 px-2 text-xs font-medium text-right cursor-pointer transition-colors ${sortBy === "value" ? "text-brand-400" : "text-surface-500 hover:text-surface-300"}`}
                     onClick={() => setSortBy("value")}
@@ -318,14 +363,24 @@ export default function SeasonPlanner() {
                   >
                     Pred ({horizon}GW)
                   </th>
-                  <th scope="col" className="py-2 px-2 text-xs text-surface-500 font-medium text-right">Pts/£m</th>
+                  <th
+                    scope="col"
+                    className="py-2 px-2 text-xs text-surface-500 font-medium text-right"
+                  >
+                    Pts/£m
+                  </th>
                   <th
                     className={`py-2 px-2 text-xs font-medium text-right cursor-pointer transition-colors ${sortBy === "form" ? "text-brand-400" : "text-surface-500 hover:text-surface-300"}`}
                     onClick={() => setSortBy("form")}
                   >
                     Form
                   </th>
-                  <th scope="col" className="py-2 px-2 text-xs text-surface-500 font-medium text-right">Own%</th>
+                  <th
+                    scope="col"
+                    className="py-2 px-2 text-xs text-surface-500 font-medium text-right"
+                  >
+                    Own%
+                  </th>
                   <th scope="col" className="py-2 pl-2 w-8"></th>
                 </tr>
               </thead>
@@ -354,7 +409,9 @@ export default function SeasonPlanner() {
                           >
                             {p.web_name}
                           </span>
-                          <span className={`text-2xs ${POSITION_COLORS[p.position]}`}>{p.position}</span>
+                          <span className={`text-2xs ${POSITION_COLORS[p.position]}`}>
+                            {p.position}
+                          </span>
                         </div>
                       </td>
                       <td className="py-2 px-2 text-right text-surface-300 font-data tabular-nums">

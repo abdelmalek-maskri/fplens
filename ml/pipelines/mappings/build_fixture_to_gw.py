@@ -26,7 +26,7 @@ def run_one(season: str) -> Path:
         fx = pd.to_numeric(df["fixture"], errors="coerce").dropna().astype(int)
         rows.append(pd.DataFrame({"fixture": fx.unique(), "GW": gw}))
 
-    #one row per fixture
+    # one row per fixture
     m = pd.concat(rows, ignore_index=True).drop_duplicates("fixture")
 
     out = Path(f"data/processed/mappings/fixture_to_gw_{season}.csv")
@@ -40,7 +40,6 @@ def run_one(season: str) -> Path:
 def main():
     for season in SEASONS_ALL:
         run_one(season)
-    
 
 
 if __name__ == "__main__":

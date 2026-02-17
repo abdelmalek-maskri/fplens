@@ -8,7 +8,9 @@ Notes:
 """
 
 from pathlib import Path
+
 import pandas as pd
+
 from ml.config.seasons import SEASONS_ALL
 from ml.utils.io import find_latest_snapshot
 from ml.utils.name_normalize import norm
@@ -23,7 +25,7 @@ def run_one(season: str, snapshot: Path) -> Path:
     year = int(season.split("-")[0])
     season_dir = snapshot / season
     players_raw_path = season_dir / "players_raw.csv"
-    
+
     if not players_raw_path.exists():
         raise FileNotFoundError(f"Missing FPL players_raw.csv: {players_raw_path}")
 
@@ -58,8 +60,7 @@ def run_one(season: str, snapshot: Path) -> Path:
     # - name_full: first + second
     # - name_web: web_name (often a shortened or display name)
     fpl["name_full"] = (
-        fpl.get("first_name", "").fillna("").astype(str) + " " +
-        fpl.get("second_name", "").fillna("").astype(str)
+        fpl.get("first_name", "").fillna("").astype(str) + " " + fpl.get("second_name", "").fillna("").astype(str)
     ).str.strip()
     fpl["name_web"] = fpl.get("web_name", "").fillna("").astype(str)
 
@@ -137,7 +138,7 @@ def run_one(season: str, snapshot: Path) -> Path:
 
     unmatched_fpl = fpl[~fpl["element"].isin(matched_by_ab)].copy()
 
-    #also identify Understat players already claimed by A or B
+    # also identify Understat players already claimed by A or B
     claimed_us_ids = set()
     for df in [out1, out2]:
         claimed_us_ids |= set(df["us_player_id"].dropna().astype(int))
@@ -145,11 +146,7 @@ def run_one(season: str, snapshot: Path) -> Path:
     unclaimed_us = us[~us["us_player_id"].isin(claimed_us_ids)].copy()
 
     # Precompute token sets for unclaimed Understat players
-    us_tokens = {
-        row.us_player_id: set(row.n_player.split())
-        for row in unclaimed_us.itertuples()
-        if row.n_player
-    }
+    us_tokens = {row.us_player_id: set(row.n_player.split()) for row in unclaimed_us.itertuples() if row.n_player}
 
     token_rows = []
     for row in unmatched_fpl.itertuples():
@@ -162,16 +159,18 @@ def run_one(season: str, snapshot: Path) -> Path:
             shorter, longer = (us_toks, fpl_toks) if len(us_toks) <= len(fpl_toks) else (fpl_toks, us_toks)
             if shorter <= longer:  # subset check
                 us_row = unclaimed_us.loc[unclaimed_us["us_player_id"] == us_id].iloc[0]
-                token_rows.append({
-                    "element": row.element,
-                    "name_full": row.name_full,
-                    "web_name": row.name_web,
-                    "team": row.team,
-                    "us_player_id": us_id,
-                    "player_name": us_row["player_name"],
-                    "team_title": us_row.get("team_title", ""),
-                    "match_type": "token_subset",
-                })
+                token_rows.append(
+                    {
+                        "element": row.element,
+                        "name_full": row.name_full,
+                        "web_name": row.name_web,
+                        "team": row.team,
+                        "us_player_id": us_id,
+                        "player_name": us_row["player_name"],
+                        "team_title": us_row.get("team_title", ""),
+                        "match_type": "token_subset",
+                    }
+                )
 
     if token_rows:
         out3 = pd.DataFrame(token_rows)
@@ -189,12 +188,7 @@ def run_one(season: str, snapshot: Path) -> Path:
     comb["has_match"] = comb["us_player_id"].notna().astype(int)
 
     # Prefer full_name > web_name > token_subset when multiple exist
-    comb["priority"] = (
-        comb["match_type"]
-        .map({"full_name": 0, "web_name": 1, "token_subset": 2})
-        .fillna(9)
-        .astype(int)
-    )
+    comb["priority"] = comb["match_type"].map({"full_name": 0, "web_name": 1, "token_subset": 2}).fillna(9).astype(int)
 
     # Sort so "best" row is first per element:
     # - matched rows first
@@ -238,6 +232,7 @@ def main() -> None:
     for season in SEASONS_ALL:
         print("\n=== Processing season:", season, "===")
         run_one(season, snap)
+
 
 if __name__ == "__main__":
     main()

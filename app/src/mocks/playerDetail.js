@@ -55,9 +55,24 @@ export const mockPlayers = {
       { feature: "injury_flag", value: "None", impact: 0.0 },
     ],
     news_mentions: [
-      { headline: "Haaland in contention for Ballon d'Or after record-breaking run", source: "The Guardian", date: "2025-02-08", sentiment: 0.85 },
-      { headline: "Manchester City eye title charge as Haaland leads scoring charts", source: "The Guardian", date: "2025-02-05", sentiment: 0.72 },
-      { headline: "Guardiola praises Haaland's work rate in emphatic victory", source: "The Guardian", date: "2025-02-01", sentiment: 0.68 },
+      {
+        headline: "Haaland in contention for Ballon d'Or after record-breaking run",
+        source: "The Guardian",
+        date: "2025-02-08",
+        sentiment: 0.85,
+      },
+      {
+        headline: "Manchester City eye title charge as Haaland leads scoring charts",
+        source: "The Guardian",
+        date: "2025-02-05",
+        sentiment: 0.72,
+      },
+      {
+        headline: "Guardiola praises Haaland's work rate in emphatic victory",
+        source: "The Guardian",
+        date: "2025-02-01",
+        sentiment: 0.68,
+      },
     ],
   },
   3: {
@@ -112,8 +127,18 @@ export const mockPlayers = {
       { feature: "news_sentiment", value: "0.72", impact: 0.1 },
     ],
     news_mentions: [
-      { headline: "Salah contract saga continues as Liverpool weigh options", source: "The Guardian", date: "2025-02-07", sentiment: -0.15 },
-      { headline: "Salah scores twice in dominant Liverpool display", source: "The Guardian", date: "2025-02-03", sentiment: 0.82 },
+      {
+        headline: "Salah contract saga continues as Liverpool weigh options",
+        source: "The Guardian",
+        date: "2025-02-07",
+        sentiment: -0.15,
+      },
+      {
+        headline: "Salah scores twice in dominant Liverpool display",
+        source: "The Guardian",
+        date: "2025-02-03",
+        sentiment: 0.82,
+      },
     ],
   },
 };

@@ -2,7 +2,9 @@ import { Fragment } from "react";
 
 export default function StatsStrip({ items, className = "" }) {
   return (
-    <div className={`flex items-center gap-5 flex-wrap py-3 border-b border-surface-800 ${className}`}>
+    <div
+      className={`flex items-center gap-5 flex-wrap py-3 border-b border-surface-800 ${className}`}
+    >
       {items.map((item, idx) => (
         <Fragment key={idx}>
           {idx > 0 && <div className="w-px h-5 bg-surface-700" />}

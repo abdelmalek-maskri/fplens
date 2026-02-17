@@ -1,11 +1,14 @@
 # ml/pipelines/fpl/build_fpl_fixtures_from_gws.py
 
 from pathlib import Path
+
 import pandas as pd
+
 from ml.config.seasons import SEASONS_ALL
 from ml.utils.io import find_latest_snapshot, safe_read_csv
 
 SNAPSHOT_ROOT = Path("data/raw/fpl")
+
 
 def build_element_to_team_map(season_dir: Path) -> pd.Series:
     # Build mapping: element_id -> team_id (FPL team integer)
@@ -64,7 +67,7 @@ def run_one(season: str, snapshot: Path) -> Path:
     if not gw_files:
         raise FileNotFoundError(f"No gw*.csv files found in {gws_dir}")
 
-    #always build element->team from players_raw 
+    # always build element->team from players_raw
     element_to_team = build_element_to_team_map(season_dir)
 
     rows = []
@@ -91,7 +94,7 @@ def run_one(season: str, snapshot: Path) -> Path:
             df["team"] = team_from_map
         else:
             df["team"] = pd.to_numeric(df["team"], errors="coerce")
-            
+
             # if team is mostly missing, replace it entirely
             if df["team"].isna().mean() > 0.50:
                 df["team"] = team_from_map
@@ -104,23 +107,25 @@ def run_one(season: str, snapshot: Path) -> Path:
         dfx = df.dropna(subset=["fixture", "kickoff_time", "team", "opponent_team"]).copy()
 
         if dfx.empty:
-            print(f"{season} {f.name}: empty after dropna. "
-                  f"team_na={df['team'].isna().mean():.3f}, "
-                  f"kickoff_na={df['kickoff_time'].isna().mean():.3f}, "
-                  f"opp_na={df['opponent_team'].isna().mean():.3f}")
+            print(
+                f"{season} {f.name}: empty after dropna. "
+                f"team_na={df['team'].isna().mean():.3f}, "
+                f"kickoff_na={df['kickoff_time'].isna().mean():.3f}, "
+                f"opp_na={df['opponent_team'].isna().mean():.3f}"
+            )
             continue
 
         dfx["fixture"] = dfx["fixture"].astype(int)
         dfx["team"] = dfx["team"].astype(int)
         dfx["opponent_team"] = dfx["opponent_team"].astype(int)
 
-        #choose one home-side record per fixture
+        # choose one home-side record per fixture
         home_side = dfx[dfx["was_home"]][
             ["fixture", "kickoff_time", "team", "opponent_team", "team_h_score", "team_a_score"]
         ].copy()
 
         if home_side.empty:
-            #fallback: use away-side rows and swap ids
+            # fallback: use away-side rows and swap ids
             away_side = dfx[~dfx["was_home"]][
                 ["fixture", "kickoff_time", "team", "opponent_team", "team_h_score", "team_a_score"]
             ].copy()
@@ -140,7 +145,7 @@ def run_one(season: str, snapshot: Path) -> Path:
         rows.append(one_per_fixture)
 
     if not rows:
-        #hard fail if no fixture rows produced
+        # hard fail if no fixture rows produced
         raise RuntimeError(
             f"{season}: produced 0 fixture rows from gw files. "
             f"Check that gw*.csv contain element ids matching players_raw and valid kickoff_time."
@@ -148,7 +153,7 @@ def run_one(season: str, snapshot: Path) -> Path:
 
     fx = pd.concat(rows, ignore_index=True)
 
-    #one row per fixture 
+    # one row per fixture
     fx = fx.sort_values(["fixture", "kickoff_time"]).drop_duplicates(subset=["fixture"], keep="first")
     fx = fx.sort_values(["kickoff_time", "fixture"]).reset_index(drop=True)
     fx.to_csv(out, index=False)
@@ -157,10 +162,12 @@ def run_one(season: str, snapshot: Path) -> Path:
     print(fx.head(8).to_string(index=False))
     return out
 
+
 def main():
     snap = find_latest_snapshot(SNAPSHOT_ROOT)
     for season in SEASONS_ALL:
         run_one(season, snap)
+
 
 if __name__ == "__main__":
     main()

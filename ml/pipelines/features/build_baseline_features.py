@@ -1,8 +1,8 @@
 # ml/pipelines/features/build_baseline_features.py (13)
 
 from pathlib import Path
-import pandas as pd
 
+import pandas as pd
 
 IN_PATH = Path("data/processed/merged/fpl_with_target.csv")
 OUT_PATH = Path("data/features/baseline_features.csv")
@@ -44,7 +44,7 @@ def run() -> None:
     # Add Understat numeric columns automatically (e.g. us_xg, us_xa, ...)
     us_cols = [c for c in df.columns if c.startswith("us_")]
     num_cols = []
-    for c in (BASE_NUM_COLS + us_cols):
+    for c in BASE_NUM_COLS + us_cols:
         if c in df.columns:
             df[c] = pd.to_numeric(df[c], errors="coerce")
             num_cols.append(c)
@@ -56,9 +56,7 @@ def run() -> None:
     # Rolling mean features (history only)
     for w in ROLL_WINDOWS:
         for col in num_cols:
-            df[f"{col}_roll{w}"] = g[col].transform(
-                lambda x: x.shift(1).rolling(window=w, min_periods=1).mean()
-            )
+            df[f"{col}_roll{w}"] = g[col].transform(lambda x, _w=w: x.shift(1).rolling(window=_w, min_periods=1).mean())
 
     # Played last GW
     if "minutes_lag1" in df.columns:
@@ -77,8 +75,15 @@ def run() -> None:
     df = df.drop(columns=[c for c in df.columns if c.startswith("played_lag1.")], errors="ignore")
 
     keep = [
-        "season", "GW", "element", "name", "position", "team",
-        "was_home", "opponent_team", "value",
+        "season",
+        "GW",
+        "element",
+        "name",
+        "position",
+        "team",
+        "was_home",
+        "opponent_team",
+        "value",
         "points_next_gw",
         "played_lag1",
     ]

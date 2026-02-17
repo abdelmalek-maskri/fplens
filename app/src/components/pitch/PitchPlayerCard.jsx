@@ -33,9 +33,7 @@ export default function PitchPlayerCard({ player, onClick, isCaptain, isVice }) 
         {player.web_name}
       </div>
       <div className="bg-surface-800/80 px-2 py-0.5 rounded text-2xs text-center whitespace-nowrap">
-        <span className="text-brand-400 font-semibold">
-          {player.predicted_points.toFixed(1)}
-        </span>
+        <span className="text-brand-400 font-semibold">{player.predicted_points.toFixed(1)}</span>
         <span className="text-surface-400 mx-0.5">&middot;</span>
         <span className="text-surface-300">{player.opponent_name}</span>
       </div>

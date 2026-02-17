@@ -16,29 +16,29 @@ Usage:
 
 import json
 from pathlib import Path
+
 import joblib
 import numpy as np
 import pandas as pd
 
 from ml.config.eval_config import (
-    HOLDOUT_SEASON,
+    CAT_COLS,
     CV_SEASONS,
     DROP_COLS,
-    CAT_COLS,
+    HOLDOUT_SEASON,
     TARGET_COL,
 )
-from ml.utils.eval_metrics import full_evaluation, print_final_summary
-from ml.utils.statistical_tests import print_comparison
 from ml.evaluation.comprehensive_metrics import ComprehensiveEvaluator
 from ml.pipelines.injury.build_injury_features import FILL_DEFAULTS
 from ml.pipelines.news.build_news_features import NEWS_FEATURE_COLS
 from ml.pipelines.train.train_stacked_with_injury import (
+    N_INNER_FOLDS,
     StackedEnsembleInjury,
     evaluate_all_predictions,
     prepare_xy,
-    to_numeric,
-    N_INNER_FOLDS,
 )
+from ml.utils.eval_metrics import full_evaluation, print_final_summary
+from ml.utils.statistical_tests import print_comparison
 
 OUT_DIR = Path("outputs/experiments/ablation_injury")
 
@@ -104,12 +104,14 @@ def train_config(config_key: str, config: dict, out_dir: Path) -> dict:
     non_feature = set(injury_structured + injury_nlp + news_cols + [TARGET_COL] + DROP_COLS + ["GW"])
     baseline_cols = [c for c in df.columns if c not in non_feature]
 
-    print(f"\nFeature groups:")
+    print("\nFeature groups:")
     print(f"  Baseline features:           {len(baseline_cols)}")
     print(f"  Injury structured + temporal: {len(injury_structured)}")
     print(f"  Injury NLP (type dummies):    {len(injury_nlp)}")
     print(f"  News (Guardian):              {len(news_cols)}")
-    print(f"  Total:                        {len(baseline_cols) + len(injury_structured) + len(injury_nlp) + len(news_cols)}")
+    print(
+        f"  Total:                        {len(baseline_cols) + len(injury_structured) + len(injury_nlp) + len(news_cols)}"
+    )
 
     if "status_encoded" in df.columns:
         injury_seasons = sorted(df[df["status_encoded"].notna()]["season"].unique())
@@ -228,14 +230,12 @@ def train_config(config_key: str, config: dict, out_dir: Path) -> dict:
         y_true=y_test,
         y_pred=stacked_pred,
     )
-    (config_out_dir / "summary.json").write_text(
-        json.dumps(summary, indent=2, default=str)
-    )
+    (config_out_dir / "summary.json").write_text(json.dumps(summary, indent=2, default=str))
 
     print(f"\nOutputs saved to: {config_out_dir}")
-    print(f"model.joblib              — trained ensemble")
-    print(f"summary.json              — full metrics")
-    print(f"holdout_predictions.npz   — predictions for cross-config tests")
+    print("model.joblib              — trained ensemble")
+    print("summary.json              — full metrics")
+    print("holdout_predictions.npz   — predictions for cross-config tests")
     print(f"ablation_{config_key}_comprehensive.json — stratified + calibration + business")
 
     return {
@@ -256,6 +256,7 @@ def train_config(config_key: str, config: dict, out_dir: Path) -> dict:
 
 # -- Cross-config comparison --
 
+
 def print_comparison_table(results: dict) -> None:
     """Print ablation comparison table (runs after all configs are trained)."""
     configs = sorted(results.keys())
@@ -266,7 +267,7 @@ def print_comparison_table(results: dict) -> None:
 
     # Main metrics
     print(f"\n  {'Config':<6} {'Description':<30} {'Feats':<8} {'MAE':<10} {'RMSE':<10} {'R²':<10} {'Spearman'}")
-    print(f"  {'-'*6} {'-'*30} {'-'*8} {'-'*10} {'-'*10} {'-'*10} {'-'*10}")
+    print(f"  {'-' * 6} {'-' * 30} {'-' * 8} {'-' * 10} {'-' * 10} {'-' * 10} {'-' * 10}")
 
     for key in configs:
         r = results[key]
@@ -277,34 +278,38 @@ def print_comparison_table(results: dict) -> None:
         print(f"  {key:<6} {r['name']:<30} {r['n_features']:<8} {mae:<10.4f} {rmse:<10.4f} {r2:<10.4f} {rho:.4f}")
 
     # Stratified MAE breakdown
-    print(f"\n  {'Config':<6} {'Overall':<10} {'Played':<10} {'Not Play':<10} {'GK':<10} {'DEF':<10} {'MID':<10} {'FWD':<10} {'High Ret'}")
-    print(f"  {'-'*6} {'-'*10} {'-'*10} {'-'*10} {'-'*10} {'-'*10} {'-'*10} {'-'*10} {'-'*10}")
+    print(
+        f"\n  {'Config':<6} {'Overall':<10} {'Played':<10} {'Not Play':<10} {'GK':<10} {'DEF':<10} {'MID':<10} {'FWD':<10} {'High Ret'}"
+    )
+    print(f"  {'-' * 6} {'-' * 10} {'-' * 10} {'-' * 10} {'-' * 10} {'-' * 10} {'-' * 10} {'-' * 10} {'-' * 10}")
 
     for key in configs:
         s = results[key]["comprehensive"]["stratified"]
-        print(f"  {key:<6} "
-              f"{s['mae_overall']:<10.4f} "
-              f"{s['mae_played']:<10.4f} "
-              f"{s['mae_not_played']:<10.4f} "
-              f"{s.get('mae_gk', 0):<10.4f} "
-              f"{s.get('mae_def', 0):<10.4f} "
-              f"{s.get('mae_mid', 0):<10.4f} "
-              f"{s.get('mae_fwd', 0):<10.4f} "
-              f"{s.get('mae_high_return', 0):<10.4f}")
+        print(
+            f"  {key:<6} "
+            f"{s['mae_overall']:<10.4f} "
+            f"{s['mae_played']:<10.4f} "
+            f"{s['mae_not_played']:<10.4f} "
+            f"{s.get('mae_gk', 0):<10.4f} "
+            f"{s.get('mae_def', 0):<10.4f} "
+            f"{s.get('mae_mid', 0):<10.4f} "
+            f"{s.get('mae_fwd', 0):<10.4f} "
+            f"{s.get('mae_high_return', 0):<10.4f}"
+        )
 
     # Per-base-learner holdout MAE (compensatory masquerade check)
     if len(configs) >= 2:
         print(f"\n  {'Base Learner':<15}", end="")
         for key in configs:
-            print(f" {'Config '+key:<12}", end="")
+            print(f" {'Config ' + key:<12}", end="")
         if len(configs) == 2:
             print(f" {'Delta':<12}", end="")
         print()
-        print(f"  {'-'*15}", end="")
+        print(f"  {'-' * 15}", end="")
         for _ in configs:
-            print(f" {'-'*12}", end="")
+            print(f" {'-' * 12}", end="")
         if len(configs) == 2:
-            print(f" {'-'*12}", end="")
+            print(f" {'-' * 12}", end="")
         print()
 
         base_names = results[configs[0]]["base_names"]
@@ -316,7 +321,6 @@ def print_comparison_table(results: dict) -> None:
             for key in configs:
                 mae = results[key]["all_results"][bname]["mae"]
                 maes.append(mae)
-                marker = " *" if bname == results[key]["best_method"] else ""
                 print(f" {mae:<12.4f}", end="")
             if len(configs) == 2:
                 delta = maes[1] - maes[0]
@@ -327,11 +331,11 @@ def print_comparison_table(results: dict) -> None:
     if len(configs) >= 2:
         print(f"\n  {'Meta Coef':<15}", end="")
         for key in configs:
-            print(f" {'Config '+key:<12}", end="")
+            print(f" {'Config ' + key:<12}", end="")
         print()
-        print(f"  {'-'*15}", end="")
+        print(f"  {'-' * 15}", end="")
         for _ in configs:
-            print(f" {'-'*12}", end="")
+            print(f" {'-' * 12}", end="")
         print()
 
         base_names = results[configs[0]]["base_names"]
@@ -345,11 +349,11 @@ def print_comparison_table(results: dict) -> None:
     # Calibration comparison
     print(f"\n{'Calibration':<25}", end="")
     for key in configs:
-        print(f" {'Config '+key:<12}", end="")
+        print(f" {'Config ' + key:<12}", end="")
     print()
-    print(f"  {'-'*25}", end="")
+    print(f"  {'-' * 25}", end="")
     for _ in configs:
-        print(f" {'-'*12}", end="")
+        print(f" {'-' * 12}", end="")
     print()
 
     for metric, label in [
@@ -368,11 +372,11 @@ def print_comparison_table(results: dict) -> None:
     if "business" in results[configs[0]]["comprehensive"]:
         print(f"\n{'Captain Picks':<25}", end="")
         for key in configs:
-            print(f" {'Config '+key:<12}", end="")
+            print(f" {'Config ' + key:<12}", end="")
         print()
-        print(f"{'-'*25}", end="")
+        print(f"{'-' * 25}", end="")
         for _ in configs:
-            print(f" {'-'*12}", end="")
+            print(f" {'-' * 12}", end="")
         print()
 
         for metric, label in [
@@ -384,7 +388,7 @@ def print_comparison_table(results: dict) -> None:
             print(f"{label:<25}", end="")
             for key in configs:
                 val = results[key]["comprehensive"]["business"][metric]
-                print(f"{val*100:<11.1f}%", end="")
+                print(f"{val * 100:<11.1f}%", end="")
             print()
 
 
@@ -414,7 +418,7 @@ def print_statistical_tests(results: dict) -> dict:
 
     # Pairwise between non-baseline configs
     for i, key_i in enumerate(configs[1:], 1):
-        for key_j in configs[i + 1:]:
+        for key_j in configs[i + 1 :]:
             pair_name = f"{key_i}_vs_{key_j}"
             test_results[pair_name] = print_comparison(
                 name_a=f"Config {key_i}",
@@ -436,7 +440,7 @@ def print_statistical_tests(results: dict) -> dict:
         combined = mae_a - mae_d
         interaction = combined - (injury_alone + news_alone)
 
-        print(f"\nINCREMENTAL ANALYSIS")
+        print("\nINCREMENTAL ANALYSIS")
         print(f"Injury alone (A-B):    {injury_alone:+.4f}")
         print(f"News alone (A-C):      {news_alone:+.4f}")
         print(f"Combined (A-D):        {combined:+.4f}")
@@ -444,11 +448,11 @@ def print_statistical_tests(results: dict) -> dict:
         print(f"Interaction effect:     {interaction:+.4f}")
 
         if interaction > 0:
-            print(f"    -> Complementary (combined > sum of parts)")
+            print("    -> Complementary (combined > sum of parts)")
         elif interaction < 0:
-            print(f"    -> Redundant (combined < sum of parts)")
+            print("    -> Redundant (combined < sum of parts)")
         else:
-            print(f"    -> Purely additive")
+            print("    -> Purely additive")
 
         test_results["interaction"] = {
             "injury_alone": injury_alone,
@@ -511,9 +515,7 @@ def run(config_keys: list[str] | None = None) -> None:
         }
     ablation_summary["statistical_tests"] = test_results
 
-    (OUT_DIR / "ablation_summary.json").write_text(
-        json.dumps(ablation_summary, indent=2, default=str)
-    )
+    (OUT_DIR / "ablation_summary.json").write_text(json.dumps(ablation_summary, indent=2, default=str))
 
     print(f"\n{'=' * 70}")
     print("ABLATION COMPLETE")
@@ -521,11 +523,11 @@ def run(config_keys: list[str] | None = None) -> None:
     print(f"Outputs: {OUT_DIR}")
     for key in config_keys:
         print(f"config_{key}/")
-        print(f"model.joblib              — trained ensemble")
-        print(f"summary.json              — full metrics")
-        print(f"holdout_predictions.npz   — for cross-config tests")
+        print("model.joblib              — trained ensemble")
+        print("summary.json              — full metrics")
+        print("holdout_predictions.npz   — for cross-config tests")
         print(f"ablation_{key}_comprehensive.json")
-    print(f"ablation_summary.json        — cross-config comparison")
+    print("ablation_summary.json        — cross-config comparison")
 
 
 if __name__ == "__main__":
@@ -533,7 +535,9 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Injury & News Ablation Study")
     parser.add_argument(
-        "--configs", nargs="+", default=None,
+        "--configs",
+        nargs="+",
+        default=None,
         help="Config keys to run (e.g., A B). Default: all available.",
     )
     args = parser.parse_args()

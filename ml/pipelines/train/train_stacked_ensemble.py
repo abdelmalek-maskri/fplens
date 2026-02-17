@@ -11,6 +11,7 @@ Tests the impact of extended time windows:
 
 import json
 from pathlib import Path
+
 import joblib
 import numpy as np
 import pandas as pd
@@ -20,16 +21,13 @@ from sklearn.linear_model import Ridge
 from sklearn.model_selection import GroupKFold
 from xgboost import XGBRegressor
 
-
-
 from ml.config.eval_config import (
-    HOLDOUT_SEASON,
+    CAT_COLS,
     CV_SEASONS,
     DROP_COLS,
-    CAT_COLS,
+    HOLDOUT_SEASON,
     TARGET_COL,
 )
-
 from ml.utils.eval_metrics import (
     full_evaluation,
     print_final_summary,
@@ -39,6 +37,7 @@ IN_PATH = Path("data/features/extended_features.csv")
 OUT_DIR = Path("outputs/experiments/stacked_ensemble")
 
 N_INNER_FOLDS = 3
+
 
 def build_lgbm() -> LGBMRegressor:
     return LGBMRegressor(
@@ -117,12 +116,13 @@ def prepare_xy(df: pd.DataFrame):
 def to_numeric(X: pd.DataFrame) -> pd.DataFrame:
     X_num = X.copy()
     for c in CAT_COLS:
-        if c in X_num.columns and hasattr(X_num[c], 'cat'):
+        if c in X_num.columns and hasattr(X_num[c], "cat"):
             X_num[c] = X_num[c].cat.codes
         elif c in X_num.columns:
             X_num[c] = X_num[c].astype("category").cat.codes
     X_num = X_num.fillna(0)
     return X_num
+
 
 class StackedEnsemble:
     def __init__(self, n_inner_folds: int = 3):
@@ -138,7 +138,7 @@ class StackedEnsemble:
             "rf": (build_rf, "sklearn"),
             "ridge": (build_ridge, "sklearn"),
             "played_prob": (build_played_classifier, "classifier"),
-            "xgb" : (build_xgboost, "sklearn"),
+            "xgb": (build_xgboost, "sklearn"),
         }
         return learners
 
@@ -158,14 +158,14 @@ class StackedEnsemble:
         print(f"  Generating OOF predictions ({n_folds} inner folds, grouped by season)...")
         gkf = GroupKFold(n_splits=n_folds)
 
-        for fold_idx, (train_idx, val_idx) in enumerate(gkf.split(X_train, groups=groups)):
+        for _fold_idx, (train_idx, val_idx) in enumerate(gkf.split(X_train, groups=groups)):
             X_tr = X_train.iloc[train_idx]
             X_val = X_train.iloc[val_idx]
             X_tr_num = X_num.iloc[train_idx]
             X_val_num = X_num.iloc[val_idx]
             y_tr = y_train[train_idx]
 
-            for i, (name, (builder, ltype)) in enumerate(learners.items()):
+            for i, (_name, (builder, ltype)) in enumerate(learners.items()):
                 model = builder()
                 if ltype == "lgbm":
                     model.fit(X_tr, y_tr, categorical_feature=cat_cols)
@@ -262,7 +262,7 @@ def run():
     momentum_cols = [c for c in df.columns if "_momentum" in c]
     avail_cols = [c for c in df.columns if c in ["consecutive_starts", "minutes_trend", "games_since_start"]]
 
-    print(f"\nExtended feature groups:")
+    print("\nExtended feature groups:")
     print(f"  roll10 features:       {len(roll10_cols)}")
     print(f"  season_avg features:   {len(season_avg_cols)}")
     print(f"  momentum features:     {len(momentum_cols)}")
@@ -302,9 +302,9 @@ def run():
     best_method = min(results.keys(), key=lambda k: results[k]["mae"])
 
     # Print results
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("HOLDOUT RESULTS")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     print(f"\n{'Method':<15} {'MAE':<10} {'RMSE':<10} {'R²':<10}")
     print("-" * 45)
     for method in sorted(results.keys(), key=lambda x: results[x]["mae"]):
@@ -352,6 +352,7 @@ def run():
         eval_result=holdout_eval,
         output_dir=str(OUT_DIR),
     )
+
 
 if __name__ == "__main__":
     run()

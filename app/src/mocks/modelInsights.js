@@ -4,10 +4,43 @@
 // ============================================================
 
 export const modelVariants = [
-  { id: "baseline", name: "Baseline (LightGBM)", mae: 1.0597, rmse: 2.1262, r2: 0.2212, features: 106, description: "Single LightGBM with extended features" },
-  { id: "stacked", name: "Stacked Ensemble", mae: 1.0508, rmse: 2.0948, r2: 0.2441, features: 106, description: "6-model ensemble with Ridge meta-learner", best: true },
-  { id: "position", name: "Position-Specific", mae: 1.0713, rmse: 2.1346, r2: 0.2151, features: 106, description: "Separate models per position (GK/DEF/MID/FWD)" },
-  { id: "twohead", name: "Two-Head", mae: 1.0630, rmse: 2.1507, r2: 0.2032, features: 106, description: "Classifier × Regressor with soft combination" },
+  {
+    id: "baseline",
+    name: "Baseline (LightGBM)",
+    mae: 1.0597,
+    rmse: 2.1262,
+    r2: 0.2212,
+    features: 106,
+    description: "Single LightGBM with extended features",
+  },
+  {
+    id: "stacked",
+    name: "Stacked Ensemble",
+    mae: 1.0508,
+    rmse: 2.0948,
+    r2: 0.2441,
+    features: 106,
+    description: "6-model ensemble with Ridge meta-learner",
+    best: true,
+  },
+  {
+    id: "position",
+    name: "Position-Specific",
+    mae: 1.0713,
+    rmse: 2.1346,
+    r2: 0.2151,
+    features: 106,
+    description: "Separate models per position (GK/DEF/MID/FWD)",
+  },
+  {
+    id: "twohead",
+    name: "Two-Head",
+    mae: 1.063,
+    rmse: 2.1507,
+    r2: 0.2032,
+    features: 106,
+    description: "Classifier × Regressor with soft combination",
+  },
 ];
 
 export const baselines = [
@@ -17,17 +50,82 @@ export const baselines = [
 ];
 
 export const positionPerformance = [
-  { position: "GK", baseline: 0.7870, stacked: 0.7500, posSpecific: 0.7945, twohead: 0.8040, samples: 2705 },
-  { position: "DEF", baseline: 1.0163, stacked: 1.0205, posSpecific: 1.0322, twohead: 1.0172, samples: 8612 },
-  { position: "MID", baseline: 1.0256, stacked: 1.0093, posSpecific: 1.0250, twohead: 1.0276, samples: 11557 },
-  { position: "FWD", baseline: 1.1654, stacked: 1.1827, posSpecific: 1.1769, twohead: 1.1460, samples: 2844 },
+  {
+    position: "GK",
+    baseline: 0.787,
+    stacked: 0.75,
+    posSpecific: 0.7945,
+    twohead: 0.804,
+    samples: 2705,
+  },
+  {
+    position: "DEF",
+    baseline: 1.0163,
+    stacked: 1.0205,
+    posSpecific: 1.0322,
+    twohead: 1.0172,
+    samples: 8612,
+  },
+  {
+    position: "MID",
+    baseline: 1.0256,
+    stacked: 1.0093,
+    posSpecific: 1.025,
+    twohead: 1.0276,
+    samples: 11557,
+  },
+  {
+    position: "FWD",
+    baseline: 1.1654,
+    stacked: 1.1827,
+    posSpecific: 1.1769,
+    twohead: 1.146,
+    samples: 2844,
+  },
 ];
 
 export const ablationConfigs = [
-  { config: "A", name: "Baseline", description: "FPL stats only", mae: 1.0255, r2: 0.238, rho: 0.671, features: 106, color: "bg-surface-500" },
-  { config: "B", name: "+ Injury", description: "FPL API injury data", mae: 1.0163, r2: 0.245, rho: 0.684, features: 138, color: "bg-brand-500" },
-  { config: "C", name: "+ News", description: "Guardian NLP sentiment", mae: 1.0232, r2: 0.233, rho: 0.670, features: 113, color: "bg-warning-500" },
-  { config: "D", name: "+ Both", description: "Injury + News combined", mae: 1.0157, r2: 0.244, rho: 0.684, features: 145, color: "bg-info-500", best: true },
+  {
+    config: "A",
+    name: "Baseline",
+    description: "FPL stats only",
+    mae: 1.0255,
+    r2: 0.238,
+    rho: 0.671,
+    features: 106,
+    color: "bg-surface-500",
+  },
+  {
+    config: "B",
+    name: "+ Injury",
+    description: "FPL API injury data",
+    mae: 1.0163,
+    r2: 0.245,
+    rho: 0.684,
+    features: 138,
+    color: "bg-brand-500",
+  },
+  {
+    config: "C",
+    name: "+ News",
+    description: "Guardian NLP sentiment",
+    mae: 1.0232,
+    r2: 0.233,
+    rho: 0.67,
+    features: 113,
+    color: "bg-warning-500",
+  },
+  {
+    config: "D",
+    name: "+ Both",
+    description: "Injury + News combined",
+    mae: 1.0157,
+    r2: 0.244,
+    rho: 0.684,
+    features: 145,
+    color: "bg-info-500",
+    best: true,
+  },
 ];
 
 export const ablationSignificance = [
@@ -40,25 +138,25 @@ export const ablationSignificance = [
 export const interactionEffect = {
   injuryAlone: 9.22,
   newsAlone: 2.27,
-  combined: 9.80,
+  combined: 9.8,
   expected: 11.49,
   redundancy: 1.69,
 };
 
 export const twoheadMethods = [
   { method: "Hard (threshold × regressor)", mae: 1.1588 },
-  { method: "Soft (probability × regressor)", mae: 1.0630, best: true },
+  { method: "Soft (probability × regressor)", mae: 1.063, best: true },
 ];
 
 export const shapFeatures = [
   { feature: "minutes_lag1", importance: 17.99, category: "Recency" },
-  { feature: "value", importance: 6.90, category: "Static" },
+  { feature: "value", importance: 6.9, category: "Static" },
   { feature: "total_points_season_avg", importance: 5.45, category: "Season" },
   { feature: "minutes_roll3", importance: 4.72, category: "Rolling" },
   { feature: "ict_index_roll3", importance: 3.48, category: "Rolling" },
   { feature: "us_time_lag1", importance: 3.18, category: "Understat" },
   { feature: "team", importance: 3.12, category: "Static" },
-  { feature: "total_points_roll10", importance: 2.90, category: "Rolling" },
+  { feature: "total_points_roll10", importance: 2.9, category: "Rolling" },
   { feature: "ict_index_roll10", importance: 2.57, category: "Rolling" },
   { feature: "total_points_roll3", importance: 2.08, category: "Rolling" },
 ];
@@ -83,8 +181,8 @@ export const datasetStats = {
 
 export const calibrationDeciles = {
   labels: ["D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9", "D10"],
-  baseline: [0.028, 0.059, 0.134, 0.334, 0.832, 1.299, 1.495, 1.770, 1.922, 2.724],
-  stacked: [0.062, 0.056, 0.125, 0.333, 0.736, 1.240, 1.547, 1.732, 2.059, 2.619],
+  baseline: [0.028, 0.059, 0.134, 0.334, 0.832, 1.299, 1.495, 1.77, 1.922, 2.724],
+  stacked: [0.062, 0.056, 0.125, 0.333, 0.736, 1.24, 1.547, 1.732, 2.059, 2.619],
 };
 
 export const categoryColors = {

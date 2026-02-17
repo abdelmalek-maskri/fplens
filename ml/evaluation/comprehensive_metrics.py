@@ -12,46 +12,52 @@ Addresses key gaps in standard MAE/RMSE evaluation:
 
 import argparse
 import json
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Optional
+
+import joblib
 import numpy as np
 import pandas as pd
-import joblib
 from scipy import stats
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 
 from ml.config.eval_config import (
-    HOLDOUT_SEASON,
-    DROP_COLS,
     CAT_COLS,
+    DROP_COLS,
+    HOLDOUT_SEASON,
     TARGET_COL,
 )
 
 # Import model classes for unpickling saved joblib files.
 # Keep these optional to avoid hard deps (e.g., xgboost) when not needed.
-try:  
-    from ml.pipelines.train.train_stacked_ensemble import StackedEnsemble  
-except Exception:  
-    class StackedEnsemble:  
+try:
+    from ml.pipelines.train.train_stacked_ensemble import StackedEnsemble
+except Exception:
+
+    class StackedEnsemble:
         pass
 
-try:  
-    from ml.pipelines.train.train_twohead_model import TwoHeadModel  
-except Exception:  
-    class TwoHeadModel:  
+
+try:
+    from ml.pipelines.train.train_twohead_model import TwoHeadModel
+except Exception:
+
+    class TwoHeadModel:
         pass
 
-try:  
-    from ml.pipelines.train.train_position_specific import PositionSpecificLGBMModel  
-except Exception:  
-    class PositionSpecificLGBMModel:  
+
+try:
+    from ml.pipelines.train.train_position_specific import PositionSpecificLGBMModel
+except Exception:
+
+    class PositionSpecificLGBMModel:
         pass
 
 
 @dataclass
 class StratifiedMetrics:
     """Performance breakdown by subgroup."""
+
     mae_overall: float
     rmse_overall: float
 
@@ -63,19 +69,20 @@ class StratifiedMetrics:
     pct_played: float
 
     # By position
-    mae_gk: Optional[float] = None
-    mae_def: Optional[float] = None
-    mae_mid: Optional[float] = None
-    mae_fwd: Optional[float] = None
+    mae_gk: float | None = None
+    mae_def: float | None = None
+    mae_mid: float | None = None
+    mae_fwd: float | None = None
 
     # High-value players (>= 5 points actual)
-    mae_high_return: Optional[float] = None
+    mae_high_return: float | None = None
     n_high_return: int = 0
 
 
 @dataclass
 class CalibrationMetrics:
     """Prediction calibration analysis."""
+
     mean_predicted: float
     mean_actual: float
     std_predicted: float
@@ -90,6 +97,7 @@ class CalibrationMetrics:
 @dataclass
 class BusinessMetrics:
     """FPL-specific business metrics."""
+
     # Captain pick accuracy (highest predicted = highest actual?)
     top1_accuracy: float  # Did top predicted player have highest actual?
     top3_accuracy: float  # Did top 3 contain the actual top 1?
@@ -104,6 +112,7 @@ class BusinessMetrics:
 @dataclass
 class StabilityMetrics:
     """Stability across evaluation folds/seasons."""
+
     mae_mean: float
     mae_std: float
     mae_min: float
@@ -116,7 +125,7 @@ class StabilityMetrics:
 def compute_stratified_metrics(
     y_true: np.ndarray,
     y_pred: np.ndarray,
-    positions: Optional[np.ndarray] = None,
+    positions: np.ndarray | None = None,
 ) -> StratifiedMetrics:
     """Compute stratified performance metrics."""
 
@@ -136,8 +145,7 @@ def compute_stratified_metrics(
     high_return_mask = y_true >= 5
     n_high_return = int(high_return_mask.sum())
     mae_high_return = (
-        mean_absolute_error(y_true[high_return_mask], y_pred[high_return_mask])
-        if n_high_return > 0 else None
+        mean_absolute_error(y_true[high_return_mask], y_pred[high_return_mask]) if n_high_return > 0 else None
     )
 
     result = StratifiedMetrics(
@@ -181,10 +189,10 @@ def compute_calibration_metrics(
 
     # Decile calibration
     try:
-        deciles = pd.qcut(y_pred, q=n_bins, labels=False, duplicates='drop')
+        deciles = pd.qcut(y_pred, q=n_bins, labels=False, duplicates="drop")
     except ValueError:
         # Handle case with too few unique values
-        deciles = pd.cut(y_pred, bins=n_bins, labels=False, duplicates='drop')
+        deciles = pd.cut(y_pred, bins=n_bins, labels=False, duplicates="drop")
 
     decile_mae = []
     for d in range(int(deciles.max()) + 1):
@@ -295,8 +303,8 @@ class ComprehensiveEvaluator:
         self,
         y_true: np.ndarray,
         y_pred: np.ndarray,
-        positions: Optional[np.ndarray] = None,
-        gameweek_ids: Optional[np.ndarray] = None,
+        positions: np.ndarray | None = None,
+        gameweek_ids: np.ndarray | None = None,
         experiment_name: str = "experiment",
     ) -> dict:
         """Full holdout evaluation."""
@@ -328,7 +336,7 @@ class ComprehensiveEvaluator:
     def _compute_baselines(
         self,
         y_true: np.ndarray,
-        positions: Optional[np.ndarray] = None,
+        positions: np.ndarray | None = None,
     ) -> dict:
         """Compute naive baselines for comparison."""
 
@@ -361,29 +369,29 @@ class ComprehensiveEvaluator:
     def print_summary(self, results: dict, experiment_name: str = "Experiment"):
         """Print formatted evaluation summary."""
 
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"COMPREHENSIVE EVALUATION: {experiment_name}")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
 
         strat = results["stratified"]
-        print(f"\nSTRATIFIED METRICS")
+        print("\nSTRATIFIED METRICS")
         print(f"  Overall MAE:     {strat['mae_overall']:.4f}")
         print(f"  Overall RMSE:    {strat['rmse_overall']:.4f}")
         print(f"  Played MAE:      {strat['mae_played']:.4f} (n={strat['n_played']:,})")
         print(f"  Not-played MAE:  {strat['mae_not_played']:.4f} (n={strat['n_not_played']:,})")
 
-        if strat.get('mae_high_return'):
+        if strat.get("mae_high_return"):
             print(f"  High-return MAE: {strat['mae_high_return']:.4f} (n={strat['n_high_return']:,}, ≥5 pts)")
 
-        if strat.get('mae_gk'):
-            print(f"\n  By Position:")
+        if strat.get("mae_gk"):
+            print("\n  By Position:")
             print(f"    GK:  {strat['mae_gk']:.4f}")
             print(f"    DEF: {strat['mae_def']:.4f}")
             print(f"    MID: {strat['mae_mid']:.4f}")
             print(f"    FWD: {strat['mae_fwd']:.4f}")
 
         calib = results["calibration"]
-        print(f"\nCALIBRATION")
+        print("\nCALIBRATION")
         print(f"  Mean predicted: {calib['mean_predicted']:.4f}")
         print(f"  Mean actual:    {calib['mean_actual']:.4f}")
         print(f"  Correlation:    {calib['correlation']:.4f}")
@@ -391,29 +399,29 @@ class ComprehensiveEvaluator:
 
         if "business" in results:
             biz = results["business"]
-            print(f"\nBUSINESS METRICS (Captain Picks)")
-            print(f"  Top-1 accuracy: {biz['top1_accuracy']*100:.1f}%")
-            print(f"  Top-3 accuracy: {biz['top3_accuracy']*100:.1f}%")
-            print(f"  Top-5 accuracy: {biz['top5_accuracy']*100:.1f}%")
-            print(f"  Captain efficiency: {biz['captain_efficiency']*100:.1f}%")
+            print("\nBUSINESS METRICS (Captain Picks)")
+            print(f"  Top-1 accuracy: {biz['top1_accuracy'] * 100:.1f}%")
+            print(f"  Top-3 accuracy: {biz['top3_accuracy'] * 100:.1f}%")
+            print(f"  Top-5 accuracy: {biz['top5_accuracy'] * 100:.1f}%")
+            print(f"  Captain efficiency: {biz['captain_efficiency'] * 100:.1f}%")
 
         base = results["baselines"]
-        print(f"\nBASELINES (for context)")
+        print("\nBASELINES (for context)")
         print(f"  Zero baseline MAE:        {base['zero_mae']:.4f}")
         print(f"  Mean baseline MAE:        {base['mean_mae']:.4f}")
         print(f"  Played-cond mean MAE:     {base['played_cond_mean_mae']:.4f}")
 
         # Delta vs baselines
-        delta_zero = base['zero_mae'] - strat['mae_overall']
-        delta_mean = base['mean_mae'] - strat['mae_overall']
-        delta_played = base['played_cond_mean_mae'] - strat['mae_overall']
+        delta_zero = base["zero_mae"] - strat["mae_overall"]
+        delta_mean = base["mean_mae"] - strat["mae_overall"]
+        delta_played = base["played_cond_mean_mae"] - strat["mae_overall"]
 
-        print(f"\nMODEL IMPROVEMENT")
-        print(f"  vs Zero:        {delta_zero:+.4f} ({delta_zero/base['zero_mae']*100:+.1f}%)")
-        print(f"  vs Mean:        {delta_mean:+.4f} ({delta_mean/base['mean_mae']*100:+.1f}%)")
-        print(f"  vs Played-cond: {delta_played:+.4f} ({delta_played/base['played_cond_mean_mae']*100:+.1f}%)")
+        print("\nMODEL IMPROVEMENT")
+        print(f"  vs Zero:        {delta_zero:+.4f} ({delta_zero / base['zero_mae'] * 100:+.1f}%)")
+        print(f"  vs Mean:        {delta_mean:+.4f} ({delta_mean / base['mean_mae'] * 100:+.1f}%)")
+        print(f"  vs Played-cond: {delta_played:+.4f} ({delta_played / base['played_cond_mean_mae'] * 100:+.1f}%)")
 
-        print(f"\n{'='*60}\n")
+        print(f"\n{'=' * 60}\n")
 
 
 def _prepare_xy(df: pd.DataFrame):
@@ -453,7 +461,7 @@ def _align_features_for_model(X: pd.DataFrame, model) -> pd.DataFrame:
     return X
 
 
-def _predict_model(model, X: pd.DataFrame, positions: Optional[np.ndarray]) -> np.ndarray:
+def _predict_model(model, X: pd.DataFrame, positions: np.ndarray | None) -> np.ndarray:
     try:
         preds = model.predict(X)
     except TypeError:

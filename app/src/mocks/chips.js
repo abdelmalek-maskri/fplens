@@ -7,8 +7,22 @@ export const CURRENT_GW = 24;
 export const mockGameweeks = [
   {
     gw: 24,
-    best_captain: { element: 2, web_name: "Haaland", team: "MCI", predicted: 7.2, opponent: "BOU", fdr: 2 },
-    second_captain: { element: 3, web_name: "Salah", team: "LIV", predicted: 6.8, opponent: "EVE", fdr: 2 },
+    best_captain: {
+      element: 2,
+      web_name: "Haaland",
+      team: "MCI",
+      predicted: 7.2,
+      opponent: "BOU",
+      fdr: 2,
+    },
+    second_captain: {
+      element: 3,
+      web_name: "Salah",
+      team: "LIV",
+      predicted: 6.8,
+      opponent: "EVE",
+      fdr: 2,
+    },
     bench_total: 11.6,
     bench_players: [
       { web_name: "Flekken", team: "BRE", predicted: 3.6 },
@@ -23,8 +37,22 @@ export const mockGameweeks = [
   },
   {
     gw: 25,
-    best_captain: { element: 3, web_name: "Salah", team: "LIV", predicted: 7.5, opponent: "SOU", fdr: 1 },
-    second_captain: { element: 2, web_name: "Haaland", team: "MCI", predicted: 5.8, opponent: "ARS", fdr: 5 },
+    best_captain: {
+      element: 3,
+      web_name: "Salah",
+      team: "LIV",
+      predicted: 7.5,
+      opponent: "SOU",
+      fdr: 1,
+    },
+    second_captain: {
+      element: 2,
+      web_name: "Haaland",
+      team: "MCI",
+      predicted: 5.8,
+      opponent: "ARS",
+      fdr: 5,
+    },
     bench_total: 12.8,
     bench_players: [
       { web_name: "Flekken", team: "BRE", predicted: 3.5 },
@@ -39,8 +67,22 @@ export const mockGameweeks = [
   },
   {
     gw: 26,
-    best_captain: { element: 2, web_name: "Haaland", team: "MCI", predicted: 8.1, opponent: "IPS", fdr: 1 },
-    second_captain: { element: 3, web_name: "Salah", team: "LIV", predicted: 6.2, opponent: "MUN", fdr: 3 },
+    best_captain: {
+      element: 2,
+      web_name: "Haaland",
+      team: "MCI",
+      predicted: 8.1,
+      opponent: "IPS",
+      fdr: 1,
+    },
+    second_captain: {
+      element: 3,
+      web_name: "Salah",
+      team: "LIV",
+      predicted: 6.2,
+      opponent: "MUN",
+      fdr: 3,
+    },
     bench_total: 14.5,
     bench_players: [
       { web_name: "Henderson", team: "CRY", predicted: 4.2 },
@@ -55,8 +97,22 @@ export const mockGameweeks = [
   },
   {
     gw: 27,
-    best_captain: { element: 3, web_name: "Salah", team: "LIV", predicted: 6.5, opponent: "BRE", fdr: 2 },
-    second_captain: { element: 7, web_name: "Palmer", team: "CHE", predicted: 5.8, opponent: "NFO", fdr: 2 },
+    best_captain: {
+      element: 3,
+      web_name: "Salah",
+      team: "LIV",
+      predicted: 6.5,
+      opponent: "BRE",
+      fdr: 2,
+    },
+    second_captain: {
+      element: 7,
+      web_name: "Palmer",
+      team: "CHE",
+      predicted: 5.8,
+      opponent: "NFO",
+      fdr: 2,
+    },
     bench_total: 10.2,
     bench_players: [
       { web_name: "Flekken", team: "BRE", predicted: 3.0 },
@@ -71,8 +127,22 @@ export const mockGameweeks = [
   },
   {
     gw: 28,
-    best_captain: { element: 2, web_name: "Haaland", team: "MCI", predicted: 6.8, opponent: "LEI", fdr: 2 },
-    second_captain: { element: 50, web_name: "Isak", team: "NEW", predicted: 6.2, opponent: "SOU", fdr: 1 },
+    best_captain: {
+      element: 2,
+      web_name: "Haaland",
+      team: "MCI",
+      predicted: 6.8,
+      opponent: "LEI",
+      fdr: 2,
+    },
+    second_captain: {
+      element: 50,
+      web_name: "Isak",
+      team: "NEW",
+      predicted: 6.2,
+      opponent: "SOU",
+      fdr: 1,
+    },
     bench_total: 11.0,
     bench_players: [
       { web_name: "Flekken", team: "BRE", predicted: 3.2 },
@@ -87,8 +157,22 @@ export const mockGameweeks = [
   },
   {
     gw: 29,
-    best_captain: { element: 3, web_name: "Salah", team: "LIV", predicted: 5.8, opponent: "CRY", fdr: 2 },
-    second_captain: { element: 2, web_name: "Haaland", team: "MCI", predicted: 5.5, opponent: "CHE", fdr: 4 },
+    best_captain: {
+      element: 3,
+      web_name: "Salah",
+      team: "LIV",
+      predicted: 5.8,
+      opponent: "CRY",
+      fdr: 2,
+    },
+    second_captain: {
+      element: 2,
+      web_name: "Haaland",
+      team: "MCI",
+      predicted: 5.5,
+      opponent: "CHE",
+      fdr: 4,
+    },
     bench_total: 10.5,
     bench_players: [
       { web_name: "Flekken", team: "BRE", predicted: 3.0 },
@@ -103,8 +187,22 @@ export const mockGameweeks = [
   },
   {
     gw: 30,
-    best_captain: { element: 7, web_name: "Palmer", team: "CHE", predicted: 7.0, opponent: "IPS", fdr: 1 },
-    second_captain: { element: 2, web_name: "Haaland", team: "MCI", predicted: 6.5, opponent: "WHU", fdr: 2 },
+    best_captain: {
+      element: 7,
+      web_name: "Palmer",
+      team: "CHE",
+      predicted: 7.0,
+      opponent: "IPS",
+      fdr: 1,
+    },
+    second_captain: {
+      element: 2,
+      web_name: "Haaland",
+      team: "MCI",
+      predicted: 6.5,
+      opponent: "WHU",
+      fdr: 2,
+    },
     bench_total: 13.2,
     bench_players: [
       { web_name: "Henderson", team: "CRY", predicted: 3.8 },

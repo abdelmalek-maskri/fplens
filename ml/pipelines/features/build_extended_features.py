@@ -1,4 +1,4 @@
-# ml/pipelines/features/build_extended_features.py (14) 
+# ml/pipelines/features/build_extended_features.py (14)
 
 """
 Extended Feature Engineering for FPL Prediction
@@ -11,9 +11,9 @@ Adds to baseline features:
 """
 
 from pathlib import Path
+
 import numpy as np
 import pandas as pd
-
 
 IN_PATH = Path("data/processed/merged/fpl_with_target.csv")
 OUT_PATH = Path("data/features/extended_features.csv")
@@ -35,7 +35,7 @@ BASE_NUM_COLS = [
     "bonus",
 ]
 
-# Subset of columns for season averages 
+# Subset of columns for season averages
 SEASON_AVG_COLS = [
     "total_points",
     "minutes",
@@ -46,6 +46,7 @@ SEASON_AVG_COLS = [
     "threat",
     "bps",
 ]
+
 
 def add_season_avg_features(df: pd.DataFrame, num_cols: list) -> pd.DataFrame:
     """Add expanding season average features (all games so far this season)."""
@@ -78,7 +79,6 @@ def add_availability_features(df: pd.DataFrame, g) -> pd.DataFrame:
 
     # Count how many consecutive games the player has started
     if "starts" in df.columns:
-        starts_shifted = g["starts"].shift(1)
 
         def count_consecutive(x):
             """Count consecutive 1s (starts) ending at each position."""
@@ -99,14 +99,16 @@ def add_availability_features(df: pd.DataFrame, g) -> pd.DataFrame:
     # Minutes trend (increasing = more likely to play full 90)
     if "minutes" in df.columns:
         new_cols["minutes_trend"] = g["minutes"].transform(
-            lambda x: x.shift(1).rolling(window=3, min_periods=2).apply(
-                lambda w: (w.iloc[-1] - w.iloc[0]) / max(w.iloc[0], 1) if len(w) >= 2 else 0,
-                raw=False
+            lambda x: (
+                x.shift(1)
+                .rolling(window=3, min_periods=2)
+                .apply(lambda w: (w.iloc[-1] - w.iloc[0]) / max(w.iloc[0], 1) if len(w) >= 2 else 0, raw=False)
             )
         )
 
     # Games since last start (rotation indicator)
     if "starts" in df.columns:
+
         def games_since_start(x):
             """Count games since last start."""
             result = np.zeros(len(x))
@@ -175,7 +177,7 @@ def run() -> None:
     # Add Understat numeric columns
     us_cols = [c for c in df.columns if c.startswith("us_")]
     num_cols = []
-    for c in (BASE_NUM_COLS + us_cols):
+    for c in BASE_NUM_COLS + us_cols:
         if c in df.columns:
             df[c] = pd.to_numeric(df[c], errors="coerce")
             num_cols.append(c)
@@ -192,7 +194,7 @@ def run() -> None:
     for w in ROLL_WINDOWS:
         for col in num_cols:
             new_cols[f"{col}_roll{w}"] = g[col].transform(
-                lambda x: x.shift(1).rolling(window=w, min_periods=1).mean()
+                lambda x, _w=w: x.shift(1).rolling(window=_w, min_periods=1).mean()
             )
 
     if new_cols:
@@ -228,21 +230,33 @@ def run() -> None:
 
     # Select output columns
     keep = [
-        "season", "GW", "element", "name", "position", "team",
-        "was_home", "opponent_team", "value",
+        "season",
+        "GW",
+        "element",
+        "name",
+        "position",
+        "team",
+        "was_home",
+        "opponent_team",
+        "value",
         "points_next_gw",
         "played_lag1",
     ]
     keep = [c for c in keep if c in df.columns]
 
     # All engineered features
-    feature_cols = [c for c in df.columns if (
-        c.endswith("_lag1") or
-        "_roll" in c or
-        "_season_avg" in c or
-        "_momentum" in c or
-        c in ["consecutive_starts", "minutes_trend", "games_since_start"]
-    ) and c != "played_lag1"]
+    feature_cols = [
+        c
+        for c in df.columns
+        if (
+            c.endswith("_lag1")
+            or "_roll" in c
+            or "_season_avg" in c
+            or "_momentum" in c
+            or c in ["consecutive_starts", "minutes_trend", "games_since_start"]
+        )
+        and c != "played_lag1"
+    ]
 
     keep += feature_cols
     out = df[keep].copy()
@@ -256,14 +270,17 @@ def run() -> None:
     # Summary
     baseline_features = len([c for c in out.columns if "_roll3" in c or "_roll5" in c or c.endswith("_lag1")])
     extended_features = len([c for c in out.columns if "_roll10" in c or "_season_avg" in c or "_momentum" in c])
-    availability_features = len([c for c in out.columns if c in ["consecutive_starts", "minutes_trend", "games_since_start"]])
+    availability_features = len(
+        [c for c in out.columns if c in ["consecutive_starts", "minutes_trend", "games_since_start"]]
+    )
 
-    print(f"\nFeature breakdown:")
+    print("\nFeature breakdown:")
     print(f"   Baseline (lag1, roll3, roll5): {baseline_features}")
     print(f"   Extended (roll10, season_avg, momentum): {extended_features}")
     print(f"   Availability: {availability_features}")
     print(f"   Metadata: {len(keep) - baseline_features - extended_features - availability_features}")
     print(f"   Total: {len(out.columns)}")
+
 
 if __name__ == "__main__":
     run()

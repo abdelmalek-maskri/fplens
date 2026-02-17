@@ -12,7 +12,8 @@ export const mockArticles = [
     sentiment: 0.85,
     players: [{ element: 2, web_name: "Haaland", team_name: "MCI", position: "FWD" }],
     injury_flag: false,
-    snippet: "Erling Haaland's extraordinary goalscoring form has put him firmly in the conversation for this year's Ballon d'Or, with 18 goals in 21 Premier League appearances.",
+    snippet:
+      "Erling Haaland's extraordinary goalscoring form has put him firmly in the conversation for this year's Ballon d'Or, with 18 goals in 21 Premier League appearances.",
   },
   {
     id: 2,
@@ -22,7 +23,8 @@ export const mockArticles = [
     sentiment: -0.15,
     players: [{ element: 3, web_name: "Salah", team_name: "LIV", position: "MID" }],
     injury_flag: false,
-    snippet: "Mohamed Salah's future at Anfield remains uncertain with negotiations reportedly stalling over contract length and wages.",
+    snippet:
+      "Mohamed Salah's future at Anfield remains uncertain with negotiations reportedly stalling over contract length and wages.",
   },
   {
     id: 3,
@@ -32,7 +34,8 @@ export const mockArticles = [
     sentiment: -0.62,
     players: [{ element: 5, web_name: "Saka", team_name: "ARS", position: "MID" }],
     injury_flag: true,
-    snippet: "Bukayo Saka is a doubt for Arsenal's London derby against Chelsea after picking up a muscle problem in training.",
+    snippet:
+      "Bukayo Saka is a doubt for Arsenal's London derby against Chelsea after picking up a muscle problem in training.",
   },
   {
     id: 4,
@@ -42,7 +45,8 @@ export const mockArticles = [
     sentiment: 0.78,
     players: [{ element: 7, web_name: "Palmer", team_name: "CHE", position: "MID" }],
     injury_flag: false,
-    snippet: "Cole Palmer scored twice and provided an assist as Chelsea dismantled Wolves at Stamford Bridge.",
+    snippet:
+      "Cole Palmer scored twice and provided an assist as Chelsea dismantled Wolves at Stamford Bridge.",
   },
   {
     id: 5,
@@ -52,7 +56,8 @@ export const mockArticles = [
     sentiment: 0.72,
     players: [{ element: 2, web_name: "Haaland", team_name: "MCI", position: "FWD" }],
     injury_flag: false,
-    snippet: "Pep Guardiola's side are building momentum in the title race, with Haaland's 18 league goals powering their charge.",
+    snippet:
+      "Pep Guardiola's side are building momentum in the title race, with Haaland's 18 league goals powering their charge.",
   },
   {
     id: 6,
@@ -62,7 +67,8 @@ export const mockArticles = [
     sentiment: -0.78,
     players: [{ element: 10, web_name: "Watkins", team_name: "AVL", position: "FWD" }],
     injury_flag: true,
-    snippet: "Aston Villa striker Ollie Watkins could miss up to three weeks after scans revealed a hamstring injury sustained in training.",
+    snippet:
+      "Aston Villa striker Ollie Watkins could miss up to three weeks after scans revealed a hamstring injury sustained in training.",
   },
   {
     id: 7,
@@ -72,7 +78,8 @@ export const mockArticles = [
     sentiment: 0.81,
     players: [{ element: 50, web_name: "Isak", team_name: "NEW", position: "FWD" }],
     injury_flag: false,
-    snippet: "Alexander Isak scored twice as Newcastle cruised to a comfortable victory, taking his tally to 12 Premier League goals this season.",
+    snippet:
+      "Alexander Isak scored twice as Newcastle cruised to a comfortable victory, taking his tally to 12 Premier League goals this season.",
   },
   {
     id: 8,
@@ -82,7 +89,8 @@ export const mockArticles = [
     sentiment: 0.82,
     players: [{ element: 3, web_name: "Salah", team_name: "LIV", position: "MID" }],
     injury_flag: false,
-    snippet: "Mohamed Salah put contract uncertainty to one side with a devastating two-goal performance as Liverpool moved top of the table.",
+    snippet:
+      "Mohamed Salah put contract uncertainty to one side with a devastating two-goal performance as Liverpool moved top of the table.",
   },
   {
     id: 9,
@@ -92,7 +100,8 @@ export const mockArticles = [
     sentiment: -0.32,
     players: [{ element: 15, web_name: "Alexander-Arnold", team_name: "LIV", position: "DEF" }],
     injury_flag: false,
-    snippet: "Trent Alexander-Arnold's future at Liverpool is in question with reports of interest from Real Madrid intensifying.",
+    snippet:
+      "Trent Alexander-Arnold's future at Liverpool is in question with reports of interest from Real Madrid intensifying.",
   },
   {
     id: 10,
@@ -102,7 +111,8 @@ export const mockArticles = [
     sentiment: 0.68,
     players: [{ element: 2, web_name: "Haaland", team_name: "MCI", position: "FWD" }],
     injury_flag: false,
-    snippet: "Pep Guardiola singled out Erling Haaland for special praise after the Norwegian's all-round display in City's 4-1 win.",
+    snippet:
+      "Pep Guardiola singled out Erling Haaland for special praise after the Norwegian's all-round display in City's 4-1 win.",
   },
   {
     id: 11,
@@ -112,7 +122,8 @@ export const mockArticles = [
     sentiment: 0.55,
     players: [{ element: 40, web_name: "Mbeumo", team_name: "BRE", position: "MID" }],
     injury_flag: false,
-    snippet: "Bryan Mbeumo has stepped up as Brentford's primary attacking threat, with 10 goals making him one of the bargains of the season.",
+    snippet:
+      "Bryan Mbeumo has stepped up as Brentford's primary attacking threat, with 10 goals making him one of the bargains of the season.",
   },
   {
     id: 12,
@@ -122,7 +133,8 @@ export const mockArticles = [
     sentiment: 0.48,
     players: [{ element: 12, web_name: "Gabriel", team_name: "ARS", position: "DEF" }],
     injury_flag: false,
-    snippet: "Gabriel Magalh\u00e3es has scored four goals from set-pieces this season, making Arsenal the most dangerous team from dead-ball situations.",
+    snippet:
+      "Gabriel Magalh\u00e3es has scored four goals from set-pieces this season, making Arsenal the most dangerous team from dead-ball situations.",
   },
   {
     id: 13,
@@ -132,7 +144,8 @@ export const mockArticles = [
     sentiment: 0.61,
     players: [{ element: 20, web_name: "Raya", team_name: "ARS", position: "GK" }],
     injury_flag: false,
-    snippet: "David Raya's 78% save rate ranks highest among goalkeepers in Europe's top five leagues this season.",
+    snippet:
+      "David Raya's 78% save rate ranks highest among goalkeepers in Europe's top five leagues this season.",
   },
   {
     id: 14,
@@ -145,6 +158,7 @@ export const mockArticles = [
       { element: 5, web_name: "Saka", team_name: "ARS", position: "MID" },
     ],
     injury_flag: false,
-    snippet: "Cole Palmer and Bukayo Saka are redefining the creative midfielder role in English football.",
+    snippet:
+      "Cole Palmer and Bukayo Saka are redefining the creative midfielder role in English football.",
   },
 ];

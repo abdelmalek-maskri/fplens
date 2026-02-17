@@ -10,16 +10,18 @@ Final prediction: P(play) x E[points | played]
 
 import json
 from pathlib import Path
+
 import joblib
 import numpy as np
 import pandas as pd
 from lightgbm import LGBMClassifier, LGBMRegressor
 from sklearn.metrics import roc_auc_score
+
 from ml.config.eval_config import (
-    HOLDOUT_SEASON,
+    CAT_COLS,
     CV_SEASONS,
     DROP_COLS,
-    CAT_COLS,
+    HOLDOUT_SEASON,
     TARGET_COL,
 )
 from ml.utils.eval_metrics import (
@@ -30,11 +32,14 @@ from ml.utils.eval_metrics import (
 IN_PATH = Path("data/features/extended_features.csv")
 OUT_DIR = Path("outputs/experiments/twohead")
 
+
 def prepare_xy(df: pd.DataFrame):
     y = df[TARGET_COL].values
     drop = set([TARGET_COL] + DROP_COLS)
     X = df.drop(columns=[c for c in drop if c in df.columns])
     return X, y
+
+
 class TwoHeadModel:
     def __init__(self):
         self.classifier = None
@@ -127,7 +132,7 @@ def run():
 
     available = set(df["season"].dropna().unique())
     train_seasons = [s for s in CV_SEASONS if s in available]
-    
+
     if HOLDOUT_SEASON not in available:
         raise ValueError(f"Holdout season {HOLDOUT_SEASON} not in data")
 
@@ -148,7 +153,7 @@ def run():
     cat_cols = [c for c in CAT_COLS if c in X_train.columns]
     print(f"\nTrain: {len(train_df):,} samples")
     print(f"Test: {len(test_df):,} samples")
-    print(f"Played in test: {(y_test > 0).sum():,} ({(y_test > 0).mean()*100:.1f}%)")
+    print(f"Played in test: {(y_test > 0).sum():,} ({(y_test > 0).mean() * 100:.1f}%)")
 
     # Train
     print("\nTraining two-head model...")
@@ -170,9 +175,9 @@ def run():
     best_method = min(results.keys(), key=lambda k: results[k]["mae"])
 
     # Print results
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("HOLDOUT RESULTS")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     print(f"\n{'Method':<15} {'MAE':<10} {'RMSE':<10} {'R²':<10}")
     print("-" * 45)
     for method in sorted(results.keys(), key=lambda x: results[x]["mae"]):
@@ -210,6 +215,7 @@ def run():
         eval_result=holdout_eval,
         output_dir=str(OUT_DIR),
     )
+
 
 if __name__ == "__main__":
     run()

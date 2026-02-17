@@ -13,18 +13,29 @@ export default function FixtureTicker() {
   const fdrMode = searchParams.get("mode") || "attack";
   const sortBy = searchParams.get("sort") || "name";
   const setParam = (key, value) => {
-    setSearchParams(prev => { const p = new URLSearchParams(prev); p.set(key, value); return p; });
+    setSearchParams((prev) => {
+      const p = new URLSearchParams(prev);
+      p.set(key, value);
+      return p;
+    });
   };
 
   const { data: fixtureData, isLoading, error } = useFixtures();
-  if (isLoading) return (
-    <div className="space-y-6">
-      <SkeletonTable rows={20} cols={8} />
-    </div>
-  );
+  if (isLoading)
+    return (
+      <div className="space-y-6">
+        <SkeletonTable rows={20} cols={8} />
+      </div>
+    );
   if (error) return <ErrorState message="Failed to load fixture data." />;
   if (!fixtureData) return null;
-  const { teams: TEAMS, teamFull: TEAM_FULL, fixtures: FIXTURES, fdrBg: FDR_BG, fdrText: FDR_TEXT } = fixtureData;
+  const {
+    teams: TEAMS,
+    teamFull: TEAM_FULL,
+    fixtures: FIXTURES,
+    fdrBg: FDR_BG,
+    fdrText: FDR_TEXT,
+  } = fixtureData;
 
   const gameweeks = [24, 25, 26, 27, 28, 29];
 
@@ -82,7 +93,9 @@ export default function FixtureTicker() {
         <span>Difficulty:</span>
         {[1, 2, 3, 4, 5].map((fdr) => (
           <div key={fdr} className="flex items-center gap-1">
-            <span className={`inline-flex items-center justify-center w-5 h-5 rounded text-2xs font-bold ${FDR_BG[fdr]} ${FDR_TEXT[fdr]}`}>
+            <span
+              className={`inline-flex items-center justify-center w-5 h-5 rounded text-2xs font-bold ${FDR_BG[fdr]} ${FDR_TEXT[fdr]}`}
+            >
               {fdr}
             </span>
             <span>
@@ -106,34 +119,41 @@ export default function FixtureTicker() {
         <table className="w-full">
           <thead className="bg-surface-800/30">
             <tr>
-              <th scope="col" className="table-header text-left py-2.5 px-3 w-36">Team</th>
+              <th scope="col" className="table-header text-left py-2.5 px-3 w-36">
+                Team
+              </th>
               {gameweeks.map((gw) => (
                 <th key={gw} scope="col" className="table-header text-center py-2.5 px-2 w-24">
                   GW{gw}
                 </th>
               ))}
-              <th scope="col" className="table-header text-center py-2.5 px-3 w-20">Avg</th>
+              <th scope="col" className="table-header text-center py-2.5 px-3 w-20">
+                Avg
+              </th>
             </tr>
           </thead>
           <tbody>
             {sortedTeams.map((row) => {
-              const avgVal = fdrMode === "attack" ? row.avgAtk : fdrMode === "defence" ? row.avgDef : row.avgCombined;
+              const avgVal =
+                fdrMode === "attack"
+                  ? row.avgAtk
+                  : fdrMode === "defence"
+                    ? row.avgDef
+                    : row.avgCombined;
               const avgFdr = Math.round(avgVal);
 
               return (
                 <tr
                   key={row.team}
                   className="border-t border-surface-800 hover:bg-surface-800/40 transition-colors"
-                  style={{ borderLeft: `3px solid ${TEAM_COLORS[row.team] || "rgb(var(--surface-700))"}` }}
+                  style={{
+                    borderLeft: `3px solid ${TEAM_COLORS[row.team] || "rgb(var(--surface-700))"}`,
+                  }}
                 >
                   <td className="py-2 px-4">
                     <div>
-                      <span className="font-semibold text-surface-100 text-sm">
-                        {row.team}
-                      </span>
-                      <span className="text-xs text-surface-500 ml-2">
-                        {TEAM_FULL[row.team]}
-                      </span>
+                      <span className="font-semibold text-surface-100 text-sm">{row.team}</span>
+                      <span className="text-xs text-surface-500 ml-2">{TEAM_FULL[row.team]}</span>
                     </div>
                   </td>
                   {row.fixtures.map((fix) => {
@@ -144,9 +164,7 @@ export default function FixtureTicker() {
                           className={`mx-auto rounded-md px-1 py-2 ${FDR_BG[fdr]}`}
                           title={`ATK: ${fix.atkFdr} | DEF: ${fix.defFdr}`}
                         >
-                          <p className={`text-xs font-bold ${FDR_TEXT[fdr]}`}>
-                            {fix.opponent}
-                          </p>
+                          <p className={`text-xs font-bold ${FDR_TEXT[fdr]}`}>{fix.opponent}</p>
                           <p className={`text-2xs ${FDR_TEXT[fdr]} opacity-70`}>
                             {fix.home ? "(H)" : "(A)"}
                           </p>
@@ -171,16 +189,21 @@ export default function FixtureTicker() {
       {/* Quick Analysis */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div>
-          <span className="section-label">
-            Easiest to attack (next 6 GWs)
-          </span>
+          <span className="section-label">Easiest to attack (next 6 GWs)</span>
           <div className="mt-3 space-y-2">
             {[...teamData]
               .sort((a, b) => a.avgAtk - b.avgAtk)
               .slice(0, 5)
               .map((t, i) => (
-                <div key={t.team} className="flex items-center justify-between text-sm"
-                  style={{ borderLeftColor: TEAM_COLORS[t.team], borderLeftWidth: 2, paddingLeft: 8 }}>
+                <div
+                  key={t.team}
+                  className="flex items-center justify-between text-sm"
+                  style={{
+                    borderLeftColor: TEAM_COLORS[t.team],
+                    borderLeftWidth: 2,
+                    paddingLeft: 8,
+                  }}
+                >
                   <span className="text-surface-300">
                     {i + 1}. {TEAM_FULL[t.team]}
                   </span>
@@ -192,16 +215,21 @@ export default function FixtureTicker() {
           </div>
         </div>
         <div>
-          <span className="section-label">
-            Easiest to keep clean sheets (next 6 GWs)
-          </span>
+          <span className="section-label">Easiest to keep clean sheets (next 6 GWs)</span>
           <div className="mt-3 space-y-2">
             {[...teamData]
               .sort((a, b) => a.avgDef - b.avgDef)
               .slice(0, 5)
               .map((t, i) => (
-                <div key={t.team} className="flex items-center justify-between text-sm"
-                  style={{ borderLeftColor: TEAM_COLORS[t.team], borderLeftWidth: 2, paddingLeft: 8 }}>
+                <div
+                  key={t.team}
+                  className="flex items-center justify-between text-sm"
+                  style={{
+                    borderLeftColor: TEAM_COLORS[t.team],
+                    borderLeftWidth: 2,
+                    paddingLeft: 8,
+                  }}
+                >
                   <span className="text-surface-300">
                     {i + 1}. {TEAM_FULL[t.team]}
                   </span>

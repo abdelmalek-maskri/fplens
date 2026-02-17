@@ -82,7 +82,7 @@ def print_final_summary(
     eval_result: dict,
     output_dir: str = None,
 ) -> None:
-    
+
     m = eval_result["model"]
     b = eval_result["baselines"]
     imp = eval_result["improvements"]
@@ -99,7 +99,7 @@ def print_final_summary(
     print("  HOLDOUT METRICS")
     print("-" * 65)
     print(f"  {'Metric':<20} {'Model':<12} {'Zero Base':<12} {'Mean Base':<12}")
-    print(f"  {'-'*20} {'-'*12} {'-'*12} {'-'*12}")
+    print(f"  {'-' * 20} {'-' * 12} {'-' * 12} {'-' * 12}")
     print(f"  {'MAE':<20} {m['mae']:<12.4f} {b['zero_baseline']['mae']:<12.4f} {b['mean_baseline']['mae']:<12.4f}")
     print(f"  {'RMSE':<20} {m['rmse']:<12.4f} {b['zero_baseline']['rmse']:<12.4f} {b['mean_baseline']['rmse']:<12.4f}")
     print(f"  {'R²':<20} {m['r2']:<12.4f} {b['zero_baseline']['r2']:<12.4f} {b['mean_baseline']['r2']:<12.4f}")

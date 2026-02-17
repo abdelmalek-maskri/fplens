@@ -8,5 +8,11 @@ export default defineConfig({
     environment: 'happy-dom',
     setupFiles: './src/test/setup.js',
     globals: true,
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'text-summary'],
+      include: ['src/**/*.{js,jsx}'],
+      exclude: ['src/test/**', 'src/mocks/**'],
+    },
   },
 })

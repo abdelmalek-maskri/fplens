@@ -8,13 +8,11 @@ import { SkeletonStatStrip, SkeletonCard, SkeletonArticle } from "../components/
 import ErrorState from "../components/ErrorState";
 import EmptyState from "../components/EmptyState";
 
-
 // ============================================================
 // SENTIMENT DOT
 // ============================================================
 const SentimentDot = ({ value }) => {
-  const color =
-    value >= 0.5 ? "bg-success-400" : value >= 0 ? "bg-surface-400" : "bg-danger-400";
+  const color = value >= 0.5 ? "bg-success-400" : value >= 0 ? "bg-surface-400" : "bg-danger-400";
   return <div className={`w-2 h-2 rounded-full shrink-0 mt-1.5 ${color}`} />;
 };
 
@@ -42,7 +40,11 @@ export default function NewsSentiment() {
   const [searchParams, setSearchParams] = useSearchParams();
   const sentimentFilter = searchParams.get("sentiment") || "ALL";
   const setSentimentFilter = (value) => {
-    setSearchParams(prev => { const p = new URLSearchParams(prev); p.set("sentiment", value); return p; });
+    setSearchParams((prev) => {
+      const p = new URLSearchParams(prev);
+      p.set("sentiment", value);
+      return p;
+    });
   };
   const { data: newsData, isLoading, error } = useNews();
   const [teamFilter, setTeamFilter] = useState("ALL");
@@ -51,8 +53,8 @@ export default function NewsSentiment() {
   const mockArticles = newsData ? newsData.articles : [];
 
   // Unique teams from articles
-  const TEAMS = useMemo(() =>
-    [...new Set(mockArticles.flatMap((a) => a.players.map((p) => p.team_name)))].sort(),
+  const TEAMS = useMemo(
+    () => [...new Set(mockArticles.flatMap((a) => a.players.map((p) => p.team_name)))].sort(),
     [mockArticles]
   );
 
@@ -110,15 +112,16 @@ export default function NewsSentiment() {
     return { total, positive, negative, injuries };
   }, [mockArticles]);
 
-  if (isLoading) return (
-    <div className="space-y-6">
-      <SkeletonStatStrip items={4} />
-      <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
-        <SkeletonCard lines={8} />
-        <SkeletonArticle count={5} />
+  if (isLoading)
+    return (
+      <div className="space-y-6">
+        <SkeletonStatStrip items={4} />
+        <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
+          <SkeletonCard lines={8} />
+          <SkeletonArticle count={5} />
+        </div>
       </div>
-    </div>
-  );
+    );
 
   if (error) return <ErrorState message="Failed to load news articles." />;
 
@@ -129,22 +132,30 @@ export default function NewsSentiment() {
       {/* Stat strip */}
       <div className="flex items-center gap-5 flex-wrap py-3 border-b border-surface-800">
         <div>
-          <span className="text-lg font-bold text-surface-100 font-data tabular-nums">{stats.total}</span>
+          <span className="text-lg font-bold text-surface-100 font-data tabular-nums">
+            {stats.total}
+          </span>
           <span className="text-xs text-surface-500 ml-1">articles</span>
         </div>
         <div className="w-px h-4 bg-surface-700" />
         <div>
-          <span className="text-lg font-bold text-success-400 font-data tabular-nums">{stats.positive}</span>
+          <span className="text-lg font-bold text-success-400 font-data tabular-nums">
+            {stats.positive}
+          </span>
           <span className="text-xs text-surface-500 ml-1">positive</span>
         </div>
         <div className="w-px h-4 bg-surface-700" />
         <div>
-          <span className="text-lg font-bold text-danger-400 font-data tabular-nums">{stats.negative}</span>
+          <span className="text-lg font-bold text-danger-400 font-data tabular-nums">
+            {stats.negative}
+          </span>
           <span className="text-xs text-surface-500 ml-1">negative</span>
         </div>
         <div className="w-px h-4 bg-surface-700" />
         <div>
-          <span className="text-lg font-bold text-warning-400 font-data tabular-nums">{stats.injuries}</span>
+          <span className="text-lg font-bold text-warning-400 font-data tabular-nums">
+            {stats.injuries}
+          </span>
           <span className="text-xs text-surface-500 ml-1">injury alerts</span>
         </div>
       </div>
@@ -168,7 +179,9 @@ export default function NewsSentiment() {
         >
           <option value="ALL">All teams</option>
           {TEAMS.map((t) => (
-            <option key={t} value={t}>{t}</option>
+            <option key={t} value={t}>
+              {t}
+            </option>
           ))}
         </select>
 
@@ -192,9 +205,7 @@ export default function NewsSentiment() {
       <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
         {/* Trending players */}
         <div>
-          <span className="section-label">
-            Trending players
-          </span>
+          <span className="section-label">Trending players</span>
           <div className="mt-3 space-y-0">
             {trendingPlayers.map((p, i) => (
               <div
@@ -219,10 +230,17 @@ export default function NewsSentiment() {
                   </div>
                 </div>
                 <div className="flex flex-col items-end gap-0.5">
-                  <span className={`text-xs font-data tabular-nums ${
-                    p.avgSentiment >= 0.3 ? "text-success-400" : p.avgSentiment >= 0 ? "text-surface-400" : "text-danger-400"
-                  }`}>
-                    {p.avgSentiment > 0 ? "+" : ""}{p.avgSentiment.toFixed(2)}
+                  <span
+                    className={`text-xs font-data tabular-nums ${
+                      p.avgSentiment >= 0.3
+                        ? "text-success-400"
+                        : p.avgSentiment >= 0
+                          ? "text-surface-400"
+                          : "text-danger-400"
+                    }`}
+                  >
+                    {p.avgSentiment > 0 ? "+" : ""}
+                    {p.avgSentiment.toFixed(2)}
                   </span>
                   <SentimentBar value={p.avgSentiment} />
                 </div>
@@ -234,44 +252,57 @@ export default function NewsSentiment() {
         {/* Articles list */}
         <div>
           <div className="flex items-center gap-2 mb-3">
-            <span className="section-label">
-              Recent articles
-            </span>
+            <span className="section-label">Recent articles</span>
             <span className="text-2xs text-surface-600">
               {filteredArticles.length} of {mockArticles.length}
             </span>
           </div>
 
           {filteredArticles.length === 0 ? (
-            <EmptyState title="No articles found" message="Try adjusting your filters or search query." />
+            <EmptyState
+              title="No articles found"
+              message="Try adjusting your filters or search query."
+            />
           ) : (
             <div className="space-y-0">
               {filteredArticles.map((article) => (
-                <div
-                  key={article.id}
-                  className="py-3 border-b border-surface-800/60 last:border-0"
-                >
+                <div key={article.id} className="py-3 border-b border-surface-800/60 last:border-0">
                   <div className="flex items-start gap-3">
                     <SentimentDot value={article.sentiment} />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-surface-200 leading-snug">
-                        {article.headline}
-                      </p>
+                      <p className="text-sm text-surface-200 leading-snug">{article.headline}</p>
                       <p className="text-xs text-surface-500 mt-1 leading-relaxed">
                         {article.snippet}
                       </p>
                       <div className="flex items-center gap-3 mt-2 flex-wrap">
                         <span className="text-2xs text-surface-600">{article.date}</span>
                         <span className="text-2xs text-surface-600">{article.source}</span>
-                        <span className={`text-2xs font-data tabular-nums ${
-                          article.sentiment >= 0.5 ? "text-success-400" : article.sentiment >= 0 ? "text-surface-400" : "text-danger-400"
-                        }`}>
-                          {article.sentiment > 0 ? "+" : ""}{article.sentiment.toFixed(2)}
+                        <span
+                          className={`text-2xs font-data tabular-nums ${
+                            article.sentiment >= 0.5
+                              ? "text-success-400"
+                              : article.sentiment >= 0
+                                ? "text-surface-400"
+                                : "text-danger-400"
+                          }`}
+                        >
+                          {article.sentiment > 0 ? "+" : ""}
+                          {article.sentiment.toFixed(2)}
                         </span>
                         {article.injury_flag && (
                           <span className="text-2xs text-warning-400 flex items-center gap-1">
-                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            <svg
+                              className="w-3 h-3"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                              />
                             </svg>
                             Injury
                           </span>
@@ -299,18 +330,35 @@ export default function NewsSentiment() {
 
       {/* Player sentiment summary table */}
       <div>
-        <span className="section-label">
-          Player sentiment summary
-        </span>
+        <span className="section-label">Player sentiment summary</span>
         <div className="mt-3 overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-surface-700">
-                <th scope="col" className="py-2 pr-4 text-xs text-surface-500 font-medium">Player</th>
-                <th scope="col" className="py-2 pr-4 text-xs text-surface-500 font-medium text-center">Mentions</th>
-                <th scope="col" className="py-2 pr-4 text-xs text-surface-500 font-medium text-center">Avg sentiment</th>
-                <th scope="col" className="py-2 pr-4 text-xs text-surface-500 font-medium text-center">Injury</th>
-                <th scope="col" className="py-2 text-xs text-surface-500 font-medium">Latest</th>
+                <th scope="col" className="py-2 pr-4 text-xs text-surface-500 font-medium">
+                  Player
+                </th>
+                <th
+                  scope="col"
+                  className="py-2 pr-4 text-xs text-surface-500 font-medium text-center"
+                >
+                  Mentions
+                </th>
+                <th
+                  scope="col"
+                  className="py-2 pr-4 text-xs text-surface-500 font-medium text-center"
+                >
+                  Avg sentiment
+                </th>
+                <th
+                  scope="col"
+                  className="py-2 pr-4 text-xs text-surface-500 font-medium text-center"
+                >
+                  Injury
+                </th>
+                <th scope="col" className="py-2 text-xs text-surface-500 font-medium">
+                  Latest
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -324,8 +372,12 @@ export default function NewsSentiment() {
                   <td className="py-2 pr-4">
                     <div className="flex items-center gap-2">
                       <TeamBadge team={p.team_name} size="sm" />
-                      <span className="text-surface-200 hover:text-brand-400 transition-colors">{p.web_name}</span>
-                      <span className={`text-2xs ${POSITION_COLORS[p.position]}`}>{p.position}</span>
+                      <span className="text-surface-200 hover:text-brand-400 transition-colors">
+                        {p.web_name}
+                      </span>
+                      <span className={`text-2xs ${POSITION_COLORS[p.position]}`}>
+                        {p.position}
+                      </span>
                     </div>
                   </td>
                   <td className="py-2 pr-4 text-center">
@@ -334,10 +386,17 @@ export default function NewsSentiment() {
                   <td className="py-2 pr-4">
                     <div className="flex items-center justify-center gap-2">
                       <SentimentBar value={p.avgSentiment} />
-                      <span className={`text-xs font-data tabular-nums ${
-                        p.avgSentiment >= 0.3 ? "text-success-400" : p.avgSentiment >= 0 ? "text-surface-400" : "text-danger-400"
-                      }`}>
-                        {p.avgSentiment > 0 ? "+" : ""}{p.avgSentiment.toFixed(2)}
+                      <span
+                        className={`text-xs font-data tabular-nums ${
+                          p.avgSentiment >= 0.3
+                            ? "text-success-400"
+                            : p.avgSentiment >= 0
+                              ? "text-surface-400"
+                              : "text-danger-400"
+                        }`}
+                      >
+                        {p.avgSentiment > 0 ? "+" : ""}
+                        {p.avgSentiment.toFixed(2)}
                       </span>
                     </div>
                   </td>

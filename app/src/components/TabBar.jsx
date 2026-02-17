@@ -10,25 +10,35 @@ import { useRef, useCallback } from "react";
  * @param {"underline"|"border"} variant - Visual style
  * @param {string} className - Extra classes on the container
  */
-export default function TabBar({ tabs, active, onChange, id = "tabs", variant = "underline", className = "" }) {
+export default function TabBar({
+  tabs,
+  active,
+  onChange,
+  id = "tabs",
+  variant = "underline",
+  className = "",
+}) {
   const listRef = useRef(null);
 
-  const handleKeyDown = useCallback((e) => {
-    const ids = tabs.map((t) => t.id);
-    const idx = ids.indexOf(active);
-    let next;
+  const handleKeyDown = useCallback(
+    (e) => {
+      const ids = tabs.map((t) => t.id);
+      const idx = ids.indexOf(active);
+      let next;
 
-    if (e.key === "ArrowRight") next = ids[(idx + 1) % ids.length];
-    else if (e.key === "ArrowLeft") next = ids[(idx - 1 + ids.length) % ids.length];
-    else if (e.key === "Home") next = ids[0];
-    else if (e.key === "End") next = ids[ids.length - 1];
+      if (e.key === "ArrowRight") next = ids[(idx + 1) % ids.length];
+      else if (e.key === "ArrowLeft") next = ids[(idx - 1 + ids.length) % ids.length];
+      else if (e.key === "Home") next = ids[0];
+      else if (e.key === "End") next = ids[ids.length - 1];
 
-    if (next !== undefined) {
-      e.preventDefault();
-      onChange(next);
-      listRef.current?.querySelector(`[data-tab="${next}"]`)?.focus();
-    }
-  }, [tabs, active, onChange]);
+      if (next !== undefined) {
+        e.preventDefault();
+        onChange(next);
+        listRef.current?.querySelector(`[data-tab="${next}"]`)?.focus();
+      }
+    },
+    [tabs, active, onChange]
+  );
 
   const isBorder = variant === "border";
 
@@ -65,7 +75,9 @@ export default function TabBar({ tabs, active, onChange, id = "tabs", variant = 
           >
             {tab.label}
             {!isBorder && isActive && (
-              <span className={`absolute bottom-0 left-3 right-3 h-[2px] rounded-full ${tab.color || "bg-brand-500"}`} />
+              <span
+                className={`absolute bottom-0 left-3 right-3 h-[2px] rounded-full ${tab.color || "bg-brand-500"}`}
+              />
             )}
           </button>
         );

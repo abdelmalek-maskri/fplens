@@ -12,33 +12,39 @@ Provides:
 import argparse
 import json
 from pathlib import Path
+
 import joblib
 import numpy as np
 import pandas as pd
 import shap
 
 from ml.config.eval_config import (
-    HOLDOUT_SEASON,
-    DROP_COLS,
     CAT_COLS,
+    DROP_COLS,
+    HOLDOUT_SEASON,
     TARGET_COL,
 )
 
-try:  
-    from ml.pipelines.train.train_stacked_ensemble import StackedEnsemble  
-except Exception:  
-    class StackedEnsemble:  
+try:
+    from ml.pipelines.train.train_stacked_ensemble import StackedEnsemble
+except Exception:
+
+    class StackedEnsemble:
         pass
+
 
 try:
     from ml.pipelines.train.train_twohead_model import TwoHeadModel
 except Exception:
+
     class TwoHeadModel:
         pass
+
 
 try:
     from ml.pipelines.train.train_position_specific import PositionSpecificLGBMModel
 except Exception:
+
     class PositionSpecificLGBMModel:
         pass
 
@@ -58,15 +64,15 @@ def load_data(features_path: Path):
         if c in df.columns:
             df[c] = df[c].astype("category")
 
-    #use holdout season for analysis
+    # use holdout season for analysis
     test_df = df[df["season"] == HOLDOUT_SEASON].copy().reset_index(drop=True)
 
-    #prepare features
+    # prepare features
     y = test_df[TARGET_COL].values
     drop = set([TARGET_COL] + DROP_COLS)
     X = test_df.drop(columns=[c for c in drop if c in test_df.columns])
 
-    #store position for stratified analysis
+    # store position for stratified analysis
     positions = test_df["position"].values if "position" in test_df.columns else None
 
     return X, y, positions, test_df
@@ -82,7 +88,7 @@ def load_model(model_path: Path):
 
 
 def get_interpretable_model(model, positions: np.ndarray | None = None):
-    #extract the primary LightGBM model from the ensemble for SHAP analysis.
+    # extract the primary LightGBM model from the ensemble for SHAP analysis.
     if hasattr(model, "regressor") and model.regressor is not None:
         print("Using TwoHeadModel regressor for SHAP analysis...")
         return model.regressor
@@ -104,13 +110,13 @@ def get_interpretable_model(model, positions: np.ndarray | None = None):
 
     print("Extracting primary LightGBM from ensemble for SHAP analysis...")
 
-    #get the main lgbm model (highest contribution to ensemble)
+    # get the main lgbm model (highest contribution to ensemble)
     if "lgbm" in model.base_models:
         lgbm_model, model_type = model.base_models["lgbm"]
         print(f"  Using 'lgbm' base model (type: {model_type})")
         return lgbm_model
     else:
-        #fallback: use first available model
+        # fallback: use first available model
         first_name = list(model.base_models.keys())[0]
         model, _ = model.base_models[first_name]
         print(f"  Using '{first_name}' base model as fallback")
@@ -121,7 +127,7 @@ def compute_shap_values(model, X: pd.DataFrame, positions: np.ndarray, sample_si
     """Compute SHAP values for the model."""
     print(f"Computing SHAP values (sample size: {sample_size})...")
 
-    #sample for speed
+    # sample for speed
     if len(X) > sample_size:
         sample_idx = np.random.RandomState(42).choice(len(X), sample_size, replace=False)
         X_sample = X.iloc[sample_idx].reset_index(drop=True)
@@ -130,7 +136,7 @@ def compute_shap_values(model, X: pd.DataFrame, positions: np.ndarray, sample_si
         X_sample = X
         positions_sample = positions
 
-    #use TreeExplainer for tree-based models 
+    # use TreeExplainer for tree-based models
     explainer = shap.TreeExplainer(model)
     shap_values = explainer.shap_values(X_sample)
 
@@ -141,13 +147,15 @@ def global_importance(shap_values: np.ndarray, X_sample: pd.DataFrame) -> pd.Dat
     """Compute global feature importance from SHAP values."""
     print("Computing global importance...")
 
-    #Mean absolute SHAP value per feature
+    # Mean absolute SHAP value per feature
     importance = np.abs(shap_values).mean(axis=0)
-    importance_df = pd.DataFrame({
-        "feature": X_sample.columns,
-        "importance": importance,
-        "importance_pct": importance / importance.sum() * 100,
-    }).sort_values("importance", ascending=False)
+    importance_df = pd.DataFrame(
+        {
+            "feature": X_sample.columns,
+            "importance": importance,
+            "importance_pct": importance / importance.sum() * 100,
+        }
+    ).sort_values("importance", ascending=False)
 
     return importance_df
 
@@ -173,11 +181,13 @@ def position_specific_importance(
         pos_shap = shap_values[mask]
         pos_importance = np.abs(pos_shap).mean(axis=0)
 
-        importance_df = pd.DataFrame({
-            "feature": X_sample.columns,
-            "importance": pos_importance,
-            "importance_pct": pos_importance / pos_importance.sum() * 100,
-        }).sort_values("importance", ascending=False)
+        importance_df = pd.DataFrame(
+            {
+                "feature": X_sample.columns,
+                "importance": pos_importance,
+                "importance_pct": pos_importance / pos_importance.sum() * 100,
+            }
+        ).sort_values("importance", ascending=False)
 
         results[pos] = importance_df
 
@@ -188,11 +198,11 @@ def feature_interactions(shap_values: np.ndarray, X_sample: pd.DataFrame, top_n:
     """Analyze feature interactions using SHAP interaction values."""
     print("Analyzing feature interactions...")
 
-    #get top features
+    # get top features
     importance = np.abs(shap_values).mean(axis=0)
     top_features = X_sample.columns[np.argsort(-importance)[:top_n]].tolist()
 
-    #compute correlation between SHAP values
+    # compute correlation between SHAP values
     shap_df = pd.DataFrame(shap_values, columns=X_sample.columns)
     top_shap = shap_df[top_features]
 
@@ -208,16 +218,16 @@ def explain_predictions(
     test_df: pd.DataFrame,
     n_examples: int = 5,
 ) -> list:
-    #generate explanations for specific predictions (without per-row SHAP)
+    # generate explanations for specific predictions (without per-row SHAP)
     print("Generating example explanations...")
 
     examples = []
 
-    #find interesting cases
+    # find interesting cases
     preds = model.predict(X)
     errors = np.abs(y - preds)
 
-    #High-error cases (where model was wrong)
+    # High-error cases (where model was wrong)
     high_error_idx = np.argsort(-errors)[:n_examples]
 
     for idx in high_error_idx:
@@ -231,7 +241,7 @@ def explain_predictions(
         }
         examples.append(example)
 
-    #High-value predictions (potential captain picks)
+    # High-value predictions (potential captain picks)
     high_pred_idx = np.argsort(-preds)[:n_examples]
 
     for idx in high_pred_idx:
@@ -256,7 +266,7 @@ def generate_summary_report(
     examples: list,
     model_name: str,
 ) -> dict:
-    
+
     report = {
         "overview": {
             "description": "SHAP analysis of FPL prediction model",
@@ -272,7 +282,7 @@ def generate_summary_report(
         "key_findings": [],
     }
 
-    #position-specific insights
+    # position-specific insights
     for pos, imp_df in position_imp.items():
         top_3 = imp_df.head(3)["feature"].tolist()
         report["position_insights"][pos] = {
@@ -280,7 +290,7 @@ def generate_summary_report(
             "top_feature": top_3[0],
         }
 
-    #key findings
+    # key findings
     findings = []
 
     # finding 1: most important feature overall
@@ -289,7 +299,7 @@ def generate_summary_report(
         f"({global_imp.iloc[0]['importance_pct']:.1f}% of total importance)"
     )
 
-    #finding 2: position differences
+    # finding 2: position differences
     gk_top = position_imp.get("GK", pd.DataFrame()).head(1)
     fwd_top = position_imp.get("FWD", pd.DataFrame()).head(1)
     if not gk_top.empty and not fwd_top.empty:
@@ -298,14 +308,12 @@ def generate_summary_report(
             f"FWD relies on '{fwd_top.iloc[0]['feature']}'"
         )
 
-    #finding 3: availability features
+    # finding 3: availability features
     avail_features = ["consecutive_starts", "games_since_start", "minutes_trend", "played_lag1"]
     avail_importance = global_imp[global_imp["feature"].isin(avail_features)]["importance_pct"].sum()
-    findings.append(
-        f"Availability features contribute {avail_importance:.1f}% of total importance"
-    )
+    findings.append(f"Availability features contribute {avail_importance:.1f}% of total importance")
 
-    #finding 4: extended features value
+    # finding 4: extended features value
     extended_features = [c for c in global_imp["feature"] if "_roll10" in c or "_season_avg" in c or "_momentum" in c]
     extended_importance = global_imp[global_imp["feature"].isin(extended_features)]["importance_pct"].sum()
     findings.append(
@@ -349,30 +357,30 @@ def run() -> None:
     print("SHAP Analysis for FPL Prediction")
     print("=" * 60)
 
-    #create output directory
+    # create output directory
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    #load data
+    # load data
     X, y, positions, test_df = load_data(features_path)
     print(f"Holdout data: {len(X)} samples, {len(X.columns)} features")
 
-    #load model and extract interpretable component 
+    # load model and extract interpretable component
     loaded_model = load_model(model_path)
     model = get_interpretable_model(loaded_model, positions)
 
-    #compute shap values
+    # compute shap values
     shap_values, X_sample, positions_sample, explainer = compute_shap_values(model, X, positions, SAMPLE_SIZE)
 
     model_name = args.model_name or model_path.stem
 
-    #global importance
+    # global importance
     global_imp = global_importance(shap_values, X_sample)
     global_imp.to_csv(output_dir / f"{model_name}_global_importance.csv", index=False)
 
     print("\nTOP 15 GLOBAL FEATURES:")
     print(global_imp.head(15).to_string(index=False))
 
-    #position-specific importance
+    # position-specific importance
     position_imp = position_specific_importance(shap_values, X_sample, positions_sample)
 
     for pos, imp_df in position_imp.items():
@@ -384,11 +392,11 @@ def run() -> None:
             top5 = position_imp[pos].head(5)["feature"].tolist()
             print(f"  {pos}: {', '.join(top5)}")
 
-    #feature interactions
+    # feature interactions
     interaction_corr, top_features = feature_interactions(shap_values, X_sample)
     interaction_corr.to_csv(output_dir / f"{model_name}_feature_interactions.csv")
 
-    #example explanations
+    # example explanations
     examples = explain_predictions(model, X, y, test_df, n_examples=5)
 
     # summary report

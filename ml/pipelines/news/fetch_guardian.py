@@ -10,6 +10,7 @@ import os
 import re
 import time
 from pathlib import Path
+
 import requests
 from bs4 import BeautifulSoup
 
@@ -118,14 +119,16 @@ def scrape_season(season: str, from_date: str, to_date: str) -> list[dict]:
             if not is_pl_relevant(title, body_text):
                 continue
 
-            articles.append({
-                "id": r["id"],
-                "title": title,
-                "body_text": body_text,
-                "first_paragraph": extract_first_paragraph(body_text),
-                "published_date": r.get("webPublicationDate", ""),
-                "season": season,
-            })
+            articles.append(
+                {
+                    "id": r["id"],
+                    "title": title,
+                    "body_text": body_text,
+                    "first_paragraph": extract_first_paragraph(body_text),
+                    "published_date": r.get("webPublicationDate", ""),
+                    "season": season,
+                }
+            )
 
         total_pages = data.get("pages", 1)
         print(f"    page {page}/{total_pages} — {len(articles)} PL articles so far")

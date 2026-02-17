@@ -1,64 +1,55 @@
 # ml/utils/name_normalize.py
 
 from __future__ import annotations
+
 import html
 import re
 import unicodedata
 
 # Characters that NFKD does not decompose into ASCII base + combining mark.
 # Map them explicitly before running the standard accent-strip pass.
-_EXTRA_TRANSLITERATE = str.maketrans({
-    "\u00d8": "O",   # Ø
-    "\u00f8": "o",   # ø
-    "\u00c6": "AE",  # Æ
-    "\u00e6": "ae",  # æ
-    "\u00d0": "D",   # Ð
-    "\u00f0": "d",   # ð
-    "\u0141": "L",   # Ł
-    "\u0142": "l",   # ł
-    "\u00df": "ss",  # ß
-    "\u0110": "D",   # Đ
-    "\u0111": "d",   # đ
-})
+_EXTRA_TRANSLITERATE = str.maketrans(
+    {
+        "\u00d8": "O",  # Ø
+        "\u00f8": "o",  # ø
+        "\u00c6": "AE",  # Æ
+        "\u00e6": "ae",  # æ
+        "\u00d0": "D",  # Ð
+        "\u00f0": "d",  # ð
+        "\u0141": "L",  # Ł
+        "\u0142": "l",  # ł
+        "\u00df": "ss",  # ß
+        "\u0110": "D",  # Đ
+        "\u0111": "d",  # đ
+    }
+)
 
 # Canonical aliases AFTER basic cleaning (lowercase, punctuation removed, etc.)
 # Keep keys in their "cleaned" form (spaces only, no punctuation).
 ALIASES = {
     "tottenham": "spurs",
     "tottenham hotspur": "spurs",
-
     "manchester united": "man utd",
     "man united": "man utd",
     "manchester utd": "man utd",
     "manchester city": "man city",
-
     "wolverhampton": "wolves",
     "wolverhampton wanderers": "wolves",
-
     "west bromwich albion": "west brom",
     "west bromwich": "west brom",
-
     "sheffield united": "sheffield utd",
-
     "nottingham forest": "nottm forest",
     "notts forest": "nottm forest",
     "nott m forest": "nottm forest",
-
     "brighton and hove albion": "brighton",
-
     "newcastle united": "newcastle",
-
     "stoke city": "stoke",
-
     "swansea city": "swansea",
-
     "hull city": "hull",
-
     "cardiff city": "cardiff",
-
 }
 
-# Words to drop when cleaning names 
+# Words to drop when cleaning names
 STOPWORDS = {
     "fc",
     "afc",
@@ -78,7 +69,7 @@ def _basic_clean(s: str) -> str:
     Lowercase, remove accents, replace & with and,
     drop punctuation, normalize spaces.
     """
-    s = html.unescape(s)          # &#039; -> '
+    s = html.unescape(s)  # &#039; -> '
     s = _strip_accents(s)
     s = s.lower().strip()
 

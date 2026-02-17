@@ -3,6 +3,7 @@
 Runs the full Understat pipeline for all seasons.
 Each module now handles all seasons internally.
 """
+
 import subprocess
 import sys
 

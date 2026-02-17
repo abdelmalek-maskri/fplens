@@ -23,18 +23,17 @@ from sklearn.model_selection import GroupKFold
 from xgboost import XGBRegressor
 
 from ml.config.eval_config import (
-    HOLDOUT_SEASON,
+    CAT_COLS,
     CV_SEASONS,
     DROP_COLS,
-    CAT_COLS,
+    HOLDOUT_SEASON,
     TARGET_COL,
 )
-from ml.utils.eval_metrics import full_evaluation, print_final_summary
 from ml.evaluation.comprehensive_metrics import (
     ComprehensiveEvaluator,
-    compute_stratified_metrics,
 )
 from ml.pipelines.injury.build_injury_features import FILL_DEFAULTS
+from ml.utils.eval_metrics import full_evaluation, print_final_summary
 
 # -- Paths ---
 
@@ -51,33 +50,51 @@ N_INNER_FOLDS = 3
 
 def build_lgbm() -> LGBMRegressor:
     return LGBMRegressor(
-        n_estimators=800, learning_rate=0.05, num_leaves=63,
-        subsample=0.8, colsample_bytree=0.8,
-        random_state=42, n_jobs=-1, verbose=-1,
+        n_estimators=800,
+        learning_rate=0.05,
+        num_leaves=63,
+        subsample=0.8,
+        colsample_bytree=0.8,
+        random_state=42,
+        n_jobs=-1,
+        verbose=-1,
     )
 
 
 def build_lgbm_v2() -> LGBMRegressor:
     return LGBMRegressor(
-        n_estimators=600, learning_rate=0.03, num_leaves=31,
-        subsample=0.7, colsample_bytree=0.7,
-        random_state=123, n_jobs=-1, verbose=-1,
+        n_estimators=600,
+        learning_rate=0.03,
+        num_leaves=31,
+        subsample=0.7,
+        colsample_bytree=0.7,
+        random_state=123,
+        n_jobs=-1,
+        verbose=-1,
     )
 
 
 def build_xgboost() -> XGBRegressor:
     return XGBRegressor(
-        n_estimators=800, learning_rate=0.05, max_depth=7,
-        subsample=0.8, colsample_bytree=0.8,
-        random_state=42, n_jobs=-1, verbosity=0,
+        n_estimators=800,
+        learning_rate=0.05,
+        max_depth=7,
+        subsample=0.8,
+        colsample_bytree=0.8,
+        random_state=42,
+        n_jobs=-1,
+        verbosity=0,
     )
 
 
 def build_rf() -> RandomForestRegressor:
     return RandomForestRegressor(
-        n_estimators=200, max_depth=12,
-        min_samples_split=10, min_samples_leaf=5,
-        random_state=42, n_jobs=-1,
+        n_estimators=200,
+        max_depth=12,
+        min_samples_split=10,
+        min_samples_leaf=5,
+        random_state=42,
+        n_jobs=-1,
     )
 
 
@@ -87,13 +104,19 @@ def build_ridge() -> Ridge:
 
 def build_played_classifier() -> LGBMClassifier:
     return LGBMClassifier(
-        n_estimators=500, learning_rate=0.05, num_leaves=31,
-        subsample=0.8, colsample_bytree=0.8,
-        random_state=42, n_jobs=-1, verbose=-1,
+        n_estimators=500,
+        learning_rate=0.05,
+        num_leaves=31,
+        subsample=0.8,
+        colsample_bytree=0.8,
+        random_state=42,
+        n_jobs=-1,
+        verbose=-1,
     )
 
 
 # -- Data helpers ---
+
 
 def prepare_xy(df: pd.DataFrame):
     y = df[TARGET_COL].values
@@ -128,6 +151,7 @@ def to_numeric(X: pd.DataFrame) -> pd.DataFrame:
 
 
 # -- Stacked ensemble ---
+
 
 class StackedEnsembleInjury:
     def __init__(self, n_inner_folds: int = 3):
@@ -184,8 +208,7 @@ class StackedEnsembleInjury:
             "detail": "non-negative",
         }
 
-        base_maes = [mean_absolute_error(y_train, oof_predictions[:, i])
-                     for i in range(oof_predictions.shape[1])]
+        base_maes = [mean_absolute_error(y_train, oof_predictions[:, i]) for i in range(oof_predictions.shape[1])]
         inv_w = np.array([1.0 / m for m in base_maes])
         inv_w = inv_w / inv_w.sum()
         candidates["inv_mae"] = {
@@ -197,7 +220,7 @@ class StackedEnsembleInjury:
         }
 
         print(f"\n  {'Method':<16} {'OOF MAE':<12} {'Details'}")
-        print(f"  {'-'*16} {'-'*12} {'-'*30}")
+        print(f"  {'-' * 16} {'-' * 12} {'-' * 30}")
 
         for name in sorted(candidates, key=lambda n: mean_absolute_error(y_train, candidates[n]["pred"])):
             c = candidates[name]
@@ -249,14 +272,14 @@ class StackedEnsembleInjury:
         print(f"  Generating OOF predictions ({n_folds} inner folds, grouped by season)...")
         gkf = GroupKFold(n_splits=n_folds)
 
-        for fold_idx, (train_idx, val_idx) in enumerate(gkf.split(X_train, groups=groups)):
+        for _fold_idx, (train_idx, val_idx) in enumerate(gkf.split(X_train, groups=groups)):
             X_tr = X_train.iloc[train_idx]
             X_val = X_train.iloc[val_idx]
             X_tr_num = X_num.iloc[train_idx]
             X_val_num = X_num.iloc[val_idx]
             y_tr = y_train[train_idx]
 
-            for i, (name, (builder, ltype)) in enumerate(learners.items()):
+            for i, (_name, (builder, ltype)) in enumerate(learners.items()):
                 model = builder()
                 if ltype == "lgbm":
                     model.fit(X_tr, y_tr, categorical_feature=cat_cols)
@@ -320,6 +343,7 @@ class StackedEnsembleInjury:
 
 # -- Evaluation ---
 
+
 def evaluate_all_predictions(y_true: np.ndarray, y_train: np.ndarray, predictions: dict) -> dict:
     results = {}
     for name, preds in predictions.items():
@@ -342,8 +366,7 @@ def load_previous_results() -> tuple[dict | None, dict | None]:
     return prev_summary, prev_comprehensive
 
 
-def print_head_to_head(new_results: dict, new_comprehensive: dict,
-                       prev_summary: dict, prev_comprehensive: dict):
+def print_head_to_head(new_results: dict, new_comprehensive: dict, prev_summary: dict, prev_comprehensive: dict):
     print("\n")
     print("=" * 70)
     print("  HEAD-TO-HEAD: Stacked Ensemble WITHOUT vs WITH Injury Features")
@@ -353,7 +376,7 @@ def print_head_to_head(new_results: dict, new_comprehensive: dict,
     new = new_results["stacked"]
 
     print(f"\n  {'Metric':<25} {'WITHOUT injury':<18} {'WITH injury':<18} {'Delta':<12} {'Change'}")
-    print(f"  {'-'*25} {'-'*18} {'-'*18} {'-'*12} {'-'*10}")
+    print(f"  {'-' * 25} {'-' * 18} {'-' * 18} {'-' * 12} {'-' * 10}")
 
     for metric, fmt in [("mae", ".4f"), ("rmse", ".4f"), ("r2", ".4f")]:
         old_val = old[metric]
@@ -370,10 +393,9 @@ def print_head_to_head(new_results: dict, new_comprehensive: dict,
         print(f"  {metric.upper():<25} {old_val:<18{fmt}} {new_val:<18{fmt}} {delta:<+12{fmt}} {pct:+.2f}% ({arrow})")
 
     print(f"\n  {'Base Learner':<25} {'WITHOUT':<18} {'WITH':<18} {'MAE Delta'}")
-    print(f"  {'-'*25} {'-'*18} {'-'*18} {'-'*12}")
+    print(f"  {'-' * 25} {'-' * 18} {'-' * 18} {'-' * 12}")
 
-    for method in ["lgbm", "lgbm_v2", "rf", "ridge", "xgb", "played_prob",
-                    "mean", "median", "stacked"]:
+    for method in ["lgbm", "lgbm_v2", "rf", "ridge", "xgb", "played_prob", "mean", "median", "stacked"]:
         if method in prev_summary["all_methods"] and method in new_results:
             old_mae = prev_summary["all_methods"][method]["mae"]
             new_mae = new_results[method]["mae"]
@@ -382,7 +404,7 @@ def print_head_to_head(new_results: dict, new_comprehensive: dict,
             print(f"  {method:<25} {old_mae:<18.4f} {new_mae:<18.4f} {delta:+.4f}{marker}")
 
     print(f"\n  {'Meta Coefficient':<25} {'WITHOUT':<18} {'WITH'}")
-    print(f"  {'-'*25} {'-'*18} {'-'*18}")
+    print(f"  {'-' * 25} {'-' * 18} {'-' * 18}")
 
     old_coefs = prev_summary.get("meta_coefficients", {})
     new_coefs = new_results.get("meta_coefficients", {})
@@ -397,7 +419,7 @@ def print_head_to_head(new_results: dict, new_comprehensive: dict,
         new_s = new_comprehensive["stratified"]
 
         print(f"\n  {'Stratified MAE':<25} {'WITHOUT':<18} {'WITH':<18} {'Delta'}")
-        print(f"  {'-'*25} {'-'*18} {'-'*18} {'-'*12}")
+        print(f"  {'-' * 25} {'-' * 18} {'-' * 18} {'-' * 12}")
 
         for key, label in [
             ("mae_played", "Played"),
@@ -418,7 +440,7 @@ def print_head_to_head(new_results: dict, new_comprehensive: dict,
         new_c = new_comprehensive["calibration"]
 
         print(f"\n  {'Calibration':<25} {'WITHOUT':<18} {'WITH':<18} {'Delta'}")
-        print(f"  {'-'*25} {'-'*18} {'-'*18} {'-'*12}")
+        print(f"  {'-' * 25} {'-' * 18} {'-' * 18} {'-' * 12}")
 
         for key, label in [
             ("correlation", "Pearson r"),
@@ -436,7 +458,7 @@ def print_head_to_head(new_results: dict, new_comprehensive: dict,
             new_b = new_comprehensive["business"]
 
             print(f"\n  {'Captain Picks':<25} {'WITHOUT':<18} {'WITH':<18} {'Delta'}")
-            print(f"  {'-'*25} {'-'*18} {'-'*18} {'-'*12}")
+            print(f"  {'-' * 25} {'-' * 18} {'-' * 18} {'-' * 12}")
 
             for key, label in [
                 ("top1_accuracy", "Top-1 Accuracy"),
@@ -447,25 +469,26 @@ def print_head_to_head(new_results: dict, new_comprehensive: dict,
                 old_val = old_b[key]
                 new_val = new_b[key]
                 delta = new_val - old_val
-                print(f"  {label:<25} {old_val*100:<17.1f}% {new_val*100:<17.1f}% {delta*100:+.1f}pp")
+                print(f"  {label:<25} {old_val * 100:<17.1f}% {new_val * 100:<17.1f}% {delta * 100:+.1f}pp")
 
     mae_delta = new["mae"] - old["mae"]
     pct = mae_delta / old["mae"] * 100
 
-    print(f"\n  {'='*70}")
+    print(f"\n  {'=' * 70}")
     if mae_delta < 0:
-        print(f"  VERDICT: Injury features IMPROVE the stacked ensemble")
+        print("  VERDICT: Injury features IMPROVE the stacked ensemble")
         print(f"           MAE: {old['mae']:.4f} -> {new['mae']:.4f} ({pct:+.2f}%)")
         print(f"           Absolute improvement: {abs(mae_delta):.4f}")
     elif mae_delta == 0:
         print(f"  VERDICT: No difference (MAE identical at {new['mae']:.4f})")
     else:
-        print(f"  VERDICT: Injury features did NOT improve the stacked ensemble")
+        print("  VERDICT: Injury features did NOT improve the stacked ensemble")
         print(f"           MAE: {old['mae']:.4f} -> {new['mae']:.4f} ({pct:+.2f}%)")
-    print(f"  {'='*70}\n")
+    print(f"  {'=' * 70}\n")
 
 
 # -- Main ---
+
 
 def run():
     print("=" * 70)
@@ -494,16 +517,19 @@ def run():
 
     injury_structured = [c for c in df.columns if c in FILL_DEFAULTS]
     injury_nlp = [c for c in df.columns if c.startswith("injury_") and c not in injury_structured]
-    baseline_cols = [c for c in df.columns if c not in injury_structured + injury_nlp
-                     and c not in [TARGET_COL] + DROP_COLS + ["GW"]]
+    baseline_cols = [
+        c for c in df.columns if c not in injury_structured + injury_nlp and c not in [TARGET_COL] + DROP_COLS + ["GW"]
+    ]
 
-    print(f"\nFeature groups:")
+    print("\nFeature groups:")
     print(f"  Baseline features:           {len(baseline_cols)}")
     print(f"  Injury structured + temporal: {len(injury_structured)}")
     print(f"  Injury NLP (type dummies):    {len(injury_nlp)}")
     print(f"  Total:                        {len(baseline_cols) + len(injury_structured) + len(injury_nlp)}")
 
-    injury_seasons_in_data = df[df["status_encoded"].notna()]["season"].unique() if "status_encoded" in df.columns else []
+    injury_seasons_in_data = (
+        df[df["status_encoded"].notna()]["season"].unique() if "status_encoded" in df.columns else []
+    )
     nan_seasons = df[df["status_encoded"].isna()]["season"].unique() if "status_encoded" in df.columns else []
     print(f"\n  Seasons with real injury data: {sorted(injury_seasons_in_data)}")
     print(f"  Seasons with NaN (pre-injury): {sorted(nan_seasons)}")
@@ -535,9 +561,9 @@ def run():
     results = evaluate_all_predictions(y_test, y_train, all_preds)
     best_method = min(results.keys(), key=lambda k: results[k]["mae"])
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("HOLDOUT RESULTS (all methods)")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     print(f"\n{'Method':<15} {'MAE':<10} {'RMSE':<10} {'R²':<10}")
     print("-" * 45)
     for method in sorted(results.keys(), key=lambda x: results[x]["mae"]):
@@ -611,8 +637,8 @@ def run():
         print(f"  Expected at: {PREV_SUMMARY}")
 
     print(f"\nOutputs saved to: {OUT_DIR}")
-    print(f"  model.joblib    — trained ensemble")
-    print(f"  summary.json    — full metrics")
+    print("  model.joblib    — trained ensemble")
+    print("  summary.json    — full metrics")
 
 
 if __name__ == "__main__":

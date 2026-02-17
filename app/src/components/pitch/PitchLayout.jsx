@@ -25,7 +25,13 @@ export default function PitchLayout({ id = "pitch", children }) {
           </filter>
         </defs>
         <rect width="100%" height="100%" fill={`url(#${patternId})`} />
-        <rect width="100%" height="100%" fill={`url(#${patternId})`} opacity="0.3" filter={`url(#${filterId})`} />
+        <rect
+          width="100%"
+          height="100%"
+          fill={`url(#${patternId})`}
+          opacity="0.3"
+          filter={`url(#${filterId})`}
+        />
       </svg>
 
       {/* Pitch markings */}

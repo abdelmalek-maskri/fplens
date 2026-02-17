@@ -12,12 +12,8 @@ export default function ShapBreakdown({ shapData }) {
           const barWidth = (Math.abs(s.impact) / maxImpact) * 100;
           return (
             <div key={s.feature} className="flex items-center gap-3 text-xs">
-              <span className="text-surface-400 w-40 shrink-0 font-mono truncate">
-                {s.feature}
-              </span>
-              <span className="text-surface-500 w-20 shrink-0 text-right">
-                {s.value}
-              </span>
+              <span className="text-surface-400 w-40 shrink-0 font-mono truncate">{s.feature}</span>
+              <span className="text-surface-500 w-20 shrink-0 text-right">{s.value}</span>
               <div className="flex-1 flex items-center gap-1">
                 {isPositive ? (
                   <div className="flex items-center w-full">

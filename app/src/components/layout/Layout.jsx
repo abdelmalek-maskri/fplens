@@ -21,7 +21,9 @@ export default function Layout({ children }) {
     } else {
       document.body.style.overflow = "";
     }
-    return () => { document.body.style.overflow = ""; };
+    return () => {
+      document.body.style.overflow = "";
+    };
   }, [sidebarOpen]);
 
   const handleTrapFocus = useCallback((e) => {
@@ -57,12 +59,10 @@ export default function Layout({ children }) {
       )}
 
       <Sidebar ref={sidebarRef} open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <Header onMenuToggle={() => setSidebarOpen(o => !o)} />
+      <Header onMenuToggle={() => setSidebarOpen((o) => !o)} />
 
       <main className="lg:ml-[200px] pt-11 min-h-screen">
-        <div className="p-4 sm:p-5">
-          {children}
-        </div>
+        <div className="p-4 sm:p-5">{children}</div>
       </main>
     </div>
   );

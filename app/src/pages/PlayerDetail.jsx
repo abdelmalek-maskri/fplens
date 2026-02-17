@@ -16,12 +16,16 @@ const FormChart = ({ pts, labels }) => {
     <div className="flex items-end gap-1 h-24">
       {pts.map((p, i) => (
         <div key={i} className="flex-1 flex flex-col items-center gap-1">
-          <span className="text-2xs text-surface-400 font-data tabular-nums">
-            {p}
-          </span>
+          <span className="text-2xs text-surface-400 font-data tabular-nums">{p}</span>
           <div
             className={`w-full rounded-t transition-all ${
-              p >= 8 ? "bg-brand-400" : p >= 5 ? "bg-brand-500/60" : p >= 3 ? "bg-surface-500" : "bg-surface-700"
+              p >= 8
+                ? "bg-brand-400"
+                : p >= 5
+                  ? "bg-brand-500/60"
+                  : p >= 3
+                    ? "bg-surface-500"
+                    : "bg-surface-700"
             }`}
             style={{ height: `${(p / max) * 100}%`, minHeight: p > 0 ? "4px" : "1px" }}
           />
@@ -38,8 +42,7 @@ const FormChart = ({ pts, labels }) => {
 // SENTIMENT DOT
 // ============================================================
 const SentimentDot = ({ value }) => {
-  const color =
-    value >= 0.5 ? "bg-success-400" : value >= 0 ? "bg-surface-400" : "bg-danger-400";
+  const color = value >= 0.5 ? "bg-success-400" : value >= 0 ? "bg-surface-400" : "bg-danger-400";
   return <div className={`w-2 h-2 rounded-full ${color}`} />;
 };
 
@@ -50,23 +53,24 @@ export default function PlayerDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { data: player, isLoading, error } = usePlayer(id);
-  if (isLoading) return (
-    <div className="space-y-6">
-      <div className="flex items-start gap-4">
-        <div className="flex-1 space-y-2">
-          <div className="skeleton h-4 w-20" />
-          <div className="skeleton h-6 w-48" />
-          <div className="skeleton h-3 w-36" />
+  if (isLoading)
+    return (
+      <div className="space-y-6">
+        <div className="flex items-start gap-4">
+          <div className="flex-1 space-y-2">
+            <div className="skeleton h-4 w-20" />
+            <div className="skeleton h-6 w-48" />
+            <div className="skeleton h-3 w-36" />
+          </div>
+          <div className="skeleton h-8 w-16" />
         </div>
-        <div className="skeleton h-8 w-16" />
+        <SkeletonStatStrip items={5} />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <SkeletonCard lines={6} />
+          <SkeletonCard lines={6} />
+        </div>
       </div>
-      <SkeletonStatStrip items={5} />
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <SkeletonCard lines={6} />
-        <SkeletonCard lines={6} />
-      </div>
-    </div>
-  );
+    );
   if (error) return <ErrorState message="Failed to load player data." />;
   if (!player) return null;
 
@@ -91,7 +95,9 @@ export default function PlayerDetail() {
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-1">
             <TeamBadge team={player.team_name} />
-            <span className={`text-xs font-medium px-2 py-0.5 rounded ${POSITION_BG[player.position]} ${POSITION_COLORS[player.position]}`}>
+            <span
+              className={`text-xs font-medium px-2 py-0.5 rounded ${POSITION_BG[player.position]} ${POSITION_COLORS[player.position]}`}
+            >
               {player.position}
             </span>
             {player.status !== "a" && (
@@ -101,10 +107,10 @@ export default function PlayerDetail() {
           <h2 className="text-xl font-bold text-surface-100">
             {player.first_name} {player.second_name}
           </h2>
-          <p className="text-sm text-surface-500">{player.team_name} · £{player.value}m · {player.selected_by_percent}% owned</p>
-          {player.news && (
-            <p className="text-xs text-warning-400 mt-1">{player.news}</p>
-          )}
+          <p className="text-sm text-surface-500">
+            {player.team_name} · £{player.value}m · {player.selected_by_percent}% owned
+          </p>
+          {player.news && <p className="text-xs text-warning-400 mt-1">{player.news}</p>}
         </div>
         <div className="text-right">
           <span className="text-xl font-bold text-brand-400 font-data tabular-nums">
@@ -120,12 +126,16 @@ export default function PlayerDetail() {
       {/* Stat strip */}
       <div className="flex items-center gap-5 flex-wrap py-3 border-y border-surface-800">
         <div>
-          <span className="text-lg font-bold text-surface-100 font-data tabular-nums">{player.total_points}</span>
+          <span className="text-lg font-bold text-surface-100 font-data tabular-nums">
+            {player.total_points}
+          </span>
           <span className="text-xs text-surface-500 ml-1">total pts</span>
         </div>
         <div className="w-px h-4 bg-surface-700" />
         <div>
-          <span className="text-lg font-bold text-surface-100 font-data tabular-nums">{player.form}</span>
+          <span className="text-lg font-bold text-surface-100 font-data tabular-nums">
+            {player.form}
+          </span>
           <span className="text-xs text-surface-500 ml-1">form</span>
         </div>
         <div className="w-px h-4 bg-surface-700" />
@@ -135,13 +145,18 @@ export default function PlayerDetail() {
         </div>
         <div className="w-px h-4 bg-surface-700" />
         <div>
-          <span className="text-lg font-bold text-surface-100 font-data tabular-nums">{player.ict_index}</span>
+          <span className="text-lg font-bold text-surface-100 font-data tabular-nums">
+            {player.ict_index}
+          </span>
           <span className="text-xs text-surface-500 ml-1">ICT</span>
         </div>
         <div className="w-px h-4 bg-surface-700" />
         <div>
-          <span className={`text-lg font-bold font-data tabular-nums ${netTransfers > 0 ? "text-success-400" : netTransfers < 0 ? "text-danger-400" : "text-surface-100"}`}>
-            {netTransfers > 0 ? "+" : ""}{(netTransfers / 1000).toFixed(1)}k
+          <span
+            className={`text-lg font-bold font-data tabular-nums ${netTransfers > 0 ? "text-success-400" : netTransfers < 0 ? "text-danger-400" : "text-surface-100"}`}
+          >
+            {netTransfers > 0 ? "+" : ""}
+            {(netTransfers / 1000).toFixed(1)}k
           </span>
           <span className="text-xs text-surface-500 ml-1">net transfers</span>
         </div>
@@ -151,9 +166,7 @@ export default function PlayerDetail() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Form chart */}
         <div>
-          <span className="section-label">
-            Recent form
-          </span>
+          <span className="section-label">Recent form</span>
           <div className="mt-3">
             <FormChart pts={player.pts_history} labels={player.gw_labels} />
           </div>
@@ -161,14 +174,16 @@ export default function PlayerDetail() {
 
         {/* Fixture run */}
         <div>
-          <span className="section-label">
-            Upcoming fixtures
-          </span>
+          <span className="section-label">Upcoming fixtures</span>
           <div className="mt-3 space-y-1.5">
             {player.fixtures.map((f) => (
               <div key={f.gw} className="flex items-center gap-3 py-1.5">
-                <span className="text-xs text-surface-500 w-10 font-data tabular-nums">GW{f.gw}</span>
-                <span className={`inline-flex items-center justify-center w-5 h-5 rounded text-2xs font-bold ${FDR_COLORS[f.fdr].bg} ${FDR_COLORS[f.fdr].text}`}>
+                <span className="text-xs text-surface-500 w-10 font-data tabular-nums">
+                  GW{f.gw}
+                </span>
+                <span
+                  className={`inline-flex items-center justify-center w-5 h-5 rounded text-2xs font-bold ${FDR_COLORS[f.fdr].bg} ${FDR_COLORS[f.fdr].text}`}
+                >
                   {f.fdr}
                 </span>
                 <span className="text-sm text-surface-100">{f.opponent}</span>
@@ -181,9 +196,7 @@ export default function PlayerDetail() {
 
       {/* Season stats */}
       <div>
-        <span className="section-label">
-          Season stats
-        </span>
+        <span className="section-label">Season stats</span>
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4 mt-3">
           {[
             { label: "Goals", value: player.goals, compare: player.xG, compareLabel: "xG" },
@@ -211,9 +224,7 @@ export default function PlayerDetail() {
       {/* SHAP Breakdown */}
       {player.shap && player.shap.length > 0 && (
         <div>
-          <span className="section-label">
-            Prediction breakdown
-          </span>
+          <span className="section-label">Prediction breakdown</span>
           <div className="mt-3 card">
             <ShapBreakdown shapData={player.shap} />
           </div>
@@ -223,22 +234,30 @@ export default function PlayerDetail() {
       {/* News mentions */}
       {player.news_mentions && player.news_mentions.length > 0 && (
         <div>
-          <span className="section-label">
-            News mentions
-          </span>
+          <span className="section-label">News mentions</span>
           <div className="mt-3 space-y-2">
             {player.news_mentions.map((article, i) => (
-              <div key={i} className="flex items-start gap-3 py-2 border-b border-surface-800/60 last:border-0">
+              <div
+                key={i}
+                className="flex items-start gap-3 py-2 border-b border-surface-800/60 last:border-0"
+              >
                 <SentimentDot value={article.sentiment} />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-surface-200">{article.headline}</p>
                   <div className="flex items-center gap-2 mt-0.5">
                     <span className="text-2xs text-surface-500">{article.source}</span>
                     <span className="text-2xs text-surface-600">{article.date}</span>
-                    <span className={`text-2xs font-data tabular-nums ${
-                      article.sentiment >= 0.5 ? "text-success-400" : article.sentiment >= 0 ? "text-surface-400" : "text-danger-400"
-                    }`}>
-                      {article.sentiment > 0 ? "+" : ""}{article.sentiment.toFixed(2)}
+                    <span
+                      className={`text-2xs font-data tabular-nums ${
+                        article.sentiment >= 0.5
+                          ? "text-success-400"
+                          : article.sentiment >= 0
+                            ? "text-surface-400"
+                            : "text-danger-400"
+                      }`}
+                    >
+                      {article.sentiment > 0 ? "+" : ""}
+                      {article.sentiment.toFixed(2)}
                     </span>
                   </div>
                 </div>

@@ -40,27 +40,20 @@ export default function PitchView({
   return (
     <div className="card overflow-hidden">
       <PitchLayout id={id}>
-        <div className="relative z-10 flex flex-col justify-around py-8 px-4" style={{ minHeight: "560px" }}>
-          <div className="flex justify-center gap-8">
-            {gk.map(renderCard)}
-          </div>
-          <div className="flex justify-center gap-4 sm:gap-6 lg:gap-10">
-            {def.map(renderCard)}
-          </div>
-          <div className="flex justify-center gap-3 sm:gap-5 lg:gap-8">
-            {mid.map(renderCard)}
-          </div>
-          <div className="flex justify-center gap-4 sm:gap-6 lg:gap-10">
-            {fwd.map(renderCard)}
-          </div>
+        <div
+          className="relative z-10 flex flex-col justify-around py-8 px-4"
+          style={{ minHeight: "560px" }}
+        >
+          <div className="flex justify-center gap-8">{gk.map(renderCard)}</div>
+          <div className="flex justify-center gap-4 sm:gap-6 lg:gap-10">{def.map(renderCard)}</div>
+          <div className="flex justify-center gap-3 sm:gap-5 lg:gap-8">{mid.map(renderCard)}</div>
+          <div className="flex justify-center gap-4 sm:gap-6 lg:gap-10">{fwd.map(renderCard)}</div>
         </div>
       </PitchLayout>
 
       {/* Bench */}
       <div className="bg-surface-800/60 px-4 py-4 border-t border-surface-700">
-        <p className="section-label mb-4">
-          {benchLabel}
-        </p>
+        <p className="section-label mb-4">{benchLabel}</p>
         <div className="flex justify-around">
           {bench.map((p, idx) => (
             <div key={p.element} className="flex flex-col items-center gap-0.5">
