@@ -11,6 +11,9 @@ import time
 from pathlib import Path
 import requests
 from bs4 import BeautifulSoup
+from dotenv import load_dotenv
+
+load_dotenv()
 
 GUARDIAN_API_KEY = os.environ.get("GUARDIAN_API_KEY", "test")
 GUARDIAN_ENDPOINT = "https://content.guardianapis.com/search"
