@@ -1,6 +1,5 @@
 """
 Fetch Guardian Premier League articles for news feature pipeline.
-
 Scrapes articles tagged football/premierleague from the Guardian API,
 cleans HTML to plain text, filters for PL relevance, and caches results.
 """
@@ -10,7 +9,6 @@ import os
 import re
 import time
 from pathlib import Path
-
 import requests
 from bs4 import BeautifulSoup
 
@@ -18,12 +16,10 @@ GUARDIAN_API_KEY = os.environ.get("GUARDIAN_API_KEY", "test")
 GUARDIAN_ENDPOINT = "https://content.guardianapis.com/search"
 
 RAW_DIR = Path("data/raw/news")
-
 PAGE_SIZE = 50
 RATE_LIMIT_SECONDS = 1.0
 MAX_ARTICLES_PER_SEASON = 1500
 
-# Seasons to scrape — matches injury data coverage
 SEASONS = {
     "2018-19": ("2018-08-01", "2019-05-31"),
     "2019-20": ("2019-08-01", "2020-07-31"),  # extended due to COVID restart
@@ -67,7 +63,7 @@ def extract_first_paragraph(text: str, num_sentences: int = 3) -> str:
 
 
 def is_pl_relevant(title: str, body: str) -> bool:
-    """Check if article is about Premier League (not WSL, international, etc.)."""
+    """Check if article is about Premier League"""
     combined = f"{title} {body[:500]}"
     return not bool(_EXCLUDE_PATTERNS.search(combined))
 
@@ -159,7 +155,7 @@ def run(seasons: list[str] | None = None) -> None:
 
     for season in target_seasons:
         if season not in SEASONS:
-            print(f"  {season}: unknown season, skipping")
+            print(f"{season}: unknown season, skipping")
             continue
         from_date, to_date = SEASONS[season]
         articles = scrape_season(season, from_date, to_date)
