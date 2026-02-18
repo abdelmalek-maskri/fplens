@@ -10,6 +10,7 @@ export const modelVariants = [
     mae: 1.0597,
     rmse: 2.1262,
     r2: 0.2212,
+    spearman: 0.651,
     features: 106,
     description: "Single LightGBM with extended features",
   },
@@ -19,6 +20,7 @@ export const modelVariants = [
     mae: 1.0508,
     rmse: 2.0948,
     r2: 0.2441,
+    spearman: 0.667,
     features: 106,
     description: "6-model ensemble with Ridge meta-learner",
     best: true,
@@ -29,6 +31,7 @@ export const modelVariants = [
     mae: 1.0713,
     rmse: 2.1346,
     r2: 0.2151,
+    spearman: 0.643,
     features: 106,
     description: "Separate models per position (GK/DEF/MID/FWD)",
   },
@@ -38,6 +41,7 @@ export const modelVariants = [
     mae: 1.063,
     rmse: 2.1507,
     r2: 0.2032,
+    spearman: 0.655,
     features: 106,
     description: "Classifier × Regressor with soft combination",
   },
@@ -177,6 +181,8 @@ export const datasetStats = {
   testSeason: "2024-25",
   playedPct: 39.78,
   notPlayedPct: 60.22,
+  cvMae: 1.043,
+  cvStd: 0.041,
 };
 
 export const calibrationDeciles = {
@@ -223,6 +229,18 @@ export const exampleShap = {
     { feature: "injury_type", value: "Hamstring", impact: -0.4 },
     { feature: "form", value: 5.4, impact: +0.2 },
   ],
+};
+
+export const calibrationStats = {
+  pearsonR: 0.5,
+  spearmanRho: 0.667,
+  captainEfficiency: 41.1,
+  highReturnMae: 5.57,
+  playedMae: 1.92,
+  notPlayedMae: 0.47,
+  captainTop1: 18.2,
+  captainTop3: 41.3,
+  captainTop5: 56.8,
 };
 
 export const TABS = [

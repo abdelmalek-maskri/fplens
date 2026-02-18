@@ -4,12 +4,12 @@ Predicting Fantasy Premier League player points using a stacked ensemble (LightG
 
 ## Results
 
-| Model | MAE | RMSE | R² | Spearman |
-| ----- | --- | ---- | -- | -------- |
+| Model | MAE | RMSE | Pearson r | Spearman ρ |
+| ----- | --- | ---- | --------- | ---------- |
 | Baseline LightGBM | 1.060 | — | — | — |
 | + Injury features | 1.051 | — | — | — |
 | + News features | 1.058 | — | — | — |
-| **+ Both (Config D)** | **1.043** | **2.095** | **0.501** | **0.667** |
+| **+ Both (Config D)** | **1.043** | **2.095** | **0.500** | **0.667** |
 
 ## Project Structure
 
