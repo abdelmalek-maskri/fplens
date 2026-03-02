@@ -1,9 +1,7 @@
 """
-Build per-GW news features from article-player links.
-
+Build per-GW news features from article-player links
 Aligns articles to gameweeks using fixture kickoff times to prevent
-temporal leakage: for GW N, only articles published AFTER GW N-1
-kickoff and BEFORE GW N kickoff are used.
+temporal leakage: for GW N, only articles published AFTER GW N-1 kickoff and BEFORE GW N kickoff are used.
 
 7 targeted features per (season, GW, element):
     news_mentioned          - was this player mentioned?          (binary)
@@ -13,15 +11,9 @@ kickoff and BEFORE GW N kickoff are used.
     news_sentiment_pos      - mean positive sentiment             (float)
     news_sentiment_neg      - mean negative sentiment             (float)
     news_injury_context     - mentioned with injury keywords?     (binary)
-
-Output: data/features/news_features.csv
-
-Usage:
-    python -m ml.pipelines.news.build_news_features
 """
 
 from pathlib import Path
-
 import pandas as pd
 
 LINKS_PATH = Path("data/processed/news/article_player_links.csv")
@@ -49,12 +41,9 @@ NEWS_FEATURE_COLS = [
     "news_injury_context",
 ]
 
-
 def compute_gw_boundaries(season: str) -> pd.DataFrame:
     """Compute GW start times from fixture data.
-
     Returns DataFrame with columns: GW, gw_start, gw_end
-    where gw_start = first kickoff of GW, gw_end = first kickoff of next GW.
     """
     fixtures_path = MAPPINGS_DIR / f"fpl_fixtures_{season}.csv"
     gw_map_path = MAPPINGS_DIR / f"fixture_to_gw_{season}.csv"
@@ -86,14 +75,12 @@ def compute_gw_boundaries(season: str) -> pd.DataFrame:
 
     return pd.DataFrame(rows)
 
-
 def aggregate_links_to_gw(
     links: pd.DataFrame,
     gw_bounds: pd.DataFrame,
     season: str,
 ) -> pd.DataFrame:
     """Aggregate article-player links to per-(element, GW) features.
-
     For GW N, uses articles published in [GW N-1 start, GW N start).
     """
     season_links = links[links["season"] == season].copy()
@@ -147,8 +134,8 @@ def run() -> None:
 
     print("\nLoading article-player links...")
     links = pd.read_csv(LINKS_PATH)
-    print(f"  {len(links):,} links loaded")
-    print(f"  Seasons: {sorted(links['season'].unique())}")
+    print(f"{len(links):,} links loaded")
+    print(f"Seasons: {sorted(links['season'].unique())}")
 
     # Build per-GW features for each season
     all_features = []
@@ -156,12 +143,12 @@ def run() -> None:
     for season in NEWS_SEASONS:
         season_links = links[links["season"] == season]
         if season_links.empty:
-            print(f"\n  {season}: no links, skipping")
+            print(f"\n{season}: no links, skipping")
             continue
 
         gw_bounds = compute_gw_boundaries(season)
         if gw_bounds.empty:
-            print(f"\n  {season}: no fixture data, skipping")
+            print(f"\n{season}: no fixture data, skipping")
             continue
 
         features = aggregate_links_to_gw(links, gw_bounds, season)
