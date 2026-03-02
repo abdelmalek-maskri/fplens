@@ -1,22 +1,12 @@
 """
 Link Guardian articles to FPL players and compute article-level features.
-
 Uses spaCy NER + regex fallback for player name matching.
 Computes per-article sentiment (RoBERTa) and injury context detection.
-
-Output: data/processed/news/article_player_links.csv
-    article_id, element, season, published_date,
-    relevance_score, in_title, mention_count,
-    sentiment_pos, sentiment_neg, has_injury_context
-
-Usage:
-    python -m ml.pipelines.news.link_articles_to_players
 """
 
 import json
 import re
 from pathlib import Path
-
 import pandas as pd
 import spacy
 from transformers import pipeline as hf_pipeline
@@ -27,7 +17,6 @@ OUTPUT_DIR = Path("data/processed/news")
 
 MIN_SURNAME_LENGTH = 4
 MIN_RELEVANCE = 1.0
-
 TITLE_WEIGHT = 3.0
 FIRST_PARA_WEIGHT = 2.0
 BODY_WEIGHT = 1.0
@@ -49,9 +38,7 @@ NEWS_SEASONS = [
     "2024-25",
 ]
 
-
 # -- Name matching ---------------------------------------------------------
-
 
 def normalize_name(name: str) -> str:
     """Normalize player name: 'Aaron_Cresswell_402' -> 'aaron cresswell'."""
@@ -65,7 +52,6 @@ def normalize_name(name: str) -> str:
 
 def generate_name_variants(full_name: str) -> list[str]:
     """Generate matching variants for a player name.
-
     'mohamed salah' -> ['mohamed salah', 'salah', 'm. salah', 'm salah']
     """
     parts = full_name.split()
@@ -87,7 +73,6 @@ def generate_name_variants(full_name: str) -> list[str]:
 
 def build_knowledge_base(seasons: list[str]) -> dict[str, dict[str, int]]:
     """Build per-season name -> element lookup from FPL data.
-
     Returns {season: {name_variant: element_id}}.
     Only unambiguous variants (1 player per variant per season) are kept.
     """
@@ -120,10 +105,7 @@ def build_knowledge_base(seasons: list[str]) -> dict[str, dict[str, int]]:
 
 
 def match_entity_to_player(entity_text: str, lookup: dict[str, int]) -> int | None:
-    """Match a text string to a player element ID.
-
-    Tries full text first, then surname (last word).
-    """
+    """Match a text string to a player element ID. Tries full text first, then surname (last word)"""
     normalized = normalize_name(entity_text)
 
     if normalized in lookup:
@@ -137,9 +119,7 @@ def match_entity_to_player(entity_text: str, lookup: dict[str, int]) -> int | No
 
     return None
 
-
 # -- Article processing ----------------------------------------------------
-
 
 def find_player_mentions(
     article: dict,
@@ -147,7 +127,6 @@ def find_player_mentions(
     nlp,
 ) -> dict[int, dict]:
     """Find player mentions via spaCy NER + regex fallback.
-
     Returns {element_id: {"relevance": float, "in_title": bool, "count": int}}.
     """
     title = article["title"]
@@ -205,10 +184,7 @@ def find_player_mentions(
     return matches
 
 
-def compute_article_sentiment(
-    text: str,
-    sentiment_pipe,
-) -> tuple[float, float]:
+def compute_article_sentiment(text: str, sentiment_pipe,) -> tuple[float, float]:
     """Compute positive and negative sentiment probabilities via RoBERTa."""
     if not text:
         return 0.0, 0.0
@@ -219,9 +195,7 @@ def compute_article_sentiment(
     except Exception:
         return 0.0, 0.0
 
-
 # -- Main ------------------------------------------------------------------
-
 
 def run(seasons: list[str] | None = None) -> None:
     """Link articles to players and compute article features."""
@@ -256,11 +230,11 @@ def run(seasons: list[str] | None = None) -> None:
             continue
 
         articles = json.loads(raw_path.read_text())
-        print(f"\n  {season}: processing {len(articles)} articles...")
+        print(f"\n{season}: processing {len(articles)} articles...")
 
         lookup = kb.get(season, {})
         if not lookup:
-            print(f"  {season}: no player data, skipping")
+            print(f"{season}: no player data, skipping")
             continue
 
         season_links = 0
