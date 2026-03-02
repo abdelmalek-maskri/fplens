@@ -1,19 +1,13 @@
 """
 Merge news features with extended feature sets for ablation configs C and D.
-
 Outputs:
     data/features/extended_with_news.csv              (Config C: baseline + news)
     data/features/extended_with_injury_and_news.csv   (Config D: baseline + injury + news)
-
-Usage:
-    python -m ml.pipelines.news.merge_with_features
 """
 
 from pathlib import Path
-
 import numpy as np
 import pandas as pd
-
 from ml.pipelines.news.build_news_features import NEWS_FEATURE_COLS, NEWS_SEASONS
 
 EXTENDED_PATH = Path("data/features/extended_features.csv")
@@ -25,10 +19,8 @@ OUTPUT_D = Path("data/features/extended_with_injury_and_news.csv")
 
 MERGE_KEYS = ["season", "GW", "element"]
 
-
 def merge_news(base_df: pd.DataFrame, news_df: pd.DataFrame) -> pd.DataFrame:
     """Left-join news features onto a base feature set.
-
     Seasons without Guardian data get NaN (LightGBM handles natively).
     Seasons with Guardian data but no mentions get 0.
     """
@@ -60,11 +52,10 @@ def merge_news(base_df: pd.DataFrame, news_df: pd.DataFrame) -> pd.DataFrame:
 
     n_real = has_news.sum()
     n_nan = (~has_news).sum()
-    print(f"  Seasons with news data: {n_real:,} rows")
-    print(f"  Pre-news seasons (NaN): {n_nan:,} rows")
+    print(f"Seasons with news data: {n_real:,} rows")
+    print(f"Pre-news seasons (NaN): {n_nan:,} rows")
 
     return combined
-
 
 def run() -> None:
     """Merge news features with extended feature sets."""
