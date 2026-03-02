@@ -28,6 +28,7 @@ app/dist/
 data/raw/
 data/features/
 data/processed/
+data/inference/
 ml/data/
 
 # ML binary artifacts (large, reproducible from training)
