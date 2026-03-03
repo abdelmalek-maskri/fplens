@@ -47,23 +47,25 @@ def get_bootstrap_data() -> dict:
 
 def get_current_gameweek(events: list[dict]) -> dict:
     """
-    Determine the current/next gameweek from events data.
-    Returns the GW that is currently active or the next upcoming one.
+    Determine the next gameweek to predict for.
+    For predictions we want the NEXT unplayed GW, not the one just finished.
+    Priority: is_next > first unfinished > is_current > last event.
     """
-    now = datetime.now()
-
+    # Best case: FPL API marks the upcoming GW explicitly
     for event in events:
-        deadline = datetime.fromisoformat(event["deadline_time"].replace("Z", "+00:00"))
-        deadline = deadline.replace(tzinfo=None)  # Make naive for comparison
+        if event.get("is_next"):
+            return event
 
+    # Fallback: first GW that isn't finished yet
+    for event in events:
+        if not event["finished"]:
+            return event
+
+    # Final fallback: whatever is current (end-of-season edge case)
+    for event in events:
         if event["is_current"]:
             return event
 
-        # If no current GW, find the next one
-        if not event["finished"] and deadline > now:
-            return event
-
-    # Fallback: return the last event
     return events[-1]
 
 def get_fixtures_for_gw(gw: int) -> pd.DataFrame:
