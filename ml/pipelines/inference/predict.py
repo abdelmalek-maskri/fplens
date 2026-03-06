@@ -195,18 +195,20 @@ def get_top_picks(predictions: pd.DataFrame, n: int = 15) -> pd.DataFrame:
     return picks_df
 
 
-def run(model_path: Path | None = None, save_output: bool = True, include_history: bool = True):
+def run(model_path: Path | None = None, model=None, save_output: bool = True, include_history: bool = True):
     # Main inference pipeline
     print("=" * 60)
     print("FPL PREDICTION INFERENCE")
     print("=" * 60)
     print(f"Timestamp: {datetime.now().isoformat()}")
 
-    if model_path is None:
-        model_path = DEFAULT_MODEL
-
-    # Load model
-    model = load_model(model_path)
+    # Use pre-loaded model (from API) or load from disk
+    if model is None:
+        if model_path is None:
+            model_path = DEFAULT_MODEL
+        model = load_model(model_path)
+    else:
+        print(f"Using pre-loaded model: {type(model).__name__}")
     model_features = get_model_features(model)
     print(f"Model expects {len(model_features)} features")
 
