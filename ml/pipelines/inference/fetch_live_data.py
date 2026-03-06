@@ -732,5 +732,103 @@ def run():
     print(df.nlargest(10, "form")[["web_name", "team_name", "position", "form", "total_points"]].to_string(index=False))
 
 
+def fetch_fixtures(bootstrap_data: dict | None = None, num_gws: int = 6) -> dict:
+    """Fetch upcoming fixtures and build per-team FDR grid.
+    returns {
+        teams: ["ARS", ...],
+        team_full: {ARS: "Arsenal", ...},
+        fixtures: {ARS: [{gw, opponent, home, atkFdr, defFdr}, ...], ...},
+        current_gw: int,
+    }
+    """
+    if bootstrap_data is None:
+        bootstrap_data = get_bootstrap_data()
+
+    # team maps: id -> short_name, id -> full name
+    team_short = {t["id"]: t["short_name"] for t in bootstrap_data["teams"]}
+    team_full = {t["short_name"]: t["name"] for t in bootstrap_data["teams"]}
+
+    # current GW
+    current_event = get_current_gameweek(bootstrap_data["events"])
+    current_gw = current_event["id"]
+
+    # target GWs
+    target_gws = list(range(current_gw, current_gw + num_gws))
+
+    # fetch all fixtures
+    response = requests.get(FIXTURES_URL)
+    if response.status_code != 200:
+        raise RuntimeError(f"FPL fixtures API error: {response.status_code}")
+    all_fixtures = response.json()
+
+    # filter to target GWs (event != None and in range)
+    upcoming = [
+        f for f in all_fixtures
+        if f.get("event") in target_gws and not f.get("finished", False)
+    ]
+
+    # build per-team fixture grid
+    fixtures_by_team: dict[str, list] = {short: [] for short in team_short.values()}
+
+    for f in upcoming:
+        home_id = f["team_h"]
+        away_id = f["team_a"]
+        gw = f["event"]
+        home_short = team_short[home_id]
+        away_short = team_short[away_id]
+
+        # home team's fixture
+        fixtures_by_team[home_short].append({
+            "gw": gw,
+            "opponent": away_short,
+            "home": True,
+            "atkFdr": f["team_h_difficulty"],
+            "defFdr": f["team_a_difficulty"],
+        })
+
+        # away team's fixture
+        fixtures_by_team[away_short].append({
+            "gw": gw,
+            "opponent": home_short,
+            "home": False,
+            "atkFdr": f["team_a_difficulty"],
+            "defFdr": f["team_h_difficulty"],
+        })
+
+    # sort each team's fixtures by GW
+    for team_fixtures in fixtures_by_team.values():
+        team_fixtures.sort(key=lambda x: x["gw"])
+
+    teams_sorted = sorted(fixtures_by_team.keys())
+
+    return {
+        "teams": teams_sorted,
+        "team_full": team_full,
+        "fixtures": fixtures_by_team,
+        "current_gw": current_gw,
+    }
+
+
+def get_player_fdr(fixtures_by_team: dict, team: str, num_gws: int = 6) -> list[dict]:
+    # Get a player's upcoming fixtures with FDR
+    return fixtures_by_team.get(team, [])[:num_gws]
+
+
+def get_player_fdr_avg(fixtures_by_team: dict, team: str, mode: str = "combined") -> float:
+    """Average FDR for a team over upcoming fixtures.
+    mode: 'attack', 'defence', or 'combined'
+    """
+    team_fixtures = fixtures_by_team.get(team, [])
+    if not team_fixtures:
+        return 3.0  # neutral default
+    if mode == "attack":
+        values = [f["atkFdr"] for f in team_fixtures]
+    elif mode == "defence":
+        values = [f["defFdr"] for f in team_fixtures]
+    else:
+        values = [(f["atkFdr"] + f["defFdr"]) / 2 for f in team_fixtures]
+    return round(sum(values) / len(values), 2)
+
+
 if __name__ == "__main__":
     run()
