@@ -830,5 +830,66 @@ def get_player_fdr_avg(fixtures_by_team: dict, team: str, mode: str = "combined"
     return round(sum(values) / len(values), 2)
 
 
+def fetch_user_team(fpl_id: int) -> dict:
+    """Fetch a user's FPL team picks for the latest finished gameweek.
+    it returns manager info + 15 picks with captain, vice, multiplier.
+    Uses the latest finished GW because the picks endpoint only works for played GWs.
+    """
+    bootstrap = get_bootstrap_data()
+    events = bootstrap["events"]
+
+    # find latest finished GW (picks only exist for played GWs)
+    latest_finished = None
+    for e in events:
+        if e["finished"]:
+            latest_finished = e
+    if latest_finished is None:
+        raise RuntimeError("No finished gameweeks yet")
+    picks_gw = latest_finished["id"]
+
+    # the upcoming GW for predictions
+    upcoming_gw_info = get_current_gameweek(events)
+    upcoming_gw = upcoming_gw_info["id"]
+
+    # fetch manager entry info
+    entry_url = f"{FPL_BASE_URL}/entry/{fpl_id}/"
+    resp = requests.get(entry_url)
+    if resp.status_code != 200:
+        raise RuntimeError(f"FPL entry API error: {resp.status_code}")
+    entry = resp.json()
+
+    # fetch picks for latest finished GW (= user's current squad)
+    picks_url = f"{FPL_BASE_URL}/entry/{fpl_id}/event/{picks_gw}/picks/"
+    resp = requests.get(picks_url)
+    if resp.status_code != 200:
+        raise RuntimeError(f"FPL picks API error: {resp.status_code}")
+    picks_data = resp.json()
+
+    # extract pick details
+    picks = []
+    for p in picks_data["picks"]:
+        picks.append({
+            "element": p["element"],
+            "position": p["position"],       # squad position 1-15 (1-11 = starting)
+            "multiplier": p["multiplier"],    # 0=benched, 1=normal, 2=captain, 3=TC
+            "is_captain": p["is_captain"],
+            "is_vice_captain": p["is_vice_captain"],
+        })
+
+    return {
+        "fpl_id": fpl_id,
+        "manager": f"{entry['player_first_name']} {entry['player_last_name']}",
+        "team_name": entry.get("name", ""),
+        "overall_rank": entry.get("summary_overall_rank"),
+        "overall_points": entry.get("summary_overall_points"),
+        "bank": picks_data.get("entry_history", {}).get("bank", 0),  # in tenths
+        "total_value": picks_data.get("entry_history", {}).get("value", 0),  # in tenths
+        "gameweek": upcoming_gw,           # the GW we're predicting for
+        "picks_gameweek": picks_gw,        # the GW picks were fetched from
+        "active_chip": picks_data.get("active_chip"),
+        "picks": picks,
+    }
+
+
 if __name__ == "__main__":
     run()
