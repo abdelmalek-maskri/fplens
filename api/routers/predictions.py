@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter, Request, Query
 from ml.pipelines.inference.predict import run as run_predictions
+from api.solvers import solve_best_xi
 
 router = APIRouter(tags=["Predictions"])
 
@@ -25,10 +26,9 @@ def get_predictions(request: Request):
 
 @router.get("/best-xi")
 def get_best_xi(request: Request):
-    # """Global best starting 11 from all available players."""
-    # FF-7: Will call solve_best_xi() once implemented
+    # Global best starting 11 from all available players
     predictions_df = _get_predictions(request)
-    return {"message": "Not yet implemented", "total_players": len(predictions_df)}
+    return solve_best_xi(predictions_df)
 
 
 @router.get("/best-squad")
