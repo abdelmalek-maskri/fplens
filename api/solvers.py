@@ -1,5 +1,7 @@
 """Solvers for FPL squad selection: best XI, best squad."""
+import numpy as np
 import pandas as pd
+from scipy.optimize import milp, LinearConstraint, Bounds
 
 FORMATIONS = [
     (3, 4, 3),
@@ -83,4 +85,100 @@ def solve_best_xi(df: pd.DataFrame) -> dict:
         "vice_id": vice_id,
         "starters": best_xi[existing_cols].to_dict(orient="records"),
         "bench": bench[existing_cols].to_dict(orient="records"),
+    }
+
+
+# --- FPL squad constraints ---
+POSITION_LIMITS = {"GK": 2, "DEF": 5, "MID": 5, "FWD": 3}  # total = 15
+MAX_PER_TEAM = 3
+DEFAULT_BUDGET = 100.0
+
+
+def solve_best_squad(df: pd.DataFrame, budget: float = DEFAULT_BUDGET) -> dict:
+    """Pick optimal 15-man squad using Integer Linear Programming. maximise total predicted_points subject to:
+      - budget constraint (sum of values <= budget)
+      - max 3 players per team
+      - exactly 2 GK, 5 DEF, 5 MID, 3 FWD
+      - each player binary (picked or not)
+    Then picks best starting XI from the 15 using solve_best_xi logic.
+    """
+    # filter out injured and unavailable
+    available = df[
+        (df["status"] != "i") & (df["chance_of_playing"] > 0)
+    ].reset_index(drop=True)
+
+    n = len(available)
+    if n < 15:
+        return {"error": "Not enough available players"}
+
+    # objective: maximise predicted_points (milp minimises, so negate)
+    c = -available["predicted_points"].values
+
+    # --- constraints ---
+    constraint_matrices = []
+    lower_bounds = []
+    upper_bounds = []
+
+    # 1. budget: sum(value * x) <= budget
+    budget_row = available["value"].values.reshape(1, -1)
+    constraint_matrices.append(budget_row)
+    lower_bounds.append(-np.inf)
+    upper_bounds.append(budget)
+
+    # 2. position constraints: exactly N per position
+    for pos, count in POSITION_LIMITS.items():
+        pos_row = (available["position"] == pos).astype(float).values.reshape(1, -1)
+        constraint_matrices.append(pos_row)
+        lower_bounds.append(count)
+        upper_bounds.append(count)
+
+    # 3. team constraints: at most 3 per team
+    teams = available["team_name"].unique()
+    for team in teams:
+        team_row = (available["team_name"] == team).astype(float).values.reshape(1, -1)
+        constraint_matrices.append(team_row)
+        lower_bounds.append(0)
+        upper_bounds.append(MAX_PER_TEAM)
+
+    # stack all constraints
+    A = np.vstack(constraint_matrices)
+    constraints = LinearConstraint(A, lower_bounds, upper_bounds)
+
+    # all variables are binary (0 or 1)
+    integrality = np.ones(n)  # 1 = integer
+    bounds = Bounds(lb=0, ub=1)
+
+    # solve
+    result = milp(c, constraints=constraints, integrality=integrality, bounds=bounds)
+
+    if not result.success:
+        return {"error": f"ILP solver failed: {result.message}"}
+
+    # extract selected players
+    selected_mask = result.x > 0.5  # binary, but solver returns floats
+    squad = available[selected_mask].copy()
+
+    if len(squad) != 15:
+        return {"error": f"Solver selected {len(squad)} players instead of 15"}
+
+    total_value = squad["value"].sum()
+    total_points = squad["predicted_points"].sum()
+
+    # pick best XI from the 15-man squad
+    xi_result = solve_best_xi(squad)
+
+    # select output columns
+    columns = [
+        "element", "web_name", "position", "team_name", "value",
+        "predicted_points", "form", "status", "chance_of_playing",
+        "opponent_name", "uncertainty", "predicted_range_low", "predicted_range_high",
+    ]
+    existing_cols = [c for c in columns if c in squad.columns]
+
+    return {
+        "squad": squad[existing_cols].to_dict(orient="records"),
+        "total_value": round(total_value, 1),
+        "total_points": round(total_points, 2),
+        "budget_remaining": round(budget - total_value, 1),
+        "best_xi": xi_result,
     }

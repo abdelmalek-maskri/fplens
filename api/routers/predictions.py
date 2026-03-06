@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, Request, Query
 from ml.pipelines.inference.predict import run as run_predictions
-from api.solvers import solve_best_xi
+from api.solvers import solve_best_xi, solve_best_squad
 
 router = APIRouter(tags=["Predictions"])
 
@@ -37,9 +37,9 @@ def get_best_squad(
     horizon: int = Query(default=1, ge=1, le=8),
     budget: float = Query(default=100.0, ge=50.0, le=120.0),
 ):
-    # ILP-optimised 15-man squad within budget constraints.
-    # FF-8: Will call solve_best_squad() once implemented
-    return {"message": "Not yet implemented"}
+    # ILP-optimised 15-man squad within budget constraints
+    predictions_df = _get_predictions(request)
+    return solve_best_squad(predictions_df, budget=budget)
 
 
 @router.get("/predictions/multi-gw")
