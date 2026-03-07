@@ -142,7 +142,7 @@ def fetch_all_player_histories(
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = {executor.submit(fetch_player_history, eid): eid for eid in element_ids}
-        for done, future in enumerate(as_completed(futures), 1):
+        for i, future in enumerate(as_completed(futures), 1):
             eid = futures[future]
             try:
                 result = future.result()
@@ -150,8 +150,8 @@ def fetch_all_player_histories(
                     histories[eid] = result
             except Exception:
                 logger.debug("Failed to get result for element %d", eid, exc_info=True)
-            if done % 100 == 0:
-                print(f"    {done}/{total} fetched...")
+            if i % 100 == 0:
+                print(f"    {i}/{total} fetched...")
 
     print(f"Fetched history for {len(histories)}/{total} players")
     return histories
@@ -787,6 +787,9 @@ def fetch_fixtures(bootstrap_data: dict | None = None, num_gws: int = 6) -> dict
         away_short = team_short[away_id]
 
         # home team's fixture
+        # NOTE: FPL API only provides one overall difficulty per team per fixture,
+        # not separate attack/defence ratings. atkFdr = this team's difficulty,
+        # defFdr = opponent's difficulty (used as a proxy for defensive challenge).
         fixtures_by_team[home_short].append(
             {
                 "gw": gw,
@@ -897,8 +900,8 @@ def fetch_user_team(fpl_id: int) -> dict:
         "team_name": entry.get("name", ""),
         "overall_rank": entry.get("summary_overall_rank"),
         "overall_points": entry.get("summary_overall_points"),
-        "bank": picks_data.get("entry_history", {}).get("bank", 0),  # in tenths
-        "total_value": picks_data.get("entry_history", {}).get("value", 0),  # in tenths
+        "bank": picks_data.get("entry_history", {}).get("bank", 0) / 10,  # £m
+        "total_value": picks_data.get("entry_history", {}).get("value", 0) / 10,  # £m
         "gameweek": upcoming_gw,  # the GW we're predicting for
         "picks_gameweek": picks_gw,  # the GW picks were fetched from
         "active_chip": picks_data.get("active_chip"),

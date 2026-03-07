@@ -71,7 +71,7 @@ def get_team(fpl_id: int, request: Request):
         team_data["picks"] = enriched_picks
 
         # generate transfer suggestions
-        bank = team_data.get("bank", 0) / 10  # convert tenths to £m
+        bank = team_data.get("bank", 0)
         team_data["transfer_suggestions"] = suggest_transfers(
             user_picks=enriched_picks,
             all_predictions=predictions_df,
