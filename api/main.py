@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 import joblib
-from fastapi import FastAPI
+from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.cache import FPLDataCache
@@ -41,8 +41,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type"],
 )
 
 app.include_router(predictions.router, prefix="/api")
@@ -60,7 +60,16 @@ def health():
     }
 
 
+# When I deploy, set REFRESH_SECRET in .env to something strong:
+#   REFRESH_SECRET=some-long-random-string
+# Then call it with:
+#   curl -X POST http://localhost:8000/api/refresh -H "X-Refresh-Secret: some-long-random-string"
+REFRESH_SECRET = os.environ.get("REFRESH_SECRET", "dev-secret")
+
+
 @app.post("/api/refresh")
-def refresh_cache():
+def refresh_cache(x_refresh_secret: str = Header(None)):
+    if x_refresh_secret != REFRESH_SECRET:
+        raise HTTPException(status_code=403, detail="Invalid refresh secret")
     app.state.cache.invalidate()
     return {"status": "refreshed"}

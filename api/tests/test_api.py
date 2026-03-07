@@ -33,8 +33,13 @@ def test_health(client):
     assert data["model_loaded"] is True
 
 
-def test_refresh_cache(client):
+def test_refresh_cache_requires_secret(client):
     r = client.post("/api/refresh")
+    assert r.status_code == 403
+
+
+def test_refresh_cache_with_secret(client):
+    r = client.post("/api/refresh", headers={"X-Refresh-Secret": "dev-secret"})
     assert r.status_code == 200
     assert r.json()["status"] == "refreshed"
 

@@ -21,8 +21,8 @@ def solve_best_xi(df: pd.DataFrame) -> dict:
     pick the one with highest total predicted_points.
     Always 1 GK. Captain = highest predicted, vice = second highest.
     """
-    # filter out injured and unavailable players
-    available = df[(df["status"] != "i") & (df["chance_of_playing"] > 0)].copy()
+    # filter out injured and unavailable players (NaN chance = healthy = 100%)
+    available = df[(df["status"] != "i") & (df["chance_of_playing"].fillna(100) > 0)].copy()
 
     # sort each position pool by predicted_points descending
     gks = available[available["position"] == "GK"].sort_values("predicted_points", ascending=False)
@@ -117,8 +117,8 @@ def solve_best_squad(df: pd.DataFrame, budget: float = DEFAULT_BUDGET) -> dict:
       - each player binary (picked or not)
     Then picks best starting XI from the 15 using solve_best_xi logic.
     """
-    # filter out injured and unavailable
-    available = df[(df["status"] != "i") & (df["chance_of_playing"] > 0)].reset_index(drop=True)
+    # filter out injured and unavailable (NaN chance = healthy = 100%)
+    available = df[(df["status"] != "i") & (df["chance_of_playing"].fillna(100) > 0)].reset_index(drop=True)
 
     n = len(available)
     if n < 15:
@@ -237,8 +237,10 @@ def suggest_transfers(
     Returns:
         list of {out: {player}, in: {player}, points_gain, cost_saving} sorted by points_gain desc
     """
-    # filter available players (not injured)
-    available = all_predictions[(all_predictions["status"] != "i") & (all_predictions["chance_of_playing"] > 0)].copy()
+    # filter available players (not injured, NaN chance = healthy = 100%)
+    available = all_predictions[
+        (all_predictions["status"] != "i") & (all_predictions["chance_of_playing"].fillna(100) > 0)
+    ].copy()
 
     # current squad element IDs
     squad_ids = {p["element"] for p in user_picks}
