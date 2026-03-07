@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter, Request, HTTPException
 from ml.pipelines.inference.fetch_live_data import fetch_user_team
+from api.solvers import suggest_transfers
 
 router = APIRouter(tags=["Team"])
 
@@ -60,6 +61,14 @@ def get_team(fpl_id: int, request: Request):
             enriched_picks.append(pick)
 
         team_data["picks"] = enriched_picks
+
+        # generate transfer suggestions
+        bank = team_data.get("bank", 0) / 10  # convert tenths to £m
+        team_data["transfer_suggestions"] = suggest_transfers(
+            user_picks=enriched_picks,
+            all_predictions=predictions_df,
+            bank=bank,
+        )
 
     return team_data
 

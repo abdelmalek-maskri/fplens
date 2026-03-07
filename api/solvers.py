@@ -1,4 +1,4 @@
-"""Solvers for FPL squad selection: best XI, best squad."""
+"""Solvers for FPL squad selection: best XI, best squad, transfer suggestions."""
 import numpy as np
 import pandas as pd
 from scipy.optimize import milp, LinearConstraint, Bounds
@@ -182,3 +182,115 @@ def solve_best_squad(df: pd.DataFrame, budget: float = DEFAULT_BUDGET) -> dict:
         "budget_remaining": round(budget - total_value, 1),
         "best_xi": xi_result,
     }
+
+
+OUTPUT_COLS = [
+    "element", "web_name", "position", "team_name", "value",
+    "predicted_points", "form", "status", "chance_of_playing",
+    "opponent_name", "uncertainty", "predicted_range_low", "predicted_range_high",
+]
+
+
+def suggest_transfers(
+    user_picks: list[dict],
+    all_predictions: pd.DataFrame,
+    bank: float = 0.0,
+    max_suggestions: int = 5,
+) -> list[dict]:
+    """suggest transfer-in/out pairs that maximise predicted points gain, and 
+    for each squad player, find same-position replacements not already in the
+    squad with higher predicted_points and affordable within bank + selling value.
+
+    Returns:
+        list of {out: {player}, in: {player}, points_gain, cost_saving} sorted by points_gain desc
+    """
+    # filter available players (not injured)
+    available = all_predictions[
+        (all_predictions["status"] != "i") & (all_predictions["chance_of_playing"] > 0)
+    ].copy()
+
+    # current squad element IDs
+    squad_ids = {p["element"] for p in user_picks}
+
+    # count how many players per team in current squad (for max 3/team rule)
+    team_counts = {}
+    for p in user_picks:
+        team = p.get("team_name", "")
+        team_counts[team] = team_counts.get(team, 0) + 1
+
+    existing_cols = [c for c in OUTPUT_COLS if c in available.columns]
+
+    suggestions = []
+    for pick in user_picks:
+        out_pos = pick.get("player_position", "")
+        out_value = pick.get("value", 0)  # current value in £m
+        out_pts = pick.get("predicted_points", 0)
+
+        if not out_pos:
+            continue
+
+        # budget available if we sell this player: bank + their value
+        budget_for_replacement = bank + out_value
+
+        # find same-position players not in squad, affordable, not injured
+        candidates = available[
+            (available["position"] == out_pos)
+            & (~available["element"].isin(squad_ids))
+            & (available["value"] <= budget_for_replacement)
+        ].copy()
+
+        # enforce max 3 per team: exclude players from teams already at 3
+        # (selling frees a slot on that team, so only check the incoming team)
+        teams_at_limit = {t for t, c in team_counts.items() if c >= MAX_PER_TEAM}
+        # selling this player frees their team slot
+        out_team = pick.get("team_name", "")
+        teams_at_limit_after_sell = teams_at_limit - {out_team}
+        if teams_at_limit_after_sell:
+            candidates = candidates[~candidates["team_name"].isin(teams_at_limit_after_sell)]
+
+        if candidates.empty:
+            continue
+
+        # best candidate = highest predicted_points
+        best = candidates.sort_values("predicted_points", ascending=False).iloc[0]
+        points_gain = best["predicted_points"] - out_pts
+
+        # only suggest if there's a positive gain
+        if points_gain <= 0:
+            continue
+
+        out_data = {k: pick.get(k, pick.get(k.replace("player_position", "position"), "")) for k in existing_cols if k in pick or k == "position"}
+        # normalise out_data keys
+        out_data = {
+            "element": pick["element"],
+            "web_name": pick.get("web_name", ""),
+            "position": out_pos,
+            "team_name": pick.get("team_name", ""),
+            "value": out_value,
+            "predicted_points": out_pts,
+        }
+
+        in_data = {c: best[c] for c in existing_cols if c in best.index}
+
+        suggestions.append({
+            "out": out_data,
+            "in": in_data,
+            "points_gain": round(float(points_gain), 2),
+            "cost_saving": round(float(out_value - best["value"]), 1),
+        })
+
+    # sort by points_gain descending, deduplicate by in-player
+    suggestions.sort(key=lambda s: s["points_gain"], reverse=True)
+
+    # remove duplicate in-players (same player suggested for multiple outs)
+    seen_in = set()
+    unique = []
+    for s in suggestions:
+        in_id = s["in"]["element"]
+        if in_id not in seen_in:
+            seen_in.add(in_id)
+            unique.append(s)
+        if len(unique) >= max_suggestions:
+            break
+
+    return unique
