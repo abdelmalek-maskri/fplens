@@ -7,6 +7,7 @@ Computes per-article sentiment (RoBERTa) and injury context detection.
 import json
 import re
 from pathlib import Path
+
 import pandas as pd
 import spacy
 from transformers import pipeline as hf_pipeline
@@ -39,6 +40,7 @@ NEWS_SEASONS = [
 ]
 
 # -- Name matching ---------------------------------------------------------
+
 
 def normalize_name(name: str) -> str:
     """Normalize player name: 'Aaron_Cresswell_402' -> 'aaron cresswell'."""
@@ -119,7 +121,9 @@ def match_entity_to_player(entity_text: str, lookup: dict[str, int]) -> int | No
 
     return None
 
+
 # -- Article processing ----------------------------------------------------
+
 
 def find_player_mentions(
     article: dict,
@@ -184,7 +188,10 @@ def find_player_mentions(
     return matches
 
 
-def compute_article_sentiment(text: str, sentiment_pipe,) -> tuple[float, float]:
+def compute_article_sentiment(
+    text: str,
+    sentiment_pipe,
+) -> tuple[float, float]:
     """Compute positive and negative sentiment probabilities via RoBERTa."""
     if not text:
         return 0.0, 0.0
@@ -195,7 +202,9 @@ def compute_article_sentiment(text: str, sentiment_pipe,) -> tuple[float, float]
     except Exception:
         return 0.0, 0.0
 
+
 # -- Main ------------------------------------------------------------------
+
 
 def run(seasons: list[str] | None = None) -> None:
     """Link articles to players and compute article features."""

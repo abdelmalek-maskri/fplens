@@ -1,6 +1,9 @@
 """TTL-based cache for FPL API responses and prediction results."""
+
+from collections.abc import Callable
 from datetime import datetime, timedelta
-from typing import Any, Callable
+from typing import Any
+
 
 class FPLDataCache:
     # simple in-memory cache with per-key TTL expiry

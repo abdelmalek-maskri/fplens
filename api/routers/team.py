@@ -1,8 +1,9 @@
 """User team endpoints, FPL ID squad, player detail, transfer suggestions."""
 
-from fastapi import APIRouter, Request, HTTPException
-from ml.pipelines.inference.fetch_live_data import fetch_user_team
+from fastapi import APIRouter, HTTPException, Request
+
 from api.solvers import suggest_transfers
+from ml.pipelines.inference.fetch_live_data import fetch_user_team
 
 router = APIRouter(tags=["Team"])
 
@@ -18,16 +19,19 @@ def get_team(fpl_id: int, request: Request):
     try:
         team_data = cache.get_or_fetch(f"team_{fpl_id}", fetch)
     except RuntimeError as e:
-        raise HTTPException(status_code=502, detail=f"FPL API error: {e}")
+        raise HTTPException(status_code=502, detail=f"FPL API error: {e}") from None
     except Exception as e:
         if "404" in str(e) or "Not Found" in str(e):
-            raise HTTPException(status_code=404, detail=f"FPL ID {fpl_id} not found")
-        raise HTTPException(status_code=502, detail=str(e))
+            raise HTTPException(
+                status_code=404, detail=f"FPL ID {fpl_id} not found"
+            ) from None
+        raise HTTPException(status_code=502, detail=str(e)) from None
 
     # merge picks with predictions so frontend gets player names + predicted points
     predictions_df = None
     try:
         from ml.pipelines.inference.predict import run as run_predictions
+
         model = request.app.state.model
         predictions_df = cache.get_or_fetch(
             "predictions",

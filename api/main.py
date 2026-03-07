@@ -2,13 +2,16 @@
 
 from contextlib import asynccontextmanager
 from pathlib import Path
+
 import joblib
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
 from api.cache import FPLDataCache
-from api.routers import predictions, fixtures, team, insights
+from api.routers import fixtures, insights, predictions, team
 
 MODEL_PATH = Path("outputs/experiments/ablation_injury/config_D/model.joblib")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -19,6 +22,7 @@ async def lifespan(app: FastAPI):
     print(f"Model loaded: {type(app.state.model).__name__}")
     yield
     print("Shutting down...")
+
 
 app = FastAPI(
     title="FPLens API",

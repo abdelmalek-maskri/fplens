@@ -16,9 +16,9 @@ from typing import Any
 
 import aiohttp
 import pandas as pd
+from understat import Understat
 
 from ml.config.seasons import SEASONS_ALL
-from understat import Understat
 
 OUT_DIR = Path("data/processed/external/understat")
 LEAGUE = "EPL"

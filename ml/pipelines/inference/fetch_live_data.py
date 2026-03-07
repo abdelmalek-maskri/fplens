@@ -4,13 +4,14 @@ This module fetches current gameweek data from the official FPL API and
 prepares it for model inference, including injury/availability features.
 """
 
+import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import requests
-import re
 
 # Paths
 OUTPUT_DIR = Path("data/inference")
@@ -22,19 +23,35 @@ FIXTURES_URL = f"{FPL_BASE_URL}/fixtures/"
 
 # Feature engineering constants, must match build_extended_features.py exactly
 HISTORY_NUM_COLS = [
-    "total_points", "minutes", "starts",
-    "expected_goals", "expected_assists", "expected_goal_involvements",
-    "expected_goals_conceded", "influence", "creativity", "threat",
-    "ict_index", "bps", "bonus",
+    "total_points",
+    "minutes",
+    "starts",
+    "expected_goals",
+    "expected_assists",
+    "expected_goal_involvements",
+    "expected_goals_conceded",
+    "influence",
+    "creativity",
+    "threat",
+    "ict_index",
+    "bps",
+    "bonus",
 ]
 SEASON_AVG_COLS = [
-    "total_points", "minutes", "expected_goals", "expected_assists",
-    "influence", "creativity", "threat", "bps",
+    "total_points",
+    "minutes",
+    "expected_goals",
+    "expected_assists",
+    "influence",
+    "creativity",
+    "threat",
+    "bps",
 ]
 ROLL_WINDOWS = [3, 5, 10]
 
+
 def get_bootstrap_data() -> dict:
-    
+
     # Fetch bootstrap-static data from FPL API.
     # Contains: all players, teams, gameweeks, game settings.
     print("Fetching FPL bootstrap-static data...")
@@ -44,6 +61,7 @@ def get_bootstrap_data() -> dict:
         raise RuntimeError(f"FPL API error: {response.status_code}")
 
     return response.json()
+
 
 def get_current_gameweek(events: list[dict]) -> dict:
     """
@@ -67,6 +85,7 @@ def get_current_gameweek(events: list[dict]) -> dict:
             return event
 
     return events[-1]
+
 
 def get_fixtures_for_gw(gw: int) -> pd.DataFrame:
     # Fetch fixtures for a specific gameweek.
@@ -93,6 +112,7 @@ def build_team_lookup(teams: list[dict]) -> dict:
 
 # -- Player History Fetching ---------------------------------------------------
 
+
 def fetch_player_history(element_id: int) -> list[dict] | None:
     # Fetch per-GW history for a single player from /api/element-summary/{id}/
     url = f"{FPL_BASE_URL}/element-summary/{element_id}/"
@@ -109,7 +129,6 @@ def fetch_all_player_histories(
     element_ids: list[int],
     max_workers: int = 20,
 ) -> dict[int, list[dict]]:
-    
     """Batch fetch per-GW histories for all players using a thread pool.
     Returns {element_id: [gw_dict, ...]} for players with history.
     ~600 players at 20 concurrent → ~30 seconds.
@@ -119,12 +138,8 @@ def fetch_all_player_histories(
     print(f"Fetching {total} player histories ({max_workers} concurrent)...")
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = {
-            executor.submit(fetch_player_history, eid): eid
-            for eid in element_ids
-        }
-        done = 0
-        for future in as_completed(futures):
+        futures = {executor.submit(fetch_player_history, eid): eid for eid in element_ids}
+        for done, future in enumerate(as_completed(futures), 1):
             eid = futures[future]
             try:
                 result = future.result()
@@ -132,7 +147,6 @@ def fetch_all_player_histories(
                     histories[eid] = result
             except Exception:
                 pass
-            done += 1
             if done % 100 == 0:
                 print(f"    {done}/{total} fetched...")
 
@@ -141,6 +155,7 @@ def fetch_all_player_histories(
 
 
 # -- Feature Extraction --------------------------------------------------------
+
 
 def extract_player_features(
     elements: list[dict],
@@ -186,18 +201,15 @@ def extract_player_features(
             "web_name": player["web_name"],
             "season": season,
             "GW": current_gw,
-
             # Basic info
             "position": pos_map.get(player["element_type"], "UNK"),
             "team": team_id,
             "team_name": team_info.get("short_name", ""),
             "value": player["now_cost"] / 10.0,  # Convert to millions
-            
             # Fixture info
             "was_home": 1 if is_home else 0 if is_home is not None else None,
             "opponent_team": opponent_id,
             "opponent_name": opponent_info.get("short_name", ""),
-            
             # Form & performance (from API)
             "form": float(player["form"]) if player["form"] else 0.0,
             "points_per_game": float(player["points_per_game"]) if player["points_per_game"] else 0.0,
@@ -209,8 +221,7 @@ def extract_player_features(
             "clean_sheets": player["clean_sheets"],
             "goals_conceded": player["goals_conceded"],
             "bonus": player["bonus"],
-            "bps": player["bps"], # bonus point system
-            
+            "bps": player["bps"],  # bonus point system
             # Expected stats
             "expected_goals": float(player["expected_goals"]) if player["expected_goals"] else 0.0,
             "expected_assists": float(player["expected_assists"]) if player["expected_assists"] else 0.0,
@@ -220,20 +231,17 @@ def extract_player_features(
             "expected_goals_conceded": float(player["expected_goals_conceded"])
             if player["expected_goals_conceded"]
             else 0.0,
-            
             # ICT index
             "influence": float(player["influence"]) if player["influence"] else 0.0,
             "creativity": float(player["creativity"]) if player["creativity"] else 0.0,
             "threat": float(player["threat"]) if player["threat"] else 0.0,
-            "ict_index": float(player["ict_index"]) if player["ict_index"] else 0.0, # Influence Creativity Threat
-            
-            # INJURY/AVAILABILITY FEATURES 
+            "ict_index": float(player["ict_index"]) if player["ict_index"] else 0.0,  # Influence Creativity Threat
+            # INJURY/AVAILABILITY FEATURES
             "status": player["status"],  # 'a', 'd', 'i', 'u', 's', 'n'
             "chance_of_playing_this_round": player["chance_of_playing_this_round"],
             "chance_of_playing_next_round": player["chance_of_playing_next_round"],
             "news": player["news"],
             "news_added": player["news_added"],
-            
             # Transfers
             "transfers_in_event": player["transfers_in_event"],
             "transfers_out_event": player["transfers_out_event"],
@@ -383,9 +391,10 @@ def add_injury_features(df: pd.DataFrame) -> pd.DataFrame:
 
 # -- Rolling Feature Computation -----------------------------------------------
 
+
 def _compute_player_features(history: list[dict]) -> dict:
     # Compute all rolling/lag/availability features from a player's GW history.
-    
+
     if not history:
         return {}
 
@@ -441,15 +450,9 @@ def _compute_player_features(history: list[dict]) -> dict:
     features["games_since_start"] = gss
 
     # --- Momentum features (roll3 - roll10) ---
-    features["points_momentum"] = (
-        features.get("total_points_roll3", 0) - features.get("total_points_roll10", 0)
-    )
-    features["bps_momentum"] = (
-        features.get("bps_roll3", 0) - features.get("bps_roll10", 0)
-    )
-    features["xg_momentum"] = (
-        features.get("expected_goals_roll3", 0) - features.get("expected_goals_roll10", 0)
-    )
+    features["points_momentum"] = features.get("total_points_roll3", 0) - features.get("total_points_roll10", 0)
+    features["bps_momentum"] = features.get("bps_roll3", 0) - features.get("bps_roll10", 0)
+    features["xg_momentum"] = features.get("expected_goals_roll3", 0) - features.get("expected_goals_roll10", 0)
 
     return features
 
@@ -497,8 +500,14 @@ def _fill_approximate_features(df: pd.DataFrame) -> None:
     else:
         df["played_lag1"] = df["played_lag1"].fillna((df["minutes"] > 0).astype(int))
 
-    for col in ["consecutive_starts", "minutes_trend", "games_since_start",
-                "points_momentum", "bps_momentum", "xg_momentum"]:
+    for col in [
+        "consecutive_starts",
+        "minutes_trend",
+        "games_since_start",
+        "points_momentum",
+        "bps_momentum",
+        "xg_momentum",
+    ]:
         if col not in df.columns:
             df[col] = 0
         else:
@@ -522,9 +531,7 @@ def compute_rolling_features(
         for _, row in df.iterrows():
             eid = int(row["element"])
             player_history = histories.get(eid, [])
-            feature_rows.append(
-                _compute_player_features(player_history) if player_history else {}
-            )
+            feature_rows.append(_compute_player_features(player_history) if player_history else {})
 
         features_df = pd.DataFrame(feature_rows, index=df.index)
 
@@ -541,6 +548,7 @@ def compute_rolling_features(
     _fill_approximate_features(df)
 
     return df
+
 
 def add_temporal_injury_features(
     df: pd.DataFrame,
@@ -623,6 +631,7 @@ def add_temporal_injury_features(
 
 
 # -- Main Fetch Pipeline -------------------------------------------------------
+
 
 def fetch_current_gw_data(include_history: bool = True) -> pd.DataFrame:
     """Main function: Fetch all current player data ready for prediction.
@@ -762,10 +771,7 @@ def fetch_fixtures(bootstrap_data: dict | None = None, num_gws: int = 6) -> dict
     all_fixtures = response.json()
 
     # filter to target GWs (event != None and in range)
-    upcoming = [
-        f for f in all_fixtures
-        if f.get("event") in target_gws and not f.get("finished", False)
-    ]
+    upcoming = [f for f in all_fixtures if f.get("event") in target_gws and not f.get("finished", False)]
 
     # build per-team fixture grid
     fixtures_by_team: dict[str, list] = {short: [] for short in team_short.values()}
@@ -778,22 +784,26 @@ def fetch_fixtures(bootstrap_data: dict | None = None, num_gws: int = 6) -> dict
         away_short = team_short[away_id]
 
         # home team's fixture
-        fixtures_by_team[home_short].append({
-            "gw": gw,
-            "opponent": away_short,
-            "home": True,
-            "atkFdr": f["team_h_difficulty"],
-            "defFdr": f["team_a_difficulty"],
-        })
+        fixtures_by_team[home_short].append(
+            {
+                "gw": gw,
+                "opponent": away_short,
+                "home": True,
+                "atkFdr": f["team_h_difficulty"],
+                "defFdr": f["team_a_difficulty"],
+            }
+        )
 
         # away team's fixture
-        fixtures_by_team[away_short].append({
-            "gw": gw,
-            "opponent": home_short,
-            "home": False,
-            "atkFdr": f["team_a_difficulty"],
-            "defFdr": f["team_h_difficulty"],
-        })
+        fixtures_by_team[away_short].append(
+            {
+                "gw": gw,
+                "opponent": home_short,
+                "home": False,
+                "atkFdr": f["team_a_difficulty"],
+                "defFdr": f["team_h_difficulty"],
+            }
+        )
 
     # sort each team's fixtures by GW
     for team_fixtures in fixtures_by_team.values():
@@ -868,13 +878,15 @@ def fetch_user_team(fpl_id: int) -> dict:
     # extract pick details
     picks = []
     for p in picks_data["picks"]:
-        picks.append({
-            "element": p["element"],
-            "position": p["position"],       # squad position 1-15 (1-11 = starting)
-            "multiplier": p["multiplier"],    # 0=benched, 1=normal, 2=captain, 3=TC
-            "is_captain": p["is_captain"],
-            "is_vice_captain": p["is_vice_captain"],
-        })
+        picks.append(
+            {
+                "element": p["element"],
+                "position": p["position"],  # squad position 1-15 (1-11 = starting)
+                "multiplier": p["multiplier"],  # 0=benched, 1=normal, 2=captain, 3=TC
+                "is_captain": p["is_captain"],
+                "is_vice_captain": p["is_vice_captain"],
+            }
+        )
 
     return {
         "fpl_id": fpl_id,
@@ -884,8 +896,8 @@ def fetch_user_team(fpl_id: int) -> dict:
         "overall_points": entry.get("summary_overall_points"),
         "bank": picks_data.get("entry_history", {}).get("bank", 0),  # in tenths
         "total_value": picks_data.get("entry_history", {}).get("value", 0),  # in tenths
-        "gameweek": upcoming_gw,           # the GW we're predicting for
-        "picks_gameweek": picks_gw,        # the GW picks were fetched from
+        "gameweek": upcoming_gw,  # the GW we're predicting for
+        "picks_gameweek": picks_gw,  # the GW picks were fetched from
         "active_chip": picks_data.get("active_chip"),
         "picks": picks,
     }

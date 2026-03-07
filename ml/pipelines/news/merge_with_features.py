@@ -6,8 +6,10 @@ Outputs:
 """
 
 from pathlib import Path
+
 import numpy as np
 import pandas as pd
+
 from ml.pipelines.news.build_news_features import NEWS_FEATURE_COLS, NEWS_SEASONS
 
 EXTENDED_PATH = Path("data/features/extended_features.csv")
@@ -18,6 +20,7 @@ OUTPUT_C = Path("data/features/extended_with_news.csv")
 OUTPUT_D = Path("data/features/extended_with_injury_and_news.csv")
 
 MERGE_KEYS = ["season", "GW", "element"]
+
 
 def merge_news(base_df: pd.DataFrame, news_df: pd.DataFrame) -> pd.DataFrame:
     """Left-join news features onto a base feature set.
@@ -56,6 +59,7 @@ def merge_news(base_df: pd.DataFrame, news_df: pd.DataFrame) -> pd.DataFrame:
     print(f"Pre-news seasons (NaN): {n_nan:,} rows")
 
     return combined
+
 
 def run() -> None:
     """Merge news features with extended feature sets."""

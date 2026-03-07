@@ -2,6 +2,7 @@
 
 import json
 from pathlib import Path
+
 from fastapi import APIRouter
 
 router = APIRouter(tags=["Insights"])
@@ -11,7 +12,7 @@ OUTPUTS = Path("outputs")
 
 @router.get("/model-insights")
 def get_model_insights():
-    
+
     # Training metrics, ablation results, SHAP global importance
     ablation_path = OUTPUTS / "experiments/ablation_injury/ablation_summary.json"
     ablation = json.loads(ablation_path.read_text()) if ablation_path.exists() else {}
@@ -20,6 +21,7 @@ def get_model_insights():
     shap_features = []
     if shap_path.exists():
         import csv
+
         with open(shap_path) as f:
             shap_features = list(csv.DictReader(f))
 

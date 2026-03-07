@@ -9,6 +9,7 @@ Usage:
 
 from datetime import datetime
 from pathlib import Path
+
 import joblib
 import numpy as np
 import pandas as pd
@@ -20,6 +21,7 @@ from ml.pipelines.inference.fetch_live_data import fetch_current_gw_data
 DEFAULT_MODEL = Path("outputs/experiments/ablation_injury/config_D/model.joblib")
 OUTPUT_DIR = Path("data/inference")
 
+
 def load_model(model_path: Path = DEFAULT_MODEL):
     # Load a trained model from the specified path. Supports both plain LightGBM and StackedEnsemble models.
 
@@ -27,6 +29,7 @@ def load_model(model_path: Path = DEFAULT_MODEL):
     model = joblib.load(model_path)
     print(f"Model loaded: {type(model).__name__}")
     return model
+
 
 def get_model_features(model) -> list[str]:
     # Extract the feature list from a trained model object.
@@ -46,9 +49,9 @@ def get_model_features(model) -> list[str]:
         return list(model.feature_names_in_)
 
     raise ValueError(
-        f"Cannot extract feature names from {type(model).__name__}. "
-        "Ensure the model was trained with named features."
+        f"Cannot extract feature names from {type(model).__name__}. Ensure the model was trained with named features."
     )
+
 
 def align_features(
     live_df: pd.DataFrame,
@@ -82,6 +85,7 @@ def align_features(
 
     return df
 
+
 def prepare_features(
     df: pd.DataFrame,
     model_features: list[str],
@@ -110,12 +114,13 @@ def prepare_features(
 
     return X
 
+
 def predict(
     model,
     X: pd.DataFrame,
     player_info: pd.DataFrame,
 ) -> pd.DataFrame:
-    
+
     # Generate predictions and create enriched output dataframe.
     print("Generating predictions...")
 
@@ -159,7 +164,8 @@ def predict(
     # Derived fields
     if "transfers_in" in result.columns and "transfers_out" in result.columns:
         result["price_trend"] = np.where(
-            result["transfers_in"] > result["transfers_out"], "rise",
+            result["transfers_in"] > result["transfers_out"],
+            "rise",
             np.where(result["transfers_in"] < result["transfers_out"], "fall", "stable"),
         )
 
@@ -167,8 +173,19 @@ def predict(
         result["captain_pct"] = (result["selected_by_percent"] * 0.15).round(1)
 
     # Fill NaN in numeric output columns
-    fill_zero = ["goals", "xG", "assists", "xA", "minutes", "bonus", "bps",
-                  "clean_sheets", "selected_by_percent", "transfers_in", "transfers_out"]
+    fill_zero = [
+        "goals",
+        "xG",
+        "assists",
+        "xA",
+        "minutes",
+        "bonus",
+        "bps",
+        "clean_sheets",
+        "selected_by_percent",
+        "transfers_in",
+        "transfers_out",
+    ]
     for col in fill_zero:
         if col in result.columns:
             result[col] = result[col].fillna(0)
@@ -218,11 +235,30 @@ def run(model_path: Path | None = None, model=None, save_output: bool = True, in
 
     # Keep player info for output — pass through all fields the frontend needs
     keep_cols = [
-        "element", "web_name", "name", "team_name", "position", "value", "status",
-        "form", "total_points", "chance_this_round", "news", "opponent_name",
-        "selected_by_percent", "goals_scored", "expected_goals", "assists",
-        "expected_assists", "transfers_in_event", "transfers_out_event",
-        "ict_index", "minutes", "bonus", "bps", "clean_sheets",
+        "element",
+        "web_name",
+        "name",
+        "team_name",
+        "position",
+        "value",
+        "status",
+        "form",
+        "total_points",
+        "chance_this_round",
+        "news",
+        "opponent_name",
+        "selected_by_percent",
+        "goals_scored",
+        "expected_goals",
+        "assists",
+        "expected_assists",
+        "transfers_in_event",
+        "transfers_out_event",
+        "ict_index",
+        "minutes",
+        "bonus",
+        "bps",
+        "clean_sheets",
         "goals_conceded" if "goals_conceded" in live_df.columns else None,
     ]
     keep_cols = [c for c in keep_cols if c is not None and c in live_df.columns]
@@ -298,7 +334,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate FPL predictions")
     parser.add_argument("--model", type=Path, default=DEFAULT_MODEL, help="Path to trained model file")
     parser.add_argument("--no-save", action="store_true", help="Don't save predictions to file")
-    parser.add_argument("--no-history", action="store_true", help="Skip per-player history fetch (faster, less accurate)")
+    parser.add_argument(
+        "--no-history", action="store_true", help="Skip per-player history fetch (faster, less accurate)"
+    )
     args = parser.parse_args()
 
     run(model_path=args.model, save_output=not args.no_save, include_history=not args.no_history)

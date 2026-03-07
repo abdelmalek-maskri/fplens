@@ -14,6 +14,7 @@ temporal leakage: for GW N, only articles published AFTER GW N-1 kickoff and BEF
 """
 
 from pathlib import Path
+
 import pandas as pd
 
 LINKS_PATH = Path("data/processed/news/article_player_links.csv")
@@ -40,6 +41,7 @@ NEWS_FEATURE_COLS = [
     "news_sentiment_neg",
     "news_injury_context",
 ]
+
 
 def compute_gw_boundaries(season: str) -> pd.DataFrame:
     """Compute GW start times from fixture data.
@@ -74,6 +76,7 @@ def compute_gw_boundaries(season: str) -> pd.DataFrame:
         rows.append({"GW": gw, "gw_start": gw_start, "gw_end": gw_end})
 
     return pd.DataFrame(rows)
+
 
 def aggregate_links_to_gw(
     links: pd.DataFrame,

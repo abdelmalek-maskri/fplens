@@ -1,7 +1,8 @@
 """Solvers for FPL squad selection: best XI, best squad, transfer suggestions."""
+
 import numpy as np
 import pandas as pd
-from scipy.optimize import milp, LinearConstraint, Bounds
+from scipy.optimize import Bounds, LinearConstraint, milp
 
 FORMATIONS = [
     (3, 4, 3),
@@ -13,6 +14,7 @@ FORMATIONS = [
     (5, 4, 1),
 ]
 
+
 def solve_best_xi(df: pd.DataFrame) -> dict:
     """Pick optimal starting 11 from all available players.
     greedy solver: try all 7 valid FPL formations,
@@ -20,9 +22,7 @@ def solve_best_xi(df: pd.DataFrame) -> dict:
     Always 1 GK. Captain = highest predicted, vice = second highest.
     """
     # filter out injured and unavailable players
-    available = df[
-        (df["status"] != "i") & (df["chance_of_playing"] > 0)
-    ].copy()
+    available = df[(df["status"] != "i") & (df["chance_of_playing"] > 0)].copy()
 
     # sort each position pool by predicted_points descending
     gks = available[available["position"] == "GK"].sort_values("predicted_points", ascending=False)
@@ -39,12 +39,14 @@ def solve_best_xi(df: pd.DataFrame) -> dict:
         if len(gks) < 1 or len(defs) < n_def or len(mids) < n_mid or len(fwds) < n_fwd:
             continue
 
-        xi = pd.concat([
-            gks.head(1),
-            defs.head(n_def),
-            mids.head(n_mid),
-            fwds.head(n_fwd),
-        ])
+        xi = pd.concat(
+            [
+                gks.head(1),
+                defs.head(n_def),
+                mids.head(n_mid),
+                fwds.head(n_fwd),
+            ]
+        )
         total = xi["predicted_points"].sum()
 
         if total > best_total:
@@ -63,24 +65,37 @@ def solve_best_xi(df: pd.DataFrame) -> dict:
     # bench: best remaining players (1 GK + 3 outfield)
     xi_ids = set(best_xi["element"].tolist())
     bench_gk = gks[~gks["element"].isin(xi_ids)].head(1)
-    bench_outfield = available[
-        (~available["element"].isin(xi_ids))
-        & (available["position"] != "GK")
-    ].sort_values("predicted_points", ascending=False).head(3)
+    bench_outfield = (
+        available[(~available["element"].isin(xi_ids)) & (available["position"] != "GK")]
+        .sort_values("predicted_points", ascending=False)
+        .head(3)
+    )
     bench = pd.concat([bench_gk, bench_outfield])
 
     # select only the fields the frontend needs
     columns = [
-        "element", "web_name", "position", "team_name", "value",
-        "predicted_points", "form", "status", "chance_of_playing",
-        "opponent_name", "uncertainty", "predicted_range_low", "predicted_range_high",
+        "element",
+        "web_name",
+        "position",
+        "team_name",
+        "value",
+        "predicted_points",
+        "form",
+        "status",
+        "chance_of_playing",
+        "opponent_name",
+        "uncertainty",
+        "predicted_range_low",
+        "predicted_range_high",
     ]
     existing_cols = [c for c in columns if c in best_xi.columns]
 
     return {
         "formation": best_formation,
         "total_points": round(best_total, 2),
-        "total_with_captain": round(best_total + best_xi.sort_values("predicted_points", ascending=False).iloc[0]["predicted_points"], 2),
+        "total_with_captain": round(
+            best_total + best_xi.sort_values("predicted_points", ascending=False).iloc[0]["predicted_points"], 2
+        ),
         "captain_id": captain_id,
         "vice_id": vice_id,
         "starters": best_xi[existing_cols].to_dict(orient="records"),
@@ -103,9 +118,7 @@ def solve_best_squad(df: pd.DataFrame, budget: float = DEFAULT_BUDGET) -> dict:
     Then picks best starting XI from the 15 using solve_best_xi logic.
     """
     # filter out injured and unavailable
-    available = df[
-        (df["status"] != "i") & (df["chance_of_playing"] > 0)
-    ].reset_index(drop=True)
+    available = df[(df["status"] != "i") & (df["chance_of_playing"] > 0)].reset_index(drop=True)
 
     n = len(available)
     if n < 15:
@@ -169,9 +182,19 @@ def solve_best_squad(df: pd.DataFrame, budget: float = DEFAULT_BUDGET) -> dict:
 
     # select output columns
     columns = [
-        "element", "web_name", "position", "team_name", "value",
-        "predicted_points", "form", "status", "chance_of_playing",
-        "opponent_name", "uncertainty", "predicted_range_low", "predicted_range_high",
+        "element",
+        "web_name",
+        "position",
+        "team_name",
+        "value",
+        "predicted_points",
+        "form",
+        "status",
+        "chance_of_playing",
+        "opponent_name",
+        "uncertainty",
+        "predicted_range_low",
+        "predicted_range_high",
     ]
     existing_cols = [c for c in columns if c in squad.columns]
 
@@ -185,9 +208,19 @@ def solve_best_squad(df: pd.DataFrame, budget: float = DEFAULT_BUDGET) -> dict:
 
 
 OUTPUT_COLS = [
-    "element", "web_name", "position", "team_name", "value",
-    "predicted_points", "form", "status", "chance_of_playing",
-    "opponent_name", "uncertainty", "predicted_range_low", "predicted_range_high",
+    "element",
+    "web_name",
+    "position",
+    "team_name",
+    "value",
+    "predicted_points",
+    "form",
+    "status",
+    "chance_of_playing",
+    "opponent_name",
+    "uncertainty",
+    "predicted_range_low",
+    "predicted_range_high",
 ]
 
 
@@ -197,7 +230,7 @@ def suggest_transfers(
     bank: float = 0.0,
     max_suggestions: int = 5,
 ) -> list[dict]:
-    """suggest transfer-in/out pairs that maximise predicted points gain, and 
+    """suggest transfer-in/out pairs that maximise predicted points gain, and
     for each squad player, find same-position replacements not already in the
     squad with higher predicted_points and affordable within bank + selling value.
 
@@ -205,9 +238,7 @@ def suggest_transfers(
         list of {out: {player}, in: {player}, points_gain, cost_saving} sorted by points_gain desc
     """
     # filter available players (not injured)
-    available = all_predictions[
-        (all_predictions["status"] != "i") & (all_predictions["chance_of_playing"] > 0)
-    ].copy()
+    available = all_predictions[(all_predictions["status"] != "i") & (all_predictions["chance_of_playing"] > 0)].copy()
 
     # current squad element IDs
     squad_ids = {p["element"] for p in user_picks}
@@ -259,7 +290,11 @@ def suggest_transfers(
         if points_gain <= 0:
             continue
 
-        out_data = {k: pick.get(k, pick.get(k.replace("player_position", "position"), "")) for k in existing_cols if k in pick or k == "position"}
+        out_data = {
+            k: pick.get(k, pick.get(k.replace("player_position", "position"), ""))
+            for k in existing_cols
+            if k in pick or k == "position"
+        }
         # normalise out_data keys
         out_data = {
             "element": pick["element"],
@@ -272,12 +307,14 @@ def suggest_transfers(
 
         in_data = {c: best[c] for c in existing_cols if c in best.index}
 
-        suggestions.append({
-            "out": out_data,
-            "in": in_data,
-            "points_gain": round(float(points_gain), 2),
-            "cost_saving": round(float(out_value - best["value"]), 1),
-        })
+        suggestions.append(
+            {
+                "out": out_data,
+                "in": in_data,
+                "points_gain": round(float(points_gain), 2),
+                "cost_saving": round(float(out_value - best["value"]), 1),
+            }
+        )
 
     # sort by points_gain descending, deduplicate by in-player
     suggestions.sort(key=lambda s: s["points_gain"], reverse=True)
