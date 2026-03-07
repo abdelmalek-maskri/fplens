@@ -66,12 +66,7 @@ export default function ModelInsights() {
             ablationConfigs={ablationConfigs}
           />
         )}
-        {activeTab === "shap" && (
-          <ShapTab
-            shapFeatures={shapFeatures}
-            exampleShap={exampleShap}
-          />
-        )}
+        {activeTab === "shap" && <ShapTab shapFeatures={shapFeatures} exampleShap={exampleShap} />}
         {activeTab === "ablation" && (
           <AblationTab
             ablationConfigs={ablationConfigs}
@@ -81,7 +76,10 @@ export default function ModelInsights() {
         )}
         {activeTab === "positions" && <PositionsTab positionPerformance={positionPerformance} />}
         {activeTab === "calibration" && (
-          <CalibrationTab calibrationDeciles={calibrationDeciles} calibrationStats={calibrationStats} />
+          <CalibrationTab
+            calibrationDeciles={calibrationDeciles}
+            calibrationStats={calibrationStats}
+          />
         )}
       </div>
     </div>
@@ -111,7 +109,8 @@ function GroupedBarChart({ labels, series, yMin = 0, yMax, yStep = 0.5 }) {
   const svgH = padT + chartH + padB;
 
   const yRange = yMax - yMin;
-  const toY = (val) => padT + chartH - ((Math.min(Math.max(val, yMin), yMax) - yMin) / yRange) * chartH;
+  const toY = (val) =>
+    padT + chartH - ((Math.min(Math.max(val, yMin), yMax) - yMin) / yRange) * chartH;
 
   const ticks = [];
   for (let t = yMin; t <= yMax + yStep * 0.01; t += yStep) {
@@ -236,7 +235,8 @@ function OverviewTab({
         <div className="w-px h-5 bg-surface-700" />
         <div>
           <span className="text-lg font-bold text-surface-100">
-            {datasetStats.cvMae} <span className="text-sm text-surface-400">± {datasetStats.cvStd}</span>
+            {datasetStats.cvMae}{" "}
+            <span className="text-sm text-surface-400">± {datasetStats.cvStd}</span>
           </span>
           <span className="text-xs text-surface-500 ml-1.5">CV MAE (8-fold)</span>
         </div>
@@ -260,17 +260,31 @@ function OverviewTab({
       <div className="overflow-x-auto">
         <div className="py-3 border-b border-surface-700">
           <span className="section-label">Architecture Comparison</span>
-          <span className="text-xs text-surface-500 ml-2">({bestModel.features} features, holdout 2024-25)</span>
+          <span className="text-xs text-surface-500 ml-2">
+            ({bestModel.features} features, holdout 2024-25)
+          </span>
         </div>
         <table className="w-full">
           <thead className="bg-surface-800/30">
             <tr>
-              <th scope="col" className="table-header text-left py-2.5 px-3">Model</th>
-              <th scope="col" className="table-header text-left py-2.5 px-3">MAE</th>
-              <th scope="col" className="table-header text-left py-2.5 px-3">RMSE</th>
-              <th scope="col" className="table-header text-left py-2.5 px-3">R²</th>
-              <th scope="col" className="table-header text-left py-2.5 px-3">Spearman ρ</th>
-              <th scope="col" className="table-header text-left py-2.5 px-3">vs Zero</th>
+              <th scope="col" className="table-header text-left py-2.5 px-3">
+                Model
+              </th>
+              <th scope="col" className="table-header text-left py-2.5 px-3">
+                MAE
+              </th>
+              <th scope="col" className="table-header text-left py-2.5 px-3">
+                RMSE
+              </th>
+              <th scope="col" className="table-header text-left py-2.5 px-3">
+                R²
+              </th>
+              <th scope="col" className="table-header text-left py-2.5 px-3">
+                Spearman ρ
+              </th>
+              <th scope="col" className="table-header text-left py-2.5 px-3">
+                vs Zero
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -282,12 +296,16 @@ function OverviewTab({
                 <td className="py-2.5 px-3">
                   <div className="flex items-center gap-2">
                     <p className="font-medium text-surface-100">{model.name}</p>
-                    {model.best && <span className="badge bg-brand-500/20 text-brand-400">Best</span>}
+                    {model.best && (
+                      <span className="badge bg-brand-500/20 text-brand-400">Best</span>
+                    )}
                   </div>
                   <p className="text-xs text-surface-500 mt-0.5">{model.description}</p>
                 </td>
                 <td className="py-2.5 px-3 font-data tabular-nums">
-                  <span className={`font-bold ${model.best ? "text-brand-400" : "text-surface-100"}`}>
+                  <span
+                    className={`font-bold ${model.best ? "text-brand-400" : "text-surface-100"}`}
+                  >
                     {model.mae.toFixed(4)}
                   </span>
                 </td>
@@ -314,11 +332,13 @@ function OverviewTab({
         {configD && (
           <div className="mt-3 p-3 rounded-md bg-info-500/5 border border-info-500/20">
             <p className="text-sm text-surface-300">
-              <span className="font-semibold text-surface-100">Deployed model: Config D</span>{" "}
-              — Stacked Ensemble with injury + news features ({configD.features} features).
-              MAE <span className="font-data font-semibold text-info-400">{configD.mae.toFixed(4)}</span>,
-              Spearman ρ <span className="font-data">{configD.rho.toFixed(3)}</span>.
-              See Ablation Study tab for comparison.
+              <span className="font-semibold text-surface-100">Deployed model: Config D</span> —
+              Stacked Ensemble with injury + news features ({configD.features} features). MAE{" "}
+              <span className="font-data font-semibold text-info-400">
+                {configD.mae.toFixed(4)}
+              </span>
+              , Spearman ρ <span className="font-data">{configD.rho.toFixed(3)}</span>. See Ablation
+              Study tab for comparison.
             </p>
           </div>
         )}
@@ -357,9 +377,15 @@ function OverviewTab({
         <table className="w-full">
           <thead className="bg-surface-800/30">
             <tr>
-              <th scope="col" className="table-header text-left py-2 px-3">Method</th>
-              <th scope="col" className="table-header text-left py-2 px-3">MAE</th>
-              <th scope="col" className="table-header text-left py-2 px-3">Difference</th>
+              <th scope="col" className="table-header text-left py-2 px-3">
+                Method
+              </th>
+              <th scope="col" className="table-header text-left py-2 px-3">
+                MAE
+              </th>
+              <th scope="col" className="table-header text-left py-2 px-3">
+                Difference
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -370,7 +396,9 @@ function OverviewTab({
               >
                 <td className="py-2 px-3">
                   <span className="text-sm text-surface-200">{m.method}</span>
-                  {m.best && <span className="badge bg-brand-500/20 text-brand-400 ml-2">Best</span>}
+                  {m.best && (
+                    <span className="badge bg-brand-500/20 text-brand-400 ml-2">Best</span>
+                  )}
                 </td>
                 <td className="py-2 px-3 font-data tabular-nums font-bold text-surface-100">
                   {m.mae.toFixed(4)}
@@ -380,7 +408,13 @@ function OverviewTab({
                     <span className="text-success-400">baseline</span>
                   ) : (
                     <span className="text-danger-400">
-                      +{((m.mae - twoheadMethods.find((x) => x.best).mae) / twoheadMethods.find((x) => x.best).mae * 100).toFixed(1)}%
+                      +
+                      {(
+                        ((m.mae - twoheadMethods.find((x) => x.best).mae) /
+                          twoheadMethods.find((x) => x.best).mae) *
+                        100
+                      ).toFixed(1)}
+                      %
                     </span>
                   )}
                 </td>
@@ -481,17 +515,17 @@ function ShapTab({ shapFeatures, exampleShap }) {
       <div className="py-3 border-b border-surface-700">
         <span className="section-label">What Drives Predictions</span>
         <p className="text-xs text-surface-500 mt-1">
-          SHAP analysis shows how much each input variable influences the model&apos;s predicted points.
-          The percentage represents each variable&apos;s share of total influence — higher means the model
-          relies on it more when making predictions.
+          SHAP analysis shows how much each input variable influences the model&apos;s predicted
+          points. The percentage represents each variable&apos;s share of total influence — higher
+          means the model relies on it more when making predictions.
         </p>
       </div>
 
       {/* Category summary with descriptions */}
       <div>
         <p className="text-xs text-surface-500 mb-2">
-          Variables are grouped into categories. Percentages show each category&apos;s share of total
-          influence (all categories sum to ~100%).
+          Variables are grouped into categories. Percentages show each category&apos;s share of
+          total influence (all categories sum to ~100%).
         </p>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
           {Object.entries(categoryTotals)
@@ -504,7 +538,9 @@ function ShapTab({ shapFeatures, exampleShap }) {
                     <div className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
                     <p className="text-xs text-surface-500 uppercase">{cat}</p>
                   </div>
-                  <p className="text-lg font-bold" style={{ color }}>{total.toFixed(1)}%</p>
+                  <p className="text-lg font-bold" style={{ color }}>
+                    {total.toFixed(1)}%
+                  </p>
                   <p className="text-2xs text-surface-500 mt-0.5">
                     {categoryDescriptions[cat] || ""}
                   </p>
@@ -519,8 +555,8 @@ function ShapTab({ shapFeatures, exampleShap }) {
         <div className="py-3 border-b border-surface-700 mb-3">
           <span className="section-label">Top 10 Most Influential Variables</span>
           <p className="text-xs text-surface-500 mt-1">
-            Each bar shows how much that single variable contributes to the prediction, as a percentage
-            of total influence across all variables.
+            Each bar shows how much that single variable contributes to the prediction, as a
+            percentage of total influence across all variables.
           </p>
         </div>
         <div className="space-y-2.5">
@@ -572,18 +608,18 @@ function ShapTab({ shapFeatures, exampleShap }) {
       <div className="space-y-2">
         <p className="text-sm text-surface-300">
           <span className="text-surface-100 font-medium">Minutes played last GW</span> is by far the
-          strongest predictor (18%) — whether a player featured recently is the best signal
-          for whether they&apos;ll score points next.
+          strongest predictor (18%) — whether a player featured recently is the best signal for
+          whether they&apos;ll score points next.
         </p>
         <p className="text-sm text-surface-300">
           <span className="text-surface-100 font-medium">Rolling averages</span> (recent form over
-          3-10 gameweeks) collectively account for ~16% — consistent recent performance matters
-          more than any single stat.
+          3-10 gameweeks) collectively account for ~16% — consistent recent performance matters more
+          than any single stat.
         </p>
         <p className="text-sm text-surface-300">
           <span className="text-surface-100 font-medium">Player price and team</span> together
-          contribute ~10% — the model learns that premium players in top teams have higher
-          baseline expectations.
+          contribute ~10% — the model learns that premium players in top teams have higher baseline
+          expectations.
         </p>
       </div>
 
@@ -651,13 +687,27 @@ function AblationTab({ ablationConfigs, ablationSignificance, interactionEffect 
         <table className="w-full">
           <thead className="bg-surface-800/30">
             <tr>
-              <th scope="col" className="table-header text-left py-2.5 px-3">Config</th>
-              <th scope="col" className="table-header text-left py-2.5 px-3">Features</th>
-              <th scope="col" className="table-header text-left py-2.5 px-3">MAE</th>
-              <th scope="col" className="table-header text-left py-2.5 px-3">R²</th>
-              <th scope="col" className="table-header text-left py-2.5 px-3">Spearman ρ</th>
-              <th scope="col" className="table-header text-left py-2.5 px-3">N Features</th>
-              <th scope="col" className="table-header text-left py-2.5 px-3">vs Baseline</th>
+              <th scope="col" className="table-header text-left py-2.5 px-3">
+                Config
+              </th>
+              <th scope="col" className="table-header text-left py-2.5 px-3">
+                Features
+              </th>
+              <th scope="col" className="table-header text-left py-2.5 px-3">
+                MAE
+              </th>
+              <th scope="col" className="table-header text-left py-2.5 px-3">
+                R²
+              </th>
+              <th scope="col" className="table-header text-left py-2.5 px-3">
+                Spearman ρ
+              </th>
+              <th scope="col" className="table-header text-left py-2.5 px-3">
+                N Features
+              </th>
+              <th scope="col" className="table-header text-left py-2.5 px-3">
+                vs Baseline
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -682,7 +732,9 @@ function AblationTab({ ablationConfigs, ablationSignificance, interactionEffect 
                   </td>
                   <td className="py-2.5 px-3 text-xs text-surface-400">{config.description}</td>
                   <td className="py-2.5 px-3 font-data tabular-nums">
-                    <span className={`font-bold ${config.best ? "text-info-400" : "text-surface-100"}`}>
+                    <span
+                      className={`font-bold ${config.best ? "text-info-400" : "text-surface-100"}`}
+                    >
                       {config.mae.toFixed(4)}
                     </span>
                   </td>
@@ -717,10 +769,18 @@ function AblationTab({ ablationConfigs, ablationSignificance, interactionEffect 
         <table className="w-full">
           <thead className="bg-surface-800/30">
             <tr>
-              <th scope="col" className="table-header text-left py-2 px-3">Comparison</th>
-              <th scope="col" className="table-header text-left py-2 px-3">p-value</th>
-              <th scope="col" className="table-header text-left py-2 px-3">Significance</th>
-              <th scope="col" className="table-header text-left py-2 px-3">Interpretation</th>
+              <th scope="col" className="table-header text-left py-2 px-3">
+                Comparison
+              </th>
+              <th scope="col" className="table-header text-left py-2 px-3">
+                p-value
+              </th>
+              <th scope="col" className="table-header text-left py-2 px-3">
+                Significance
+              </th>
+              <th scope="col" className="table-header text-left py-2 px-3">
+                Interpretation
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -831,8 +891,8 @@ function AblationTab({ ablationConfigs, ablationSignificance, interactionEffect 
             </p>
             <p className="text-xs text-surface-500 mt-1">
               B → D improvement is not significant (p = 0.348). The{" "}
-              {interactionEffect.redundancy.toFixed(2)}&times;10&sup3; redundancy shows Guardian sentiment
-              overlaps with FPL API injury status.
+              {interactionEffect.redundancy.toFixed(2)}&times;10&sup3; redundancy shows Guardian
+              sentiment overlaps with FPL API injury status.
             </p>
           </div>
         </div>
@@ -891,12 +951,24 @@ function PositionsTab({ positionPerformance }) {
         <table className="w-full">
           <thead className="bg-surface-800/30">
             <tr>
-              <th scope="col" className="table-header text-left py-2.5 px-3">Position</th>
-              <th scope="col" className="table-header text-left py-2.5 px-3">Baseline</th>
-              <th scope="col" className="table-header text-left py-2.5 px-3">Stacked</th>
-              <th scope="col" className="table-header text-left py-2.5 px-3">Pos-Specific</th>
-              <th scope="col" className="table-header text-left py-2.5 px-3">Two-Head</th>
-              <th scope="col" className="table-header text-left py-2.5 px-3">Samples</th>
+              <th scope="col" className="table-header text-left py-2.5 px-3">
+                Position
+              </th>
+              <th scope="col" className="table-header text-left py-2.5 px-3">
+                Baseline
+              </th>
+              <th scope="col" className="table-header text-left py-2.5 px-3">
+                Stacked
+              </th>
+              <th scope="col" className="table-header text-left py-2.5 px-3">
+                Pos-Specific
+              </th>
+              <th scope="col" className="table-header text-left py-2.5 px-3">
+                Two-Head
+              </th>
+              <th scope="col" className="table-header text-left py-2.5 px-3">
+                Samples
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -993,21 +1065,29 @@ function CalibrationTab({ calibrationDeciles, calibrationStats }) {
             <p className="text-xl font-bold text-surface-100 font-data">
               {calibrationStats.notPlayedMae.toFixed(2)}
             </p>
-            <p className="text-xs text-surface-500 mt-1">60% of samples — model predicts near-zero correctly</p>
+            <p className="text-xs text-surface-500 mt-1">
+              60% of samples — model predicts near-zero correctly
+            </p>
           </div>
           <div className="p-4 border border-surface-700 rounded-md">
             <p className="text-xs text-surface-500 uppercase tracking-wide mb-1">Played</p>
             <p className="text-xl font-bold text-surface-100 font-data">
               {calibrationStats.playedMae.toFixed(2)}
             </p>
-            <p className="text-xs text-surface-500 mt-1">40% of samples — harder to predict exact returns</p>
+            <p className="text-xs text-surface-500 mt-1">
+              40% of samples — harder to predict exact returns
+            </p>
           </div>
           <div className="p-4 border border-danger-500/20 rounded-md bg-danger-500/5">
-            <p className="text-xs text-surface-500 uppercase tracking-wide mb-1">High Return (10+ pts)</p>
+            <p className="text-xs text-surface-500 uppercase tracking-wide mb-1">
+              High Return (10+ pts)
+            </p>
             <p className="text-xl font-bold text-danger-400 font-data">
               {calibrationStats.highReturnMae.toFixed(2)}
             </p>
-            <p className="text-xs text-surface-500 mt-1">Hauls are rare events — hardest to predict</p>
+            <p className="text-xs text-surface-500 mt-1">
+              Hauls are rare events — hardest to predict
+            </p>
           </div>
         </div>
       </div>
@@ -1017,10 +1097,9 @@ function CalibrationTab({ calibrationDeciles, calibrationStats }) {
         <div className="py-3 border-b border-surface-700 mb-3">
           <span className="section-label">MAE by Prediction Decile</span>
           <p className="text-xs text-surface-500 mt-1">
-            Players are split into 10 equal groups (deciles) by predicted points.
-            D1 = players predicted lowest points, D10 = predicted highest.
-            Each bar shows the average prediction error (MAE) for that group —
-            taller bars mean less accurate predictions.
+            Players are split into 10 equal groups (deciles) by predicted points. D1 = players
+            predicted lowest points, D10 = predicted highest. Each bar shows the average prediction
+            error (MAE) for that group — taller bars mean less accurate predictions.
           </p>
         </div>
         <GroupedBarChart
@@ -1047,14 +1126,22 @@ function CalibrationTab({ calibrationDeciles, calibrationStats }) {
       <div>
         <div className="py-3 border-b border-surface-700 mb-3">
           <span className="section-label">Captain Pick Accuracy</span>
-          <span className="text-xs text-surface-500 ml-2">(model&apos;s #1 pick vs actual top scorer)</span>
+          <span className="text-xs text-surface-500 ml-2">
+            (model&apos;s #1 pick vs actual top scorer)
+          </span>
         </div>
         <table className="w-full">
           <thead className="bg-surface-800/30">
             <tr>
-              <th scope="col" className="table-header text-left py-2 px-3">Metric</th>
-              <th scope="col" className="table-header text-left py-2 px-3">Hit Rate</th>
-              <th scope="col" className="table-header text-left py-2 px-3">Meaning</th>
+              <th scope="col" className="table-header text-left py-2 px-3">
+                Metric
+              </th>
+              <th scope="col" className="table-header text-left py-2 px-3">
+                Hit Rate
+              </th>
+              <th scope="col" className="table-header text-left py-2 px-3">
+                Meaning
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -1101,8 +1188,8 @@ function CalibrationTab({ calibrationDeciles, calibrationStats }) {
         <div className="p-3 rounded-md bg-danger-500/5 border border-danger-500/20">
           <p className="text-sm font-medium text-surface-200">Premium players remain hard</p>
           <p className="text-xs text-surface-500 mt-1">
-            D10 MAE 2.6-2.7 — high-predicted players (FWDs, premiums) have unpredictable
-            returns due to goals being rare, high-variance events.
+            D10 MAE 2.6-2.7 — high-predicted players (FWDs, premiums) have unpredictable returns due
+            to goals being rare, high-variance events.
           </p>
         </div>
       </div>
