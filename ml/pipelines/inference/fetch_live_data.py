@@ -10,11 +10,11 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
 
-logger = logging.getLogger(__name__)
-
 import numpy as np
 import pandas as pd
 import requests
+
+logger = logging.getLogger(__name__)
 
 # Paths
 OUTPUT_DIR = Path("data/inference")

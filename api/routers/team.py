@@ -4,10 +4,10 @@ import logging
 
 from fastapi import APIRouter, HTTPException, Request
 
-logger = logging.getLogger(__name__)
-
 from api.solvers import suggest_transfers
 from ml.pipelines.inference.fetch_live_data import fetch_user_team
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["Team"])
 
@@ -47,6 +47,22 @@ def get_team(fpl_id: int, request: Request):
     if predictions_df is not None:
         pick_elements = {p["element"] for p in team_data["picks"]}
         player_lookup = predictions_df[predictions_df["element"].isin(pick_elements)]
+        player_lookup = player_lookup.fillna(
+            {
+                "web_name": "",
+                "position": "",
+                "team_name": "",
+                "predicted_points": 0,
+                "form": 0,
+                "status": "a",
+                "chance_of_playing": 100,
+                "opponent_name": "",
+                "value": 0,
+                "uncertainty": 0,
+                "predicted_range_low": 0,
+                "predicted_range_high": 0,
+            }
+        )
         player_lookup = player_lookup.set_index("element")
 
         enriched_picks = []
