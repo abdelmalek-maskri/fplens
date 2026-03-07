@@ -1,6 +1,10 @@
 """User team endpoints, FPL ID squad, player detail, transfer suggestions."""
 
+import logging
+
 from fastapi import APIRouter, HTTPException, Request
+
+logger = logging.getLogger(__name__)
 
 from api.solvers import suggest_transfers
 from ml.pipelines.inference.fetch_live_data import fetch_user_team
@@ -38,7 +42,7 @@ def get_team(fpl_id: int, request: Request):
             lambda: run_predictions(model=model, save_output=False),
         )
     except Exception:
-        pass  # predictions unavailable, return picks without enrichment
+        logger.warning("Predictions unavailable for team enrichment", exc_info=True)
 
     if predictions_df is not None:
         pick_elements = {p["element"] for p in team_data["picks"]}

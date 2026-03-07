@@ -2,6 +2,7 @@
 
 import numpy as np
 import pandas as pd
+from fastapi import HTTPException
 from scipy.optimize import Bounds, LinearConstraint, milp
 
 FORMATIONS = [
@@ -12,6 +13,22 @@ FORMATIONS = [
     (4, 5, 1),
     (5, 3, 2),
     (5, 4, 1),
+]
+
+OUTPUT_COLS = [
+    "element",
+    "web_name",
+    "position",
+    "team_name",
+    "value",
+    "predicted_points",
+    "form",
+    "status",
+    "chance_of_playing",
+    "opponent_name",
+    "uncertainty",
+    "predicted_range_low",
+    "predicted_range_high",
 ]
 
 
@@ -55,7 +72,7 @@ def solve_best_xi(df: pd.DataFrame) -> dict:
             best_formation = f"{n_def}-{n_mid}-{n_fwd}"
 
     if best_xi is None:
-        return {"error": "Not enough available players to form a valid XI"}
+        raise HTTPException(status_code=422, detail="Not enough available players to form a valid XI")
 
     # captain and vice: highest predicted_points
     sorted_xi = best_xi.sort_values("predicted_points", ascending=False)
@@ -72,23 +89,7 @@ def solve_best_xi(df: pd.DataFrame) -> dict:
     )
     bench = pd.concat([bench_gk, bench_outfield])
 
-    # select only the fields the frontend needs
-    columns = [
-        "element",
-        "web_name",
-        "position",
-        "team_name",
-        "value",
-        "predicted_points",
-        "form",
-        "status",
-        "chance_of_playing",
-        "opponent_name",
-        "uncertainty",
-        "predicted_range_low",
-        "predicted_range_high",
-    ]
-    existing_cols = [c for c in columns if c in best_xi.columns]
+    existing_cols = [c for c in OUTPUT_COLS if c in best_xi.columns]
 
     return {
         "formation": best_formation,
@@ -122,7 +123,7 @@ def solve_best_squad(df: pd.DataFrame, budget: float = DEFAULT_BUDGET) -> dict:
 
     n = len(available)
     if n < 15:
-        return {"error": "Not enough available players"}
+        raise HTTPException(status_code=422, detail="Not enough available players")
 
     # objective: maximise predicted_points (milp minimises, so negate)
     c = -available["predicted_points"].values
@@ -165,14 +166,14 @@ def solve_best_squad(df: pd.DataFrame, budget: float = DEFAULT_BUDGET) -> dict:
     result = milp(c, constraints=constraints, integrality=integrality, bounds=bounds)
 
     if not result.success:
-        return {"error": f"ILP solver failed: {result.message}"}
+        raise HTTPException(status_code=500, detail=f"ILP solver failed: {result.message}")
 
     # extract selected players
     selected_mask = result.x > 0.5  # binary, but solver returns floats
     squad = available[selected_mask].copy()
 
     if len(squad) != 15:
-        return {"error": f"Solver selected {len(squad)} players instead of 15"}
+        raise HTTPException(status_code=500, detail=f"Solver selected {len(squad)} players instead of 15")
 
     total_value = squad["value"].sum()
     total_points = squad["predicted_points"].sum()
@@ -180,23 +181,7 @@ def solve_best_squad(df: pd.DataFrame, budget: float = DEFAULT_BUDGET) -> dict:
     # pick best XI from the 15-man squad
     xi_result = solve_best_xi(squad)
 
-    # select output columns
-    columns = [
-        "element",
-        "web_name",
-        "position",
-        "team_name",
-        "value",
-        "predicted_points",
-        "form",
-        "status",
-        "chance_of_playing",
-        "opponent_name",
-        "uncertainty",
-        "predicted_range_low",
-        "predicted_range_high",
-    ]
-    existing_cols = [c for c in columns if c in squad.columns]
+    existing_cols = [c for c in OUTPUT_COLS if c in squad.columns]
 
     return {
         "squad": squad[existing_cols].to_dict(orient="records"),
@@ -205,23 +190,6 @@ def solve_best_squad(df: pd.DataFrame, budget: float = DEFAULT_BUDGET) -> dict:
         "budget_remaining": round(budget - total_value, 1),
         "best_xi": xi_result,
     }
-
-
-OUTPUT_COLS = [
-    "element",
-    "web_name",
-    "position",
-    "team_name",
-    "value",
-    "predicted_points",
-    "form",
-    "status",
-    "chance_of_playing",
-    "opponent_name",
-    "uncertainty",
-    "predicted_range_low",
-    "predicted_range_high",
-]
 
 
 def suggest_transfers(
@@ -292,12 +260,6 @@ def suggest_transfers(
         if points_gain <= 0:
             continue
 
-        out_data = {
-            k: pick.get(k, pick.get(k.replace("player_position", "position"), ""))
-            for k in existing_cols
-            if k in pick or k == "position"
-        }
-        # normalise out_data keys
         out_data = {
             "element": pick["element"],
             "web_name": pick.get("web_name", ""),

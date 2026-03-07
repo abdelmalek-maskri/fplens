@@ -4,10 +4,13 @@ This module fetches current gameweek data from the official FPL API and
 prepares it for model inference, including injury/availability features.
 """
 
+import logging
 import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 import numpy as np
 import pandas as pd
@@ -121,7 +124,7 @@ def fetch_player_history(element_id: int) -> list[dict] | None:
         if resp.status_code == 200:
             return resp.json().get("history", [])
     except Exception:
-        pass
+        logger.debug("Failed to fetch history for element %d", element_id, exc_info=True)
     return None
 
 
@@ -146,7 +149,7 @@ def fetch_all_player_histories(
                 if result is not None:
                     histories[eid] = result
             except Exception:
-                pass
+                logger.debug("Failed to get result for element %d", eid, exc_info=True)
             if done % 100 == 0:
                 print(f"    {done}/{total} fetched...")
 
