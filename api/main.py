@@ -1,5 +1,6 @@
 """Fantasy Foresight API, serves ML predictions from trained model."""
 
+import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -10,13 +11,19 @@ from fastapi.middleware.cors import CORSMiddleware
 from api.cache import FPLDataCache
 from api.routers import fixtures, insights, predictions, team
 
-MODEL_PATH = Path("outputs/experiments/ablation_injury/config_D/model.joblib")
+DEFAULT_MODEL_PATH = "outputs/experiments/ablation_injury/config_D/model.joblib"
+MODEL_PATH = Path(os.environ.get("MODEL_PATH", DEFAULT_MODEL_PATH))
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Load model and initialise cache on startup
-    print(f"loading ML model from {MODEL_PATH}...")
+    if not MODEL_PATH.exists():
+        raise FileNotFoundError(
+            f"Model file not found: {MODEL_PATH}\n"
+            f"Set MODEL_PATH env var or ensure the file exists."
+        )
+    print(f"Loading ML model from {MODEL_PATH}...")
     app.state.model = joblib.load(MODEL_PATH)
     app.state.cache = FPLDataCache(ttl_minutes=15)
     print(f"Model loaded: {type(app.state.model).__name__}")
