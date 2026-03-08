@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { getBestSquad } from "../lib/api";
+import { getBestSquad, getPredictions } from "../lib/api";
 import { playerPool, BUDGET, POS_LIMITS, MAX_PER_TEAM } from "../mocks/seasonPlanner";
 
 const USE_MOCKS = import.meta.env.VITE_USE_MOCKS === "true";
@@ -20,14 +20,33 @@ export function useSeasonPlanner(budget = 100) {
     setIsLoading(true);
     setError(null);
 
-    getBestSquad(budget)
-      .then((result) => {
+    Promise.all([getBestSquad(budget), getPredictions()])
+      .then(([squadResult, predictions]) => {
         if (cancelledRef.current) return;
+        const xi = squadResult.best_xi || {};
         setData({
-          playerPool: result.squad || result,
-          budget: result.budget || budget,
-          posLimits: result.pos_limits || POS_LIMITS,
-          maxPerTeam: result.max_per_team || MAX_PER_TEAM,
+          recommended: {
+            squad: squadResult.squad || [],
+            totalValue: squadResult.total_value,
+            totalPoints: squadResult.total_points,
+            budgetRemaining: squadResult.budget_remaining,
+            starters: xi.starters || [],
+            bench: xi.bench || [],
+            captainId: xi.captain_id,
+            viceId: xi.vice_id,
+            formation: xi.formation,
+            totalWithCaptain: xi.total_with_captain,
+          },
+          playerPool: predictions.map((p) => ({
+            ...p,
+            team: p.team_name,
+            predicted_1gw: p.predicted_points,
+            predicted_6gw: p.predicted_points * 6,
+            ownership: p.selected_by_percent || 0,
+          })),
+          budget: budget,
+          posLimits: POS_LIMITS,
+          maxPerTeam: MAX_PER_TEAM,
         });
       })
       .catch((err) => {
