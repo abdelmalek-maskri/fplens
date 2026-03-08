@@ -1,3 +1,4 @@
+// TODO: Wire to getMultiGW(horizon) once FF-9 multi-GW predictions are built
 import { CURRENT_GW, mockGameweeks, mockChipsAvailable, CHIP_META } from "../mocks/chips";
 
 const _data = {

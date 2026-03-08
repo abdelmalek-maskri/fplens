@@ -6,7 +6,6 @@ import StatusBadge from "../components/StatusBadge";
 import TeamBadge from "../components/TeamBadge";
 import FdrBadge from "../components/FdrBadge";
 import ErrorState from "../components/ErrorState";
-import { SkeletonStatStrip, SkeletonPitch } from "../components/skeletons";
 import { useTeam } from "../hooks";
 
 // ============================================================
@@ -70,25 +69,16 @@ export default function MyTeam() {
     });
   };
   const [fplId, setFplId] = useState("");
-  const [teamLoaded, setTeamLoaded] = useState(false);
-  const [team, setTeam] = useState(null);
+  const [submittedId, setSubmittedId] = useState(null);
 
-  const { data: teamData, isLoading, error } = useTeam();
-  if (isLoading)
-    return (
-      <div className="space-y-6">
-        <SkeletonStatStrip items={5} />
-        <SkeletonPitch id="myteam-sk" />
-      </div>
-    );
-  if (error) return <ErrorState message="Failed to load team data." />;
-  if (!teamData) return null;
-  const { team: mockUserTeam, transferSuggestions: mockTransferSuggestions } = teamData;
+  const { data: teamData, isLoading, error } = useTeam(submittedId);
+
+  const team = teamData?.team ?? null;
+  const transferSuggestions = teamData?.transferSuggestions ?? [];
 
   const handleLoadTeam = (e) => {
     e.preventDefault();
-    setTeam(mockUserTeam);
-    setTeamLoaded(true);
+    if (fplId) setSubmittedId(fplId);
   };
 
   const handlePlayerClick = (elementId) => {
@@ -96,7 +86,7 @@ export default function MyTeam() {
   };
 
   // ---- FPL ID input screen ----
-  if (!teamLoaded) {
+  if (!team) {
     return (
       <div className="max-w-sm mx-auto mt-16 space-y-5">
         <form onSubmit={handleLoadTeam} className="relative">
@@ -124,12 +114,17 @@ export default function MyTeam() {
           />
           <button
             type="submit"
-            disabled={!fplId}
+            disabled={!fplId || isLoading}
             className="absolute right-1.5 top-1/2 -translate-y-1/2 px-4 py-1.5 rounded bg-brand-600 text-white text-sm font-medium transition-colors hover:bg-brand-500 disabled:opacity-40 disabled:pointer-events-none"
           >
-            Load
+            {isLoading ? "Loading…" : "Load"}
           </button>
         </form>
+        {error && (
+          <p className="text-sm text-danger-400">
+            {error.message || "Failed to load team. Check your FPL ID."}
+          </p>
+        )}
         <FplIdHelp />
       </div>
     );
@@ -184,7 +179,7 @@ export default function MyTeam() {
             Plan Transfers
           </button>
         </div>
-        <button onClick={() => setTeamLoaded(false)} className="btn-ghost text-sm">
+        <button onClick={() => setSubmittedId(null)} className="btn-ghost text-sm">
           Change Team
         </button>
       </div>
@@ -537,7 +532,7 @@ export default function MyTeam() {
           </button>
         </div>
         <div className="space-y-3">
-          {mockTransferSuggestions.map((transfer, idx) => (
+          {transferSuggestions.map((transfer, idx) => (
             <div
               key={idx}
               className="flex items-center gap-4 p-3 rounded-md bg-surface-800/50 border border-surface-700"
