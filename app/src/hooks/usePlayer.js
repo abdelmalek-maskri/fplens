@@ -1,3 +1,4 @@
+// TODO: Wire to getPlayer(id) once FF-14 endpoint is built
 import { useMemo } from "react";
 import { mockPlayers, defaultPlayer } from "../mocks/playerDetail";
 
