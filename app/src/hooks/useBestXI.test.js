@@ -33,17 +33,17 @@ vi.mock("../lib/api", () => ({
   ),
 }));
 
-import { useSquad } from "./useSquad";
+import { useBestXI } from "./useBestXI";
 
-describe("useSquad", () => {
+describe("useBestXI", () => {
   it("starts in loading state", () => {
-    const { result } = renderHook(() => useSquad());
+    const { result } = renderHook(() => useBestXI());
     expect(result.current.isLoading).toBe(true);
     expect(result.current.data).toBeNull();
   });
 
   it("resolves with mapped data", async () => {
-    const { result } = renderHook(() => useSquad());
+    const { result } = renderHook(() => useBestXI());
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
@@ -60,7 +60,7 @@ describe("useSquad", () => {
   });
 
   it("each starter has required fields", async () => {
-    const { result } = renderHook(() => useSquad());
+    const { result } = renderHook(() => useBestXI());
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);

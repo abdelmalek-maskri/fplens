@@ -4,7 +4,7 @@ import { mockBestXI } from "../mocks/squad";
 
 const USE_MOCKS = import.meta.env.VITE_USE_MOCKS === "true";
 
-export function useSquad() {
+export function useBestXI() {
   const [data, setData] = useState(USE_MOCKS ? mockBestXI : null);
   const [isLoading, setIsLoading] = useState(!USE_MOCKS);
   const [error, setError] = useState(null);

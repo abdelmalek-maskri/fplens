@@ -5,7 +5,7 @@ import TeamBadge from "../components/TeamBadge";
 import FdrBadge from "../components/FdrBadge";
 import ErrorState from "../components/ErrorState";
 import { SkeletonStatStrip, SkeletonPitch } from "../components/skeletons";
-import { useSquad } from "../hooks";
+import { useBestXI } from "../hooks";
 
 // ============================================================
 // OPTIMAL XI PAGE
@@ -24,7 +24,7 @@ export default function OptimalXI() {
     });
   };
 
-  const { data, isLoading, error } = useSquad();
+  const { data, isLoading, error } = useBestXI();
 
   if (isLoading)
     return (
