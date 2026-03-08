@@ -49,27 +49,11 @@ export function useModelInsights() {
     if (USE_MOCKS) return;
 
     getModelInsights()
-      .then((result) => {
-        setData({
-          ...result,
-          // Spread API data but keep mock constants the frontend expects
-          modelVariants: result.model_variants || modelVariants,
-          baselines,
-          positionPerformance,
-          ablationConfigs,
-          ablationSignificance,
-          interactionEffect,
-          twoheadMethods,
-          shapFeatures: result.shap_features || shapFeatures,
-          ensembleWeights,
-          datasetStats,
-          calibrationDeciles,
-          calibrationStats,
-          categoryColors,
-          categoryTextColors,
-          exampleShap,
-          tabs: TABS,
-        });
+      .then(() => {
+        // API returns raw training summaries with different structure
+        // than what the page expects. Use curated mock data for now
+        // until the API output is aligned with the frontend schema.
+        setData(_mockData);
       })
       .catch(setError)
       .finally(() => setIsLoading(false));

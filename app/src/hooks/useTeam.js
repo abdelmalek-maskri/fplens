@@ -8,7 +8,7 @@ const _mockData = { team: mockUserTeam, transferSuggestions: mockTransferSuggest
 
 export function useTeam(fplId) {
   const [data, setData] = useState(USE_MOCKS ? _mockData : null);
-  const [isLoading, setIsLoading] = useState(!USE_MOCKS);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -21,7 +21,19 @@ export function useTeam(fplId) {
     getTeam(fplId)
       .then((result) => {
         setData({
-          team: result,
+          team: {
+            manager: result.manager,
+            teamName: result.team_name,
+            overallRank: result.overall_rank,
+            totalPoints: result.overall_points,
+            gameweekPoints: 0,
+            budget: result.bank,
+            freeTransfers: result.free_transfers ?? 1,
+            picks: result.picks.map((p) => ({
+              ...p,
+              position: p.player_position || p.position,
+            })),
+          },
           transferSuggestions: result.transfer_suggestions || [],
         });
       })

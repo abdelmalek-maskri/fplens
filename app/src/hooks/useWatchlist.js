@@ -35,7 +35,7 @@ export function useWatchlist() {
     ? USE_MOCKS
       ? allPlayers
       : allPlayers.filter((p) => watchIds.includes(p.element))
-    : null;
+    : [];
 
   const add = useCallback((elementId) => {
     setWatchIds((prev) => {

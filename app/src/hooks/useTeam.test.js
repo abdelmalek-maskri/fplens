@@ -22,7 +22,7 @@ describe("useTeam", () => {
 
   it("stays idle without fplId", () => {
     const { result } = renderHook(() => useTeam());
-    expect(result.current.isLoading).toBe(true);
+    expect(result.current.isLoading).toBe(false);
     expect(result.current.data).toBeNull();
   });
 

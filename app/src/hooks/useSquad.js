@@ -17,8 +17,8 @@ export function useSquad() {
     getBestXI()
       .then((result) => {
         setData({
-          squad: result.squad || result,
-          formations: result.formations || FORMATIONS,
+          squad: [...(result.starters || []), ...(result.bench || [])],
+          formations: FORMATIONS,
         });
       })
       .catch(setError)
