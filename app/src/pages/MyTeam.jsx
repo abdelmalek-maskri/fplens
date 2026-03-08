@@ -6,7 +6,6 @@ import StatusBadge from "../components/StatusBadge";
 import TeamBadge from "../components/TeamBadge";
 import FdrBadge from "../components/FdrBadge";
 import ErrorState from "../components/ErrorState";
-import { SkeletonStatStrip, SkeletonPitch } from "../components/skeletons";
 import { useTeam } from "../hooks";
 
 // ============================================================
