@@ -60,7 +60,7 @@ def load_from_master(season: str) -> pd.DataFrame:
 def load_from_teams_csv(season: str) -> pd.DataFrame:
 
     # Returns: DataFrame with columns: team_id, team_name, team_name_norm
-    
+
     teams_path = TEAMS_FALLBACK_ROOT / season / "teams.csv"
     if not teams_path.exists():
         raise FileNotFoundError(f"Missing fallback teams.csv: {teams_path}")
@@ -118,4 +118,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

@@ -9,39 +9,54 @@ SNAPSHOT_ROOT = Path("data/raw/fpl")
 OUT_PATH = Path("data/processed/merged/fpl_base.csv")
 
 KEEP_COLS = [
-    #identifiers
-    "season", "GW", "element", "name", "position", "team",
-
-    #target base (will be shifted later)
+    # identifiers
+    "season",
+    "GW",
+    "element",
+    "name",
+    "position",
+    "team",
+    # target base (will be shifted later)
     "total_points",
-
-    #core minutes + basic stats
-    "minutes", "starts",
-    "goals_scored", "assists",
-    "clean_sheets", "goals_conceded",
+    # core minutes + basic stats
+    "minutes",
+    "starts",
+    "goals_scored",
+    "assists",
+    "clean_sheets",
+    "goals_conceded",
     "saves",
-    "yellow_cards", "red_cards",
+    "yellow_cards",
+    "red_cards",
     "own_goals",
-    "penalties_missed", "penalties_saved",
-
-    #fpl indices
-    "influence", "creativity", "threat", "ict_index",
-    "bps", "bonus",
-
-    #fixture/context
-    "was_home", "opponent_team",
-    "team_h_score", "team_a_score",
-
-    #market
-    "value", "selected",
-    "transfers_in", "transfers_out", "transfers_balance",
-
-    #expected stats (already inside vaastav merged_gw)
+    "penalties_missed",
+    "penalties_saved",
+    # fpl indices
+    "influence",
+    "creativity",
+    "threat",
+    "ict_index",
+    "bps",
+    "bonus",
+    # fixture/context
+    "was_home",
+    "opponent_team",
+    "team_h_score",
+    "team_a_score",
+    # market
+    "value",
+    "selected",
+    "transfers_in",
+    "transfers_out",
+    "transfers_balance",
+    # expected stats (already inside vaastav merged_gw)
     "xP",
-    "expected_goals", "expected_assists",
+    "expected_goals",
+    "expected_assists",
     "expected_goal_involvements",
     "expected_goals_conceded",
 ]
+
 
 def run():
     snapshot = find_latest_snapshot(SNAPSHOT_ROOT)
@@ -57,20 +72,25 @@ def run():
             continue
 
         df = safe_read_csv(f)
-        
+
         before_rows = len(df)
         print(f"{season}: loaded {before_rows} rows")
 
-        #add season column (not present in merged_gw.csv)
+        # add season column (not present in merged_gw.csv)
         df["season"] = season
 
-        #if position/team missing, merge from players_raw.csv
-        if ("position" not in df.columns) or ("team" not in df.columns) or df["position"].isna().all() or df["team"].isna().all():
+        # if position/team missing, merge from players_raw.csv
+        if (
+            ("position" not in df.columns)
+            or ("team" not in df.columns)
+            or df["position"].isna().all()
+            or df["team"].isna().all()
+        ):
             players_path = season_dir / "players_raw.csv"
             if players_path.exists():
                 players = safe_read_csv(players_path)
 
-                #rename columns if needed
+                # rename columns if needed
                 if "id" in players.columns:
                     players = players.rename(columns={"id": "element"})
 
@@ -78,16 +98,16 @@ def run():
                     pos_map = {1: "GK", 2: "DEF", 3: "MID", 4: "FWD"}
                     players["position"] = players["element_type"].map(pos_map)
 
-                #team might be numeric
+                # team might be numeric
                 if "team" not in players.columns and "team_code" in players.columns:
                     players = players.rename(columns={"team_code": "team"})
 
-                #use only needed columns
+                # use only needed columns
                 players_small = players[["element", "position", "team"]].drop_duplicates()
 
                 df = df.merge(players_small, on="element", how="left", suffixes=("", "_from_players"))
 
-                #if df already had columns but empty, fill them
+                # if df already had columns but empty, fill them
                 if "position_from_players" in df.columns:
                     df["position"] = df["position"].fillna(df["position_from_players"])
                     df.drop(columns=["position_from_players"], inplace=True)
@@ -96,8 +116,7 @@ def run():
                     df["team"] = df["team"].fillna(df["team_from_players"])
                     df.drop(columns=["team_from_players"], inplace=True)
 
-
-        #keep only columns that exist (some seasons may miss a few)
+        # keep only columns that exist (some seasons may miss a few)
         existing = [c for c in KEEP_COLS if c in df.columns]
         missing = [c for c in KEEP_COLS if c not in df.columns]
         if missing:
@@ -111,12 +130,12 @@ def run():
 
     full = pd.concat(rows, ignore_index=True)
 
-    #clean types
+    # clean types
     full["GW"] = pd.to_numeric(full["GW"], errors="coerce").astype("Int64")
     full["element"] = pd.to_numeric(full["element"], errors="coerce").astype("Int64")
     full["total_points"] = pd.to_numeric(full["total_points"], errors="coerce")
 
-    #sort for downstream target shifting and rolling features
+    # sort for downstream target shifting and rolling features
     full = full.sort_values(["season", "element", "GW"]).reset_index(drop=True)
 
     OUT_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -126,5 +145,6 @@ def run():
     print("Shape:", full.shape)
     print("Columns:", list(full.columns))
 
+
 if __name__ == "__main__":
-    run() 
+    run()

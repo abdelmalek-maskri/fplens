@@ -1,0 +1,32 @@
+# Ruff — Python linter + formatter (replaces flake8, isort, pyflakes)
+# https://docs.astral.sh/ruff/
+
+target-version = "py310"
+line-length = 120
+
+[lint]
+select = [
+  "E",   # pycodestyle errors (indentation, whitespace, syntax)
+  "W",   # pycodestyle warnings
+  "F",   # pyflakes (unused imports, undefined names)
+  "I",   # isort (import ordering)
+  "UP",  # pyupgrade (use modern Python syntax)
+  "B",   # flake8-bugbear (common bugs and design problems)
+  "SIM", # flake8-simplify (simplifiable code)
+]
+ignore = [
+  "E501",   # line too long — handled by formatter
+  "B905",   # zip without strict= — not needed for data pipelines
+  "B028",   # stacklevel in warnings.warn — not critical for ML scripts
+  "SIM108", # ternary operator — sometimes less readable in ML code
+]
+
+[lint.per-file-ignores]
+"__init__.py" = ["F401"]  # unused imports OK in __init__ (re-exports)
+
+[lint.isort]
+known-first-party = ["ml"]
+
+[format]
+quote-style = "double"
+indent-style = "space"

@@ -1,10 +1,12 @@
-# ml/pipelines/features/create_target.py (12) 
+# ml/pipelines/features/create_target.py (12)
+
+from pathlib import Path
 
 import pandas as pd
-from pathlib import Path
 
 IN_PATH = Path("data/processed/merged/fpl_base_enriched.csv")
 OUT_PATH = Path("data/processed/merged/fpl_with_target.csv")
+
 
 def run():
     print("Loading base_enriched table...")
@@ -41,6 +43,7 @@ def run():
     # Tiny sanity sample
     print("\nSample columns check:")
     print(df[["season", "GW", "element", "name", "total_points", "points_next_gw"]].head(8))
+
 
 if __name__ == "__main__":
     run()

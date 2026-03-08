@@ -1,21 +1,13 @@
 """
 Link Guardian articles to FPL players and compute article-level features.
-
 Uses spaCy NER + regex fallback for player name matching.
 Computes per-article sentiment (RoBERTa) and injury context detection.
-
-Output: data/processed/news/article_player_links.csv
-    article_id, element, season, published_date,
-    relevance_score, in_title, mention_count,
-    sentiment_pos, sentiment_neg, has_injury_context
-
-Usage:
-    python -m ml.pipelines.news.link_articles_to_players
 """
 
 import json
 import re
 from pathlib import Path
+
 import pandas as pd
 import spacy
 from transformers import pipeline as hf_pipeline
@@ -26,7 +18,6 @@ OUTPUT_DIR = Path("data/processed/news")
 
 MIN_SURNAME_LENGTH = 4
 MIN_RELEVANCE = 1.0
-
 TITLE_WEIGHT = 3.0
 FIRST_PARA_WEIGHT = 2.0
 BODY_WEIGHT = 1.0
@@ -39,12 +30,17 @@ INJURY_KEYWORDS = re.compile(
 )
 
 NEWS_SEASONS = [
-    "2018-19", "2019-20", "2020-21", "2021-22",
-    "2022-23", "2023-24", "2024-25",
+    "2018-19",
+    "2019-20",
+    "2020-21",
+    "2021-22",
+    "2022-23",
+    "2023-24",
+    "2024-25",
 ]
 
-
 # -- Name matching ---------------------------------------------------------
+
 
 def normalize_name(name: str) -> str:
     """Normalize player name: 'Aaron_Cresswell_402' -> 'aaron cresswell'."""
@@ -58,7 +54,6 @@ def normalize_name(name: str) -> str:
 
 def generate_name_variants(full_name: str) -> list[str]:
     """Generate matching variants for a player name.
-
     'mohamed salah' -> ['mohamed salah', 'salah', 'm. salah', 'm salah']
     """
     parts = full_name.split()
@@ -80,7 +75,6 @@ def generate_name_variants(full_name: str) -> list[str]:
 
 def build_knowledge_base(seasons: list[str]) -> dict[str, dict[str, int]]:
     """Build per-season name -> element lookup from FPL data.
-
     Returns {season: {name_variant: element_id}}.
     Only unambiguous variants (1 player per variant per season) are kept.
     """
@@ -103,23 +97,17 @@ def build_knowledge_base(seasons: list[str]) -> dict[str, dict[str, int]]:
                     variant_map[variant] = set()
                 variant_map[variant].add(int(row["element"]))
 
-        unambiguous = {
-            v: next(iter(els)) for v, els in variant_map.items() if len(els) == 1
-        }
+        unambiguous = {v: next(iter(els)) for v, els in variant_map.items() if len(els) == 1}
         n_ambig = sum(1 for els in variant_map.values() if len(els) > 1)
 
         kb[season] = unambiguous
-        print(f"{season}: {len(sdf)} players, "
-              f"{len(unambiguous)} unambiguous variants, {n_ambig} ambiguous")
+        print(f"{season}: {len(sdf)} players, {len(unambiguous)} unambiguous variants, {n_ambig} ambiguous")
 
     return kb
 
 
 def match_entity_to_player(entity_text: str, lookup: dict[str, int]) -> int | None:
-    """Match a text string to a player element ID.
-
-    Tries full text first, then surname (last word).
-    """
+    """Match a text string to a player element ID. Tries full text first, then surname (last word)"""
     normalized = normalize_name(entity_text)
 
     if normalized in lookup:
@@ -136,13 +124,13 @@ def match_entity_to_player(entity_text: str, lookup: dict[str, int]) -> int | No
 
 # -- Article processing ----------------------------------------------------
 
+
 def find_player_mentions(
     article: dict,
     lookup: dict[str, int],
     nlp,
 ) -> dict[int, dict]:
     """Find player mentions via spaCy NER + regex fallback.
-
     Returns {element_id: {"relevance": float, "in_title": bool, "count": int}}.
     """
     title = article["title"]
@@ -201,7 +189,8 @@ def find_player_mentions(
 
 
 def compute_article_sentiment(
-    text: str, sentiment_pipe,
+    text: str,
+    sentiment_pipe,
 ) -> tuple[float, float]:
     """Compute positive and negative sentiment probabilities via RoBERTa."""
     if not text:
@@ -215,6 +204,7 @@ def compute_article_sentiment(
 
 
 # -- Main ------------------------------------------------------------------
+
 
 def run(seasons: list[str] | None = None) -> None:
     """Link articles to players and compute article features."""
@@ -249,11 +239,11 @@ def run(seasons: list[str] | None = None) -> None:
             continue
 
         articles = json.loads(raw_path.read_text())
-        print(f"\n  {season}: processing {len(articles)} articles...")
+        print(f"\n{season}: processing {len(articles)} articles...")
 
         lookup = kb.get(season, {})
         if not lookup:
-            print(f"  {season}: no player data, skipping")
+            print(f"{season}: no player data, skipping")
             continue
 
         season_links = 0
@@ -265,25 +255,28 @@ def run(seasons: list[str] | None = None) -> None:
 
             sentiment_text = f"{article['title']}. {article.get('first_paragraph', '')}"
             sent_pos, sent_neg = compute_article_sentiment(
-                sentiment_text, sentiment_pipe,
+                sentiment_text,
+                sentiment_pipe,
             )
             has_injury = bool(INJURY_KEYWORDS.search(article["body_text"]))
 
             for element, info in mentions.items():
                 if info["relevance"] < MIN_RELEVANCE:
                     continue
-                all_links.append({
-                    "article_id": article["id"],
-                    "element": element,
-                    "season": season,
-                    "published_date": article["published_date"],
-                    "relevance_score": info["relevance"],
-                    "in_title": int(info["in_title"]),
-                    "mention_count": info["count"],
-                    "sentiment_pos": round(sent_pos, 4),
-                    "sentiment_neg": round(sent_neg, 4),
-                    "has_injury_context": int(has_injury),
-                })
+                all_links.append(
+                    {
+                        "article_id": article["id"],
+                        "element": element,
+                        "season": season,
+                        "published_date": article["published_date"],
+                        "relevance_score": info["relevance"],
+                        "in_title": int(info["in_title"]),
+                        "mention_count": info["count"],
+                        "sentiment_pos": round(sent_pos, 4),
+                        "sentiment_neg": round(sent_neg, 4),
+                        "has_injury_context": int(has_injury),
+                    }
+                )
                 season_links += 1
 
             if (i + 1) % 200 == 0:
@@ -305,10 +298,11 @@ def run(seasons: list[str] | None = None) -> None:
     print(f"Player-article links:  {total_links:,}")
     if len(links_df) > 0:
         print(f"Unique players linked: {links_df['element'].nunique():,}")
-        print(f"Injury context links:  {links_df['has_injury_context'].sum():,} "
-              f"({links_df['has_injury_context'].mean()*100:.1f}%)")
-        print(f"Title mention links:   {links_df['in_title'].sum():,} "
-              f"({links_df['in_title'].mean()*100:.1f}%)")
+        print(
+            f"Injury context links:  {links_df['has_injury_context'].sum():,} "
+            f"({links_df['has_injury_context'].mean() * 100:.1f}%)"
+        )
+        print(f"Title mention links:   {links_df['in_title'].sum():,} ({links_df['in_title'].mean() * 100:.1f}%)")
     print(f"Output: {out_path}")
 
 

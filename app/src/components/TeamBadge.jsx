@@ -22,7 +22,7 @@ export default function TeamBadge({ team, size = "md" }) {
   const g = parseInt(hex.slice(3, 5), 16);
   const b = parseInt(hex.slice(5, 7), 16);
   const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  const textClass = luminance > 0.55 ? "text-gray-900" : "text-white";
+  const textClass = luminance > 0.55 ? "text-surface-900" : "text-white";
 
   return (
     <div

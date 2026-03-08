@@ -5,13 +5,3 @@ export async function getPredictions() {
   if (!res.ok) throw new Error("Failed to fetch predictions");
   return res.json();
 }
-
-export async  function getBestXI(){
-
-    const res = await fetch(`${BASE_URL}/fpl/bestxi`);
-    if(!res.ok){
-        throw new Error("Failed to fetch Best XI");
-    }
-    return res.json();
-
-}

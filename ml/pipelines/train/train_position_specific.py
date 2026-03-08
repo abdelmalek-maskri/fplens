@@ -2,15 +2,17 @@
 
 import json
 from pathlib import Path
+
 import joblib
 import numpy as np
 import pandas as pd
 from lightgbm import LGBMRegressor
+
 from ml.config.eval_config import (
-    HOLDOUT_SEASON,
+    CAT_COLS,
     CV_SEASONS,
     DROP_COLS,
-    CAT_COLS,
+    HOLDOUT_SEASON,
     TARGET_COL,
 )
 from ml.utils.eval_metrics import (
@@ -23,6 +25,7 @@ IN_PATH = Path("data/features/extended_features.csv")
 OUT_DIR = Path("outputs/experiments/position_specific")
 OUT_MODEL = Path("outputs/models/position_specific.joblib")
 POSITIONS = ["GK", "DEF", "MID", "FWD"]
+
 
 def build_lgbm() -> LGBMRegressor:
     return LGBMRegressor(
@@ -42,8 +45,11 @@ def prepare_xy(df: pd.DataFrame):
     drop = set([TARGET_COL] + DROP_COLS)
     X = df.drop(columns=[c for c in drop if c in df.columns])
     return X, y
+
+
 class PositionSpecificLGBMModel:
     """Train a separate LGBM model per position."""
+
     def __init__(self):
         self.models = {}
         self.feature_cols = None
@@ -92,12 +98,14 @@ def train_single_lgbm(X_train, y_train, X_test, cat_cols):
     preds = model.predict(X_test)
     return preds, model
 
+
 def train_position_lgbm(X_train, y_train, positions_train, X_test, positions_test, cat_cols):
     print("  Training position-specific LGBM models...")
     model = PositionSpecificLGBMModel()
     model.fit(X_train, y_train, positions_train, cat_cols)
     preds = model.predict(X_test, positions_test)
     return preds, model
+
 
 def run():
     print("=" * 60)
@@ -147,7 +155,7 @@ def run():
     print("\nPosition distribution (test):")
     for pos in POSITIONS:
         n = int((positions_test == pos).sum())
-        print(f"  {pos}: {n:,} ({n/len(positions_test)*100:.1f}%)")
+        print(f"  {pos}: {n:,} ({n / len(positions_test) * 100:.1f}%)")
 
     print("\n" + "-" * 60)
     single_preds, single_model = train_single_lgbm(X_train, y_train, X_test, cat_cols)
@@ -159,12 +167,12 @@ def run():
     single_eval = full_evaluation(y_test, single_preds, y_train)
     position_eval = full_evaluation(y_test, position_preds, y_train)
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("HOLDOUT RESULTS")
-    print(f"{'='*60}")
-    print(f"\n{'='*60}")
+    print(f"{'=' * 60}")
+    print(f"\n{'=' * 60}")
     print("PER-POSITION BREAKDOWN")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     print(f"\n{'Position':<8} {'N':<8} {'Single MAE':<12} {'Position MAE':<12} {'Diff':<10}")
     print("-" * 52)
 
@@ -214,9 +222,9 @@ def run():
     OUT_MODEL.parent.mkdir(parents=True, exist_ok=True)
     joblib.dump(position_model, OUT_MODEL)
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("SUMMARY")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     print(f"Single LGBM MAE:      {single_eval['model']['mae']:.4f}")
     print(f"Position-specific MAE:   {position_eval['model']['mae']:.4f}")
     print(f"Difference:              {mae_diff:+.4f} ({'better' if mae_diff > 0 else 'worse'})")
@@ -237,6 +245,7 @@ def run():
         eval_result=position_eval,
         output_dir=str(OUT_DIR),
     )
+
 
 if __name__ == "__main__":
     run()

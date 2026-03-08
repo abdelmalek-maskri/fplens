@@ -1,10 +1,12 @@
-import pandas as pd
 from pathlib import Path
+
+import pandas as pd
 
 US_MATCHES = Path("data/processed/external/understat/player_matches_EPL_2016_all_filtered.csv")
 GW_WINDOWS = Path("data/processed/mappings/gw_windows_2016-17.csv")
 
 OUT = Path("data/processed/external/understat/player_matches_EPL_2016_all_with_gw.csv")
+
 
 def run():
     us = pd.read_csv(US_MATCHES, low_memory=False)
@@ -36,7 +38,8 @@ def run():
     print("✅ Saved:", OUT)
     print("GW assigned %:", float((us["GW"].notna()).mean()))
     print("Unassigned sample:")
-    print(us[us["GW"].isna()][["date","h_team","a_team"]].head(10).to_string(index=False))
+    print(us[us["GW"].isna()][["date", "h_team", "a_team"]].head(10).to_string(index=False))
+
 
 if __name__ == "__main__":
     run()

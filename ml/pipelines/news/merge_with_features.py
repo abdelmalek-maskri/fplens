@@ -1,12 +1,8 @@
 """
 Merge news features with extended feature sets for ablation configs C and D.
-
 Outputs:
     data/features/extended_with_news.csv              (Config C: baseline + news)
     data/features/extended_with_injury_and_news.csv   (Config D: baseline + injury + news)
-
-Usage:
-    python -m ml.pipelines.news.merge_with_features
 """
 
 from pathlib import Path
@@ -28,7 +24,6 @@ MERGE_KEYS = ["season", "GW", "element"]
 
 def merge_news(base_df: pd.DataFrame, news_df: pd.DataFrame) -> pd.DataFrame:
     """Left-join news features onto a base feature set.
-
     Seasons without Guardian data get NaN (LightGBM handles natively).
     Seasons with Guardian data but no mentions get 0.
     """
@@ -60,8 +55,8 @@ def merge_news(base_df: pd.DataFrame, news_df: pd.DataFrame) -> pd.DataFrame:
 
     n_real = has_news.sum()
     n_nan = (~has_news).sum()
-    print(f"  Seasons with news data: {n_real:,} rows")
-    print(f"  Pre-news seasons (NaN): {n_nan:,} rows")
+    print(f"Seasons with news data: {n_real:,} rows")
+    print(f"Pre-news seasons (NaN): {n_nan:,} rows")
 
     return combined
 
@@ -78,27 +73,27 @@ def run() -> None:
 
     print("\nLoading news features...")
     news_df = pd.read_csv(NEWS_PATH, low_memory=False)
-    print(f"  {len(news_df):,} rows, {len(NEWS_FEATURE_COLS)} features")
+    print(f"{len(news_df):,} rows, {len(NEWS_FEATURE_COLS)} features")
 
     # Config C: baseline + news
     if EXTENDED_PATH.exists():
-        print(f"\nBuilding Config C (baseline + news)...")
+        print("\nBuilding Config C (baseline + news)...")
         base_df = pd.read_csv(EXTENDED_PATH, low_memory=False)
-        print(f"  Base: {base_df.shape}")
+        print(f"Base: {base_df.shape}")
         combined_c = merge_news(base_df, news_df)
         combined_c.to_csv(OUTPUT_C, index=False)
-        print(f"  Saved: {OUTPUT_C} ({combined_c.shape})")
+        print(f"Saved: {OUTPUT_C} ({combined_c.shape})")
     else:
         print(f"\nWARNING: {EXTENDED_PATH} not found, skipping Config C")
 
     # Config D: baseline + injury + news
     if INJURY_PATH.exists():
-        print(f"\nBuilding Config D (baseline + injury + news)...")
+        print("\nBuilding Config D (baseline + injury + news)...")
         injury_df = pd.read_csv(INJURY_PATH, low_memory=False)
-        print(f"  Base: {injury_df.shape}")
+        print(f"Base: {injury_df.shape}")
         combined_d = merge_news(injury_df, news_df)
         combined_d.to_csv(OUTPUT_D, index=False)
-        print(f"  Saved: {OUTPUT_D} ({combined_d.shape})")
+        print(f"Saved: {OUTPUT_D} ({combined_d.shape})")
     else:
         print(f"\nWARNING: {INJURY_PATH} not found, skipping Config D")
 

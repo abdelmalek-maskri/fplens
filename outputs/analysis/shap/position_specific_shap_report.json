@@ -1,0 +1,185 @@
+{
+  "overview": {
+    "description": "SHAP analysis of FPL prediction model",
+    "model": "position_specific",
+    "holdout_season": "2024-25"
+  },
+  "global_importance": {
+    "top_10": [
+      {
+        "feature": "ict_index_roll5",
+        "importance": 0.20871600810926152,
+        "importance_pct": 10.797224883431765
+      },
+      {
+        "feature": "value",
+        "importance": 0.15988385295752724,
+        "importance_pct": 8.271056596235065
+      },
+      {
+        "feature": "ict_index_roll10",
+        "importance": 0.15929840037752827,
+        "importance_pct": 8.240770164340844
+      },
+      {
+        "feature": "minutes_lag1",
+        "importance": 0.11648517171684143,
+        "importance_pct": 6.0259709162006185
+      },
+      {
+        "feature": "total_points_season_avg",
+        "importance": 0.09161904383631908,
+        "importance_pct": 4.739604924735211
+      },
+      {
+        "feature": "total_points_roll3",
+        "importance": 0.08384927081240695,
+        "importance_pct": 4.337661693871557
+      },
+      {
+        "feature": "us_time_lag1",
+        "importance": 0.08099385668951968,
+        "importance_pct": 4.1899463906735335
+      },
+      {
+        "feature": "ict_index_roll3",
+        "importance": 0.08051676776298311,
+        "importance_pct": 4.165265790101134
+      },
+      {
+        "feature": "total_points_roll10",
+        "importance": 0.07295988917805216,
+        "importance_pct": 3.774335941272406
+      },
+      {
+        "feature": "minutes_roll3",
+        "importance": 0.0725029868734844,
+        "importance_pct": 3.7506996280980287
+      }
+    ],
+    "top_feature": "ict_index_roll5",
+    "top_feature_pct": 10.797224883431765
+  },
+  "position_insights": {
+    "GK": {
+      "top_3_features": [
+        "ict_index_roll5",
+        "value",
+        "ict_index_roll10"
+      ],
+      "top_feature": "ict_index_roll5"
+    },
+    "DEF": {
+      "top_3_features": [
+        "ict_index_roll5",
+        "value",
+        "ict_index_roll10"
+      ],
+      "top_feature": "ict_index_roll5"
+    },
+    "MID": {
+      "top_3_features": [
+        "ict_index_roll5",
+        "ict_index_roll10",
+        "value"
+      ],
+      "top_feature": "ict_index_roll5"
+    },
+    "FWD": {
+      "top_3_features": [
+        "ict_index_roll5",
+        "ict_index_roll10",
+        "value"
+      ],
+      "top_feature": "ict_index_roll5"
+    }
+  },
+  "key_findings": [
+    "Most important feature: ict_index_roll5 (10.8% of total importance)",
+    "Position differences: GK relies on 'ict_index_roll5', FWD relies on 'ict_index_roll5'",
+    "Availability features contribute 1.9% of total importance",
+    "Extended features (roll10, season_avg, momentum) contribute 29.6% of importance"
+  ],
+  "examples": [
+    {
+      "type": "high_error",
+      "player": "Kevin Schade",
+      "position": "MID",
+      "actual": 23.0,
+      "predicted": 1.4793219397556894,
+      "error": 21.52067806024431
+    },
+    {
+      "type": "high_error",
+      "player": "Cole Palmer",
+      "position": "MID",
+      "actual": 25.0,
+      "predicted": 3.873473492691232,
+      "error": 21.126526507308768
+    },
+    {
+      "type": "high_error",
+      "player": "Fabian H\u00fcrzeler",
+      "position": "AM",
+      "actual": 21.0,
+      "predicted": 0.07599206733391363,
+      "error": 20.924007932666086
+    },
+    {
+      "type": "high_error",
+      "player": "Ruben Filipe Marques Diogo Amorim",
+      "position": "AM",
+      "actual": 20.0,
+      "predicted": 0.5777734322578121,
+      "error": 19.42222656774219
+    },
+    {
+      "type": "high_error",
+      "player": "Oliver Glasner",
+      "position": "AM",
+      "actual": 20.0,
+      "predicted": 0.6636942714747118,
+      "error": 19.33630572852529
+    },
+    {
+      "type": "high_prediction",
+      "player": "Mohamed Salah",
+      "position": "MID",
+      "actual": 9.0,
+      "predicted": 10.952598715126657,
+      "error": 1.9525987151266566
+    },
+    {
+      "type": "high_prediction",
+      "player": "Mohamed Salah",
+      "position": "MID",
+      "actual": 16.0,
+      "predicted": 9.887521095387362,
+      "error": 6.112478904612638
+    },
+    {
+      "type": "high_prediction",
+      "player": "Mohamed Salah",
+      "position": "MID",
+      "actual": 3.0,
+      "predicted": 9.218266680156589,
+      "error": 6.218266680156589
+    },
+    {
+      "type": "high_prediction",
+      "player": "Mohamed Salah",
+      "position": "MID",
+      "actual": 3.0,
+      "predicted": 9.070334445050882,
+      "error": 6.070334445050882
+    },
+    {
+      "type": "high_prediction",
+      "player": "Mohamed Salah",
+      "position": "MID",
+      "actual": 12.0,
+      "predicted": 8.838336924355481,
+      "error": 3.161663075644519
+    }
+  ]
+}
