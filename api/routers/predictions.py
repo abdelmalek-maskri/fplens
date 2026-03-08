@@ -1,5 +1,6 @@
 """Prediction endpoints: all players, best XI, best squad, multi-GW."""
 
+import pandas as pd
 from fastapi import APIRouter, Query, Request
 
 from api.solvers import solve_best_squad, solve_best_xi
@@ -8,7 +9,7 @@ from ml.pipelines.inference.predict import run as run_predictions
 router = APIRouter(tags=["Predictions"])
 
 
-def _get_predictions(request: Request) -> dict:
+def _get_predictions(request: Request) -> pd.DataFrame:
     # shared helper: run predictions (cached for 15 min)
     cache = request.app.state.cache
     model = request.app.state.model
