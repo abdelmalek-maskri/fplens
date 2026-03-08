@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { TEAM_COLORS, POSITION_COLORS, POSITION_BG, FDR_COLORS } from "../lib/constants";
+import { TEAM_COLORS, POSITION_COLORS } from "../lib/constants";
 import { PitchView } from "../components/pitch";
 import TeamBadge from "../components/TeamBadge";
 import ErrorState from "../components/ErrorState";
@@ -82,7 +82,7 @@ export default function SeasonPlanner() {
   if (isLoading)
     return (
       <div className="space-y-6">
-        <SkeletonStatStrip items={3} />
+        <SkeletonStatStrip items={mode === "recommended" ? 4 : 3} />
         {mode === "recommended" ? (
           <SkeletonPitch id="season-sk" />
         ) : (
