@@ -1,25 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { getBestXI } from "../lib/api";
-import { mockSquad, FORMATIONS } from "../mocks/squad";
+import { mockBestXI, FORMATIONS } from "../mocks/squad";
 
 const USE_MOCKS = import.meta.env.VITE_USE_MOCKS === "true";
 
-// Build mock result matching backend shape
-const _mockStarters = mockSquad.slice(0, 11);
-const _mockBench = mockSquad.slice(11);
-const _mockSorted = [..._mockStarters].sort((a, b) => b.predicted_points - a.predicted_points);
-const _mockData = {
-  starters: _mockStarters,
-  bench: _mockBench,
-  captainId: _mockSorted[0]?.element,
-  viceId: _mockSorted[1]?.element,
-  formation: "3-4-3",
-  totalPoints: _mockStarters.reduce((s, p) => s + p.predicted_points, 0),
-  totalWithCaptain:
-    _mockStarters.reduce((s, p) => s + p.predicted_points, 0) +
-    (_mockSorted[0]?.predicted_points || 0),
-  formations: FORMATIONS,
-};
+const _mockData = { ...mockBestXI, formations: FORMATIONS };
 
 export function useSquad() {
   const [data, setData] = useState(USE_MOCKS ? _mockData : null);

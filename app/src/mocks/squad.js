@@ -197,3 +197,42 @@ export const FORMATIONS = [
   [5, 3, 2],
   [5, 4, 1],
 ];
+
+// ============================================================
+// PRE-SOLVED MOCK — matches backend /best-xi response shape
+// Best formation from this squad: 4-4-2 (56.9 pts)
+// Captain: Haaland (7.2), Vice: Salah (6.8)
+// ============================================================
+const _available = mockSquad.filter((p) => p.status !== "i" && p.chance_of_playing > 0);
+const _gks = _available
+  .filter((p) => p.position === "GK")
+  .sort((a, b) => b.predicted_points - a.predicted_points);
+const _defs = _available
+  .filter((p) => p.position === "DEF")
+  .sort((a, b) => b.predicted_points - a.predicted_points);
+const _mids = _available
+  .filter((p) => p.position === "MID")
+  .sort((a, b) => b.predicted_points - a.predicted_points);
+const _fwds = _available
+  .filter((p) => p.position === "FWD")
+  .sort((a, b) => b.predicted_points - a.predicted_points);
+
+// 4-4-2 is optimal for this mock data
+const _starters = [_gks[0], ..._defs.slice(0, 4), ..._mids.slice(0, 4), ..._fwds.slice(0, 2)];
+const _starterIds = new Set(_starters.map((p) => p.element));
+const _benchGK = mockSquad.filter((p) => p.position === "GK" && !_starterIds.has(p.element));
+const _benchOutfield = mockSquad
+  .filter((p) => p.position !== "GK" && !_starterIds.has(p.element))
+  .sort((a, b) => b.predicted_points - a.predicted_points);
+const _sorted = [..._starters].sort((a, b) => b.predicted_points - a.predicted_points);
+
+export const mockBestXI = {
+  starters: _starters,
+  bench: [..._benchGK, ..._benchOutfield],
+  captainId: _sorted[0].element,
+  viceId: _sorted[1].element,
+  formation: "4-4-2",
+  totalPoints: _starters.reduce((s, p) => s + p.predicted_points, 0),
+  totalWithCaptain:
+    _starters.reduce((s, p) => s + p.predicted_points, 0) + _sorted[0].predicted_points,
+};
