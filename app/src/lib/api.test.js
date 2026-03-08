@@ -136,7 +136,9 @@ describe("GET endpoints", () => {
 
   it("getMultiGW passes horizon query param", async () => {
     await getMultiGW(4);
-    expect(mockFetch.mock.calls[0][0]).toBe("http://127.0.0.1:8000/api/predictions/multi-gw?horizon=4");
+    expect(mockFetch.mock.calls[0][0]).toBe(
+      "http://127.0.0.1:8000/api/predictions/multi-gw?horizon=4"
+    );
   });
 
   it("getMultiGW defaults to horizon=6", async () => {
