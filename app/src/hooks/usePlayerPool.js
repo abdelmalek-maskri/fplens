@@ -18,7 +18,13 @@ export function usePlayerPool() {
 
     getPredictions()
       .then((predictions) => {
-        setData({ players: predictions });
+        setData({
+          players: predictions.map((p) => ({
+            ...p,
+            id: p.element,
+            team: p.team_name,
+          })),
+        });
       })
       .catch(setError)
       .finally(() => setIsLoading(false));
