@@ -1,3 +1,4 @@
+// TODO: Wire to getNews() once FF-20 Guardian pipeline endpoint is built
 import { mockArticles } from "../mocks/news";
 
 const _data = { articles: mockArticles };
