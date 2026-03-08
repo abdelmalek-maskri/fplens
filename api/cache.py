@@ -46,14 +46,16 @@ class FPLDataCache:
             return data
 
     def invalidate(self, key: str | None = None):
-        # clear one key or entire cache.
+        # clear one key or entire cache, including per-key locks.
         with self._lock:
             if key:
                 self._cache.pop(key, None)
                 self._timestamps.pop(key, None)
+                self._key_locks.pop(key, None)
             else:
                 self._cache.clear()
                 self._timestamps.clear()
+                self._key_locks.clear()
 
     def keys(self) -> list[str]:
         return list(self._cache.keys())
