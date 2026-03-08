@@ -31,6 +31,6 @@ describe("TeamBadge", () => {
     // WOL is #FDB913 - bright gold, luminance > 0.55
     render(<TeamBadge team="WOL" />);
     const span = screen.getByText("WOL");
-    expect(span.className).toContain("text-surface-50");
+    expect(span.className).toContain("text-surface-900");
   });
 });
