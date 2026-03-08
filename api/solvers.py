@@ -269,7 +269,11 @@ def suggest_transfers(
             "predicted_points": out_pts,
         }
 
-        in_data = {c: best[c] for c in existing_cols if c in best.index}
+        in_data = {}
+        for c in existing_cols:
+            if c in best.index:
+                v = best[c]
+                in_data[c] = v.item() if hasattr(v, "item") else v
 
         suggestions.append(
             {
