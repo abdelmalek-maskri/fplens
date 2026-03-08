@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { getTeam } from "../lib/api";
 import { mockUserTeam, mockTransferSuggestions } from "../mocks/team";
 
@@ -11,15 +11,19 @@ export function useTeam(fplId) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  const cancelledRef = useRef(false);
+
   useEffect(() => {
     if (USE_MOCKS || !fplId) return;
 
+    cancelledRef.current = false;
     setData(null);
     setIsLoading(true);
     setError(null);
 
     getTeam(fplId)
       .then((result) => {
+        if (cancelledRef.current) return;
         setData({
           team: {
             manager: result.manager,
@@ -37,8 +41,16 @@ export function useTeam(fplId) {
           transferSuggestions: result.transfer_suggestions || [],
         });
       })
-      .catch(setError)
-      .finally(() => setIsLoading(false));
+      .catch((err) => {
+        if (!cancelledRef.current) setError(err);
+      })
+      .finally(() => {
+        if (!cancelledRef.current) setIsLoading(false);
+      });
+
+    return () => {
+      cancelledRef.current = true;
+    };
   }, [fplId]);
 
   return { data, isLoading, error };
