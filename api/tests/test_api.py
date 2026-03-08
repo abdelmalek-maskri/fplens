@@ -18,7 +18,10 @@ def mock_model():
 
 @pytest.fixture
 def client(mock_model):
-    with patch("api.main.joblib.load", return_value=mock_model):
+    with patch("api.main.MODEL_PATH") as mock_path, patch(
+        "api.main.joblib.load", return_value=mock_model
+    ):
+        mock_path.exists.return_value = True
         from api.main import app
 
         with TestClient(app) as c:
