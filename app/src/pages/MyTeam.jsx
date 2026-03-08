@@ -180,7 +180,7 @@ export default function MyTeam() {
             Plan Transfers
           </button>
         </div>
-        <button onClick={() => setTeamLoaded(false)} className="btn-ghost text-sm">
+        <button onClick={() => setSubmittedId(null)} className="btn-ghost text-sm">
           Change Team
         </button>
       </div>
