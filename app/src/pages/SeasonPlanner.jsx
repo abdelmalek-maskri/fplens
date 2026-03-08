@@ -1,29 +1,34 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { TEAM_COLORS, POSITION_COLORS, POSITION_BG, FDR_COLORS } from "../lib/constants";
+import { TEAM_COLORS, POSITION_COLORS } from "../lib/constants";
+import { PitchView } from "../components/pitch";
 import TeamBadge from "../components/TeamBadge";
 import ErrorState from "../components/ErrorState";
-import { SkeletonStatStrip, SkeletonTable } from "../components/skeletons";
+import { SkeletonStatStrip, SkeletonPitch, SkeletonTable } from "../components/skeletons";
 import { useSeasonPlanner } from "../hooks";
 
 // ============================================================
 // SEASON PLANNER PAGE
+// Default: ML-recommended 15 on pitch view
+// Customize: manual builder with player pool
 // ============================================================
 export default function SeasonPlanner() {
   const navigate = useNavigate();
   const { data: plannerData, isLoading, error } = useSeasonPlanner();
+  const [mode, setMode] = useState("recommended"); // recommended | customize
   const [squad, setSquad] = useState([]);
   const [posFilter, setPosFilter] = useState("ALL");
-  const [sortBy, setSortBy] = useState("predicted"); // predicted, value, form
-  const [horizon, setHorizon] = useState(6); // 1-8 GWs
+  const [sortBy, setSortBy] = useState("predicted");
+  const [horizon, setHorizon] = useState(6);
   const [search, setSearch] = useState("");
 
   const playerPool = plannerData?.playerPool ?? [];
   const BUDGET = plannerData?.budget ?? 100;
   const POS_LIMITS = plannerData?.posLimits ?? { GK: 2, DEF: 5, MID: 5, FWD: 3 };
   const MAX_PER_TEAM = plannerData?.maxPerTeam ?? 3;
+  const recommended = plannerData?.recommended;
 
-  // Squad analysis
+  // Squad analysis (customize mode)
   const spent = useMemo(() => squad.reduce((s, p) => s + p.value, 0), [squad]);
   const remaining = BUDGET - spent;
   const posCounts = useMemo(() => {
@@ -49,7 +54,6 @@ export default function SeasonPlanner() {
     [squad, horizon]
   );
 
-  // Get predicted pts based on horizon
   const getPredicted = (p) => {
     if (horizon === 1) return p.predicted_1gw;
     return p.predicted_6gw * (horizon / 6);
@@ -78,8 +82,12 @@ export default function SeasonPlanner() {
   if (isLoading)
     return (
       <div className="space-y-6">
-        <SkeletonStatStrip items={3} />
-        <SkeletonTable rows={10} cols={7} />
+        <SkeletonStatStrip items={mode === "recommended" ? 4 : 3} />
+        {mode === "recommended" ? (
+          <SkeletonPitch id="season-sk" />
+        ) : (
+          <SkeletonTable rows={10} cols={7} />
+        )}
       </div>
     );
   if (error) return <ErrorState message="Failed to load season data." />;
@@ -87,7 +95,6 @@ export default function SeasonPlanner() {
 
   const squadIds = new Set(squad.map((p) => p.element));
 
-  // Can add player?
   const canAdd = (p) => {
     if (squadIds.has(p.element)) return false;
     if (squad.length >= 15) return false;
@@ -97,7 +104,6 @@ export default function SeasonPlanner() {
     return true;
   };
 
-  // Why can't add?
   const addBlockReason = (p) => {
     if (squadIds.has(p.element)) return "In squad";
     if (squad.length >= 15) return "Squad full";
@@ -115,7 +121,6 @@ export default function SeasonPlanner() {
     setSquad((prev) => prev.filter((p) => p.element !== element));
   };
 
-  // Auto-pick: greedy algorithm — fill remaining squad slots with best value picks
   const autoPick = () => {
     let current = [...squad];
     const currentIds = new Set(current.map((p) => p.element));
@@ -127,7 +132,6 @@ export default function SeasonPlanner() {
       teams[p.team] = (teams[p.team] || 0) + 1;
     });
 
-    // Sort pool by predicted pts per million (value metric)
     const sorted = [...playerPool]
       .filter((p) => !currentIds.has(p.element))
       .sort((a, b) => getPredicted(b) / b.value - getPredicted(a) / a.value);
@@ -146,6 +150,66 @@ export default function SeasonPlanner() {
     setSquad(current);
   };
 
+  // ============================================================
+  // RECOMMENDED MODE — ML-optimized squad on pitch
+  // ============================================================
+  if (mode === "recommended" && recommended) {
+    return (
+      <div className="space-y-6 stagger">
+        {/* Stats strip */}
+        <div className="flex items-center gap-5 flex-wrap py-3 border-b border-surface-800">
+          <div>
+            <span className="text-lg font-bold text-brand-400 font-data tabular-nums">
+              {recommended.totalPoints.toFixed(1)}
+            </span>
+            <span className="text-xs text-surface-500 ml-1.5">total predicted pts</span>
+          </div>
+          <div className="w-px h-5 bg-surface-700" />
+          <div>
+            <span className="text-lg font-bold text-surface-100 font-data tabular-nums">
+              £{recommended.totalValue.toFixed(1)}m
+            </span>
+            <span className="text-xs text-surface-500 ml-1.5">/ £{BUDGET}m</span>
+          </div>
+          <div className="w-px h-5 bg-surface-700" />
+          <div>
+            <span className="text-sm font-semibold text-surface-100">{recommended.formation}</span>
+            <span className="text-xs text-surface-500 ml-1.5">formation</span>
+          </div>
+          <div className="w-px h-5 bg-surface-700" />
+          <div>
+            <span
+              className={`text-sm font-semibold ${recommended.budgetRemaining >= 0 ? "text-success-400" : "text-danger-400"}`}
+            >
+              £{recommended.budgetRemaining.toFixed(1)}m
+            </span>
+            <span className="text-xs text-surface-500 ml-1.5">remaining</span>
+          </div>
+
+          <button
+            onClick={() => setMode("customize")}
+            className="ml-auto px-3 py-1.5 text-sm font-medium rounded bg-surface-800 text-surface-300 hover:text-surface-100 transition-colors"
+          >
+            Customize
+          </button>
+        </div>
+
+        {/* Pitch view with recommended squad */}
+        <PitchView
+          starters={recommended.starters}
+          bench={recommended.bench}
+          captainId={recommended.captainId}
+          viceId={recommended.viceId}
+          id="season"
+          benchLabel="Bench"
+        />
+      </div>
+    );
+  }
+
+  // ============================================================
+  // CUSTOMIZE MODE — manual builder (existing UI)
+  // ============================================================
   return (
     <div className="space-y-6 stagger">
       {/* Budget bar */}
@@ -240,6 +304,14 @@ export default function SeasonPlanner() {
         >
           Clear squad
         </button>
+        {recommended && (
+          <button
+            onClick={() => setMode("recommended")}
+            className="px-3 py-1.5 text-sm font-medium rounded bg-surface-800 text-surface-300 hover:text-surface-100 transition-colors"
+          >
+            ML Recommended
+          </button>
+        )}
       </div>
 
       {/* Two-column: squad + pool */}
