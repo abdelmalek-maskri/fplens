@@ -1,13 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 import { getBestXI } from "../lib/api";
-import { mockBestXI, FORMATIONS } from "../mocks/squad";
+import { mockBestXI } from "../mocks/squad";
 
 const USE_MOCKS = import.meta.env.VITE_USE_MOCKS === "true";
 
-const _mockData = { ...mockBestXI, formations: FORMATIONS };
-
 export function useSquad() {
-  const [data, setData] = useState(USE_MOCKS ? _mockData : null);
+  const [data, setData] = useState(USE_MOCKS ? mockBestXI : null);
   const [isLoading, setIsLoading] = useState(!USE_MOCKS);
   const [error, setError] = useState(null);
   const cancelledRef = useRef(false);
@@ -31,7 +29,6 @@ export function useSquad() {
           formation: result.formation,
           totalPoints: result.total_points,
           totalWithCaptain: result.total_with_captain,
-          formations: FORMATIONS,
         });
       })
       .catch((err) => {
