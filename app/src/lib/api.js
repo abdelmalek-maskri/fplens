@@ -2,7 +2,7 @@ const BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
 const DEFAULT_TIMEOUT = 30_000;
 
-async function apiFetch(path, { method = "GET", timeout = DEFAULT_TIMEOUT } = {}) {
+async function apiFetch(path, { method = "GET", headers = {}, timeout = DEFAULT_TIMEOUT } = {}) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeout);
 
@@ -10,7 +10,7 @@ async function apiFetch(path, { method = "GET", timeout = DEFAULT_TIMEOUT } = {}
     const res = await fetch(`${BASE_URL}${path}`, {
       method,
       signal: controller.signal,
-      headers: method === "POST" ? { "Content-Type": "application/json" } : undefined,
+      headers: { ...(method === "POST" ? { "Content-Type": "application/json" } : {}), ...headers },
     });
 
     if (!res.ok) {
@@ -63,8 +63,11 @@ export function getMultiGW(horizon = 6) {
   return apiFetch(`/api/predictions/multi-gw?horizon=${horizon}`);
 }
 
-export function refresh() {
-  return apiFetch("/api/refresh", { method: "POST" });
+export function refresh(secret = "dev-secret") {
+  return apiFetch("/api/refresh", {
+    method: "POST",
+    headers: { "X-Refresh-Secret": secret },
+  });
 }
 
 export function health() {
