@@ -6,11 +6,11 @@ I/O utilities for data loading and file operations.
 import csv
 import warnings
 from pathlib import Path
-from typing import Union
+
 import pandas as pd
 
 
-def find_latest_snapshot(root: Union[str, Path] = "data/raw/fpl") -> Path:
+def find_latest_snapshot(root: str | Path = "data/raw/fpl") -> Path:
     """
     Find the most recent vaastav snapshot directory.
     Returns:
@@ -23,7 +23,7 @@ def find_latest_snapshot(root: Union[str, Path] = "data/raw/fpl") -> Path:
     return snaps[-1]
 
 
-def _repair_mixed_length_csv(path: Union[str, Path], encoding: str) -> pd.DataFrame | None:
+def _repair_mixed_length_csv(path: str | Path, encoding: str) -> pd.DataFrame | None:
     """
     Attempt to repair a CSV with mixed row lengths by dropping a contiguous
     block of extra columns in the longer rows.
@@ -106,15 +106,14 @@ def _repair_mixed_length_csv(path: Union[str, Path], encoding: str) -> pd.DataFr
 
     if repaired > 0:
         warnings.warn(
-            f"Repaired {repaired} row(s) in {path} by dropping {diff} extra column(s) "
-            f"at index {best_start}",
+            f"Repaired {repaired} row(s) in {path} by dropping {diff} extra column(s) at index {best_start}",
             RuntimeWarning,
         )
 
     return pd.DataFrame(fixed_rows, columns=header)
 
 
-def safe_read_csv(path: Union[str, Path]) -> pd.DataFrame:
+def safe_read_csv(path: str | Path) -> pd.DataFrame:
     skipped = {"count": 0}
 
     def _count_bad_line(_line: list[str]) -> None:

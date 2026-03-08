@@ -1,20 +1,21 @@
 # ml/pipelines/train/train_baseline_model.py
 
-from pathlib import Path
 import json
+from pathlib import Path
+
 import joblib
 import pandas as pd
 from lightgbm import LGBMRegressor
 
 from ml.config.eval_config import (
-    HOLDOUT_SEASON,
-    CV_SEASONS,
-    MIN_TRAIN_SEASONS,
-    DROP_COLS,
     CAT_COLS,
-    TARGET_COL,
-    MODELS_DIR,
+    CV_SEASONS,
+    DROP_COLS,
+    HOLDOUT_SEASON,
     METRICS_DIR,
+    MIN_TRAIN_SEASONS,
+    MODELS_DIR,
+    TARGET_COL,
 )
 from ml.utils.eval_metrics import (
     full_evaluation,
@@ -48,7 +49,7 @@ def prepare_xy(df: pd.DataFrame):
     return X, y
 
 
-def rolling_season_cv(df: pd.DataFrame, seasons: list[str]) -> pd.DataFrame: 
+def rolling_season_cv(df: pd.DataFrame, seasons: list[str]) -> pd.DataFrame:
     rows = []
     for i in range(MIN_TRAIN_SEASONS, len(seasons)):
         test_season = seasons[i]
@@ -126,7 +127,9 @@ def run() -> None:
         "rmse_mean": float(cv_df["model_rmse"].mean()),
         "r2_mean": float(cv_df["model_r2"].mean()),
     }
-    print(f"\nCV Summary: MAE={cv_summary['mae_mean']:.4f} ± {cv_summary['mae_std']:.4f}, R²={cv_summary['r2_mean']:.4f}")
+    print(
+        f"\nCV Summary: MAE={cv_summary['mae_mean']:.4f} ± {cv_summary['mae_std']:.4f}, R²={cv_summary['r2_mean']:.4f}"
+    )
 
     # 2) Final holdout evaluation (train on all CV seasons, test on holdout)
 
@@ -157,7 +160,7 @@ def run() -> None:
         output_dir=str(OUT_METRICS.parent),
     )
     # 3) Save outputs
-    
+
     metrics = {
         "model_name": "lgbm_baseline_v1",
         "holdout_season": HOLDOUT_SEASON,
@@ -175,10 +178,12 @@ def run() -> None:
     OUT_METRICS.write_text(json.dumps(metrics, indent=2))
 
     # Feature importance
-    imp = pd.DataFrame({
-        "feature": X_train.columns,
-        "importance": model.feature_importances_,
-    }).sort_values("importance", ascending=False)
+    imp = pd.DataFrame(
+        {
+            "feature": X_train.columns,
+            "importance": model.feature_importances_,
+        }
+    ).sort_values("importance", ascending=False)
 
     OUT_IMPORTANCE.parent.mkdir(parents=True, exist_ok=True)
     imp.to_csv(OUT_IMPORTANCE, index=False)

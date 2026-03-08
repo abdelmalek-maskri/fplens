@@ -1,14 +1,17 @@
-# ml/pipelines/enrich_fpl_with_understat_all.py (11) 
+# ml/pipelines/enrich_fpl_with_understat_all.py (11)
 
 from pathlib import Path
+
 import pandas as pd
+
 from ml.config.seasons import SEASONS_ALL
 
 FPL_BASE = Path("data/processed/merged/fpl_base.csv")
 OUT = Path("data/processed/merged/fpl_base_enriched.csv")
 
+
 def run(seasons):
-    #load base FPL table
+    # load base FPL table
     fpl = pd.read_csv(FPL_BASE, low_memory=False)
     fpl["GW"] = pd.to_numeric(fpl["GW"], errors="coerce")
     fpl["element"] = pd.to_numeric(fpl["element"], errors="coerce")
@@ -19,7 +22,7 @@ def run(seasons):
         sub = fpl[fpl["season"] == season].copy()
         us_path = Path(f"data/processed/external/understat/understat_gw_{season}.csv")
 
-        #skip seasons without Understat GW data
+        # skip seasons without Understat GW data
         if not us_path.exists():
             print(f"Missing Understat GW for {season} (skipping)")
             parts.append(sub)
@@ -41,31 +44,21 @@ def run(seasons):
 
         # Backfill expected stats where FPL data is missing
         if "expected_goals" in merged.columns and "us_xg" in merged.columns:
-            merged["expected_goals"] = pd.to_numeric(
-                merged["expected_goals"], errors="coerce"
-            ).fillna(merged["us_xg"])
+            merged["expected_goals"] = pd.to_numeric(merged["expected_goals"], errors="coerce").fillna(merged["us_xg"])
 
         if "expected_assists" in merged.columns and "us_xa" in merged.columns:
-            merged["expected_assists"] = pd.to_numeric(
-                merged["expected_assists"], errors="coerce"
-            ).fillna(merged["us_xa"])
+            merged["expected_assists"] = pd.to_numeric(merged["expected_assists"], errors="coerce").fillna(
+                merged["us_xa"]
+            )
 
-        if (
-            "expected_goal_involvements" in merged.columns
-            and "us_xg" in merged.columns
-            and "us_xa" in merged.columns
-        ):
+        if "expected_goal_involvements" in merged.columns and "us_xg" in merged.columns and "us_xa" in merged.columns:
             merged["expected_goal_involvements"] = pd.to_numeric(
                 merged["expected_goal_involvements"], errors="coerce"
             ).fillna(merged["us_xg"] + merged["us_xa"])
 
         parts.append(merged)
 
-        coverage = (
-            float(merged["us_xg"].notna().mean())
-            if "us_xg" in merged.columns
-            else 0.0
-        )
+        coverage = float(merged["us_xg"].notna().mean()) if "us_xg" in merged.columns else 0.0
         print(f"{season}: Understat merged (xG coverage={coverage:.3f})")
 
     # Recombine all seasons
@@ -77,7 +70,8 @@ def run(seasons):
 
 
 def main():
-    run(SEASONS_ALL) 
+    run(SEASONS_ALL)
+
 
 if __name__ == "__main__":
     main()

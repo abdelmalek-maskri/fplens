@@ -7,17 +7,24 @@ and gets filled with safe defaults.
 """
 
 from pathlib import Path
+
 import pandas as pd
 
 INJURY_DATA = Path("data/processed/injury/injury_states.csv")
 FPL_BASE = Path("data/processed/merged/fpl_base_enriched.csv")
 OUTPUT_PATH = Path("data/processed/injury/fpl_with_injury.csv")
 
-# snapshot_date needed downstream to parse absolute return dates ("Expected back 01 Mar")
+# snapshot_date needed downstream to parse absolute return dates
 _INJURY_COLS = [
-    "season", "GW", "element",
-    "status", "chance_of_playing_this_round", "chance_of_playing_next_round",
-    "news", "news_added", "snapshot_date",
+    "season",
+    "GW",
+    "element",
+    "status",
+    "chance_of_playing_this_round",
+    "chance_of_playing_next_round",
+    "news",
+    "news_added",
+    "snapshot_date",
 ]
 
 
@@ -53,11 +60,8 @@ def analyse_status_churn(injury_df: pd.DataFrame) -> None:
         for _, row in transitions.head(10).iterrows():
             print(f"{row['prev_status']} -> {row['status']}: {row['count']:,}")
 
-        leaked = changed[
-            (changed["prev_status"] == "a") & (changed["status"] != "a")
-        ]
-        print(f"\nLeakage-relevant (a -> non-a): {len(leaked):,} "
-              f"({len(leaked) / total * 100:.2f}% of all pairs)")
+        leaked = changed[(changed["prev_status"] == "a") & (changed["status"] != "a")]
+        print(f"\nLeakage-relevant (a -> non-a): {len(leaked):,} ({len(leaked) / total * 100:.2f}% of all pairs)")
 
     print()
 
@@ -83,9 +87,7 @@ def run() -> None:
     analyse_status_churn(injury_df)
 
     available_cols = [c for c in _INJURY_COLS if c in injury_df.columns]
-    injury_subset = injury_df[available_cols].drop_duplicates(
-        subset=["season", "GW", "element"]
-    )
+    injury_subset = injury_df[available_cols].drop_duplicates(subset=["season", "GW", "element"])
 
     print("Applying temporal shift: injury GW N -> prediction GW N+1...")
     injury_subset = injury_subset.copy()
@@ -95,10 +97,10 @@ def run() -> None:
     fpl_keys = set(zip(fpl_df["season"], fpl_df["GW"], fpl_df["element"]))
     injury_keys = set(zip(injury_subset["season"], injury_subset["GW"], injury_subset["element"]))
     overlap = fpl_keys & injury_keys
-    print(f"\nKey overlap (after shift):")
+    print("\nKey overlap (after shift):")
     print(f"FPL keys:    {len(fpl_keys):,}")
     print(f"Injury keys: {len(injury_keys):,}")
-    print(f"  Overlap:     {len(overlap):,} ({len(overlap) / len(fpl_keys) * 100:.1f}%)")
+    print(f"Overlap:     {len(overlap):,} ({len(overlap) / len(fpl_keys) * 100:.1f}%)")
 
     print("\nMerging...")
     merged = fpl_df.merge(injury_subset, on=["season", "GW", "element"], how="left")
@@ -108,7 +110,7 @@ def run() -> None:
     merged["chance_of_playing_this_round"] = merged["chance_of_playing_this_round"].fillna(100.0)
     merged["chance_of_playing_next_round"] = merged["chance_of_playing_next_round"].fillna(100.0)
 
-    print(f"\nMerged summary:")
+    print("\nMerged summary:")
     print(f"Seasons:               {sorted(merged['season'].unique())}")
     print(f"Non-available players: {(merged['status'] != 'a').sum():,}")
     print(f"Players with news:     {merged['news'].notna().sum():,}")
@@ -116,10 +118,9 @@ def run() -> None:
     for season in sorted(merged["season"].unique()):
         gw1 = merged[(merged["season"] == season) & (merged["GW"] == 1)]
         gw1_news = gw1[gw1["news"].notna()]
-        print(f"{season} GW1: {len(gw1)} players, {len(gw1_news)} with injury data "
-              f"(expected ~0 due to shift)")
+        print(f"{season} GW1: {len(gw1)} players, {len(gw1_news)} with injury data (expected ~0 due to shift)")
 
-    print(f"\nStatus distribution:")
+    print("\nStatus distribution:")
     print(merged["status"].value_counts().to_string())
 
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)

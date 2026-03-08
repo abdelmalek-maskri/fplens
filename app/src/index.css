@@ -1,96 +1,75 @@
-/* ===========================================
-   FANTASY FORESIGHT - GLOBAL STYLES
-   =========================================== */
+/* =========================================
+   FANTASY FORESIGHT — DESIGN SYSTEM
+   ========================================= */
 
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap");
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* ===========================================
-   THEME VARIABLES
-   =========================================== */
+/* =========================================
+   TOKENS
+   ========================================= */
 
-/* Light mode (default) */
 :root {
-  /* Surface — tuned for light mode readability */
-  --surface-50: 15 18 25;
-  --surface-100: 26 32 44;
-  --surface-200: 51 58 72;
-  --surface-300: 75 83 98;
-  --surface-400: 107 114 130;
-  --surface-500: 148 155 168;
-  --surface-600: 192 197 206;
-  --surface-700: 213 217 224;
-  --surface-800: 228 231 236;
-  --surface-900: 255 255 255;
+  /* Surface — warm light editorial, no blue tint */
+  --surface-50: 15 15 17;
+  --surface-100: 30 29 27;
+  --surface-200: 52 51 48;
+  --surface-300: 82 81 77;
+  --surface-400: 115 113 109;
+  --surface-500: 145 143 139;
+  --surface-600: 178 176 172;
+  --surface-700: 212 210 206;
+  --surface-800: 235 234 231;
+  --surface-900: 250 249 246;
   --surface-950: 255 255 255;
 
-  /* Brand */
+  /* Brand — emerald, darkened for light backgrounds */
   --brand-50: 236 253 245;
   --brand-100: 209 250 229;
   --brand-200: 167 243 208;
-  --brand-300: 110 231 183;
-  --brand-400: 5 150 105;
-  --brand-500: 16 185 129;
-  --brand-600: 5 150 105;
-  --brand-700: 4 120 87;
-  --brand-800: 6 95 70;
+  --brand-300: 16 185 129;
+  --brand-400: 4 120 87;
+  --brand-500: 5 150 105;
+  --brand-600: 4 120 87;
+  --brand-700: 6 95 70;
+  --brand-800: 6 78 59;
   --brand-900: 6 78 59;
   --brand-950: 2 44 34;
 
-  /* Success */
-  --success-400: 22 163 74;
-  --success-500: 34 197 94;
+  /* Success — darkened for contrast */
+  --success-400: 21 128 61;
+  --success-500: 22 163 74;
   --success-600: 22 163 74;
 
-  /* Warning */
-  --warning-300: 252 211 77;
-  --warning-400: 217 119 6;
-  --warning-500: 245 158 11;
-  --warning-600: 217 119 6;
+  /* Warning — darkened for contrast */
+  --warning-300: 202 138 4;
+  --warning-400: 180 83 9;
+  --warning-500: 180 83 9;
+  --warning-600: 146 64 14;
 
-  /* Danger */
-  --danger-400: 220 38 38;
-  --danger-500: 239 68 68;
-  --danger-600: 220 38 38;
+  /* Danger — darkened for contrast */
+  --danger-400: 185 28 28;
+  --danger-500: 220 38 38;
+  --danger-600: 185 28 28;
+  --danger-700: 153 27 27;
 
-  /* Info */
-  --info-400: 8 145 178;
-  --info-500: 6 182 212;
-  --info-600: 8 145 178;
+  /* Info — darkened for contrast */
+  --info-400: 3 105 161;
+  --info-500: 14 165 233;
+  --info-600: 2 132 199;
 
   /* Layout */
-  --header-height: 56px;
-  --sidebar-width: 220px;
+  --header-height: 44px;
+  --sidebar-width: 200px;
 }
 
-/* Dark mode */
-.dark {
-  --surface-50: 250 250 250;
-  --surface-100: 240 240 240;
-  --surface-200: 224 224 224;
-  --surface-300: 200 200 200;
-  --surface-400: 158 158 158;
-  --surface-500: 110 110 110;
-  --surface-600: 72 72 72;
-  --surface-700: 48 48 48;
-  --surface-800: 30 30 30;
-  --surface-900: 18 18 18;
-  --surface-950: 5 5 5;
+/* =========================================
+   BASE
+   ========================================= */
 
-  --brand-400: 52 211 153;
-
-  --success-400: 74 222 128;
-  --warning-400: 251 191 36;
-  --danger-400: 248 113 113;
-  --info-400: 34 211 238;
-}
-
-/* ===========================================
-   BASE STYLES
-   =========================================== */
 @layer base {
   html {
     @apply antialiased;
@@ -98,59 +77,50 @@
   }
 
   body {
-    @apply bg-surface-900 text-surface-100 font-sans text-sm;
+    @apply bg-surface-900 text-surface-200 font-sans text-sm;
     min-height: 100vh;
   }
 
-  /* Scrollbar */
   ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 5px;
+    height: 5px;
   }
-
   ::-webkit-scrollbar-track {
-    @apply bg-transparent;
+    background: transparent;
   }
-
   ::-webkit-scrollbar-thumb {
-    @apply bg-surface-600 rounded-full;
+    @apply bg-surface-700 rounded-full;
   }
-
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-surface-500;
+    @apply bg-surface-600;
   }
 
   * {
     scrollbar-width: thin;
-    scrollbar-color: rgb(var(--surface-600)) transparent;
+    scrollbar-color: rgb(var(--surface-700)) transparent;
   }
 
   ::selection {
-    @apply bg-brand-700/50 text-white;
+    @apply bg-brand-500/20 text-surface-100;
   }
 
   *:focus-visible {
-    @apply outline-none ring-2 ring-brand-500/50 ring-offset-1 ring-offset-surface-900;
+    @apply outline-none ring-1 ring-brand-400/30 ring-offset-0;
   }
 }
 
-/* ===========================================
-   COMPONENT CLASSES
-   =========================================== */
+/* =========================================
+   COMPONENTS
+   ========================================= */
+
 @layer components {
-  /* Glass effect */
-  .glass {
-    @apply bg-surface-800/60 backdrop-blur-md border border-surface-700/50;
-  }
-
-  /* Cards — hierarchy system */
+  /* Cards */
   .card {
-    @apply bg-surface-800 border border-surface-700/70 rounded-lg;
+    @apply bg-surface-800/80 border border-surface-700/50 rounded-md;
   }
 
-  /* Flush card — no border, lighter bg, for secondary content */
   .card-flush {
-    @apply bg-surface-800/40 rounded-lg;
+    @apply bg-surface-800/30 rounded-md;
   }
 
   .card-stats {
@@ -159,84 +129,88 @@
 
   /* Badges */
   .badge {
-    @apply inline-flex items-center px-2 py-0.5 rounded text-xs font-medium;
+    @apply inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium;
   }
 
   .badge-success {
-    @apply bg-success-500/20 text-success-400;
+    @apply bg-success-500/15 text-success-400;
   }
-
   .badge-warning {
-    @apply bg-warning-500/20 text-warning-400;
+    @apply bg-warning-500/15 text-warning-400;
   }
-
   .badge-danger {
-    @apply bg-danger-500/20 text-danger-400;
+    @apply bg-danger-500/15 text-danger-400;
   }
-
   .badge-info {
-    @apply bg-info-500/20 text-info-400;
+    @apply bg-info-500/15 text-info-400;
   }
-
   .badge-brand {
-    @apply bg-brand-500/20 text-brand-400;
+    @apply bg-brand-500/15 text-brand-400;
   }
 
   /* Status dots */
   .status-dot {
-    @apply w-2 h-2 rounded-full;
+    @apply w-1.5 h-1.5 rounded-full;
   }
-
   .status-live {
     @apply status-dot bg-success-500;
-    box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
-    animation: pulse-glow 2s ease-in-out infinite;
+    box-shadow: 0 0 6px rgba(34, 197, 94, 0.5);
   }
 
-  /* Sidebar navigation */
+  /* Navigation */
   .nav-item {
-    @apply flex items-center gap-3 px-3 py-2 rounded-md text-sm text-surface-400
-           hover:text-surface-100 hover:bg-surface-800/60 transition-all duration-150 cursor-pointer;
+    @apply flex items-center gap-2.5 px-2.5 py-1.5 rounded text-sm text-surface-400
+           hover:text-surface-100 hover:bg-surface-800/50 transition-colors cursor-pointer;
   }
 
   .nav-item-active {
-    @apply flex items-center gap-3 px-3 py-2 rounded-md text-sm
-           text-surface-100 bg-surface-800 font-medium relative cursor-pointer;
+    @apply flex items-center gap-2.5 px-2.5 py-1.5 rounded text-sm
+           text-surface-100 bg-surface-800/70 font-medium relative cursor-pointer;
   }
 
   .nav-item-active::before {
-    content: '';
-    @apply absolute left-0 top-1 bottom-1 w-[3px] bg-brand-500 rounded-r-full;
+    content: "";
+    @apply absolute left-0 top-2 bottom-2 w-[2px] bg-brand-400 rounded-r;
   }
 
-  /* Table styles */
+  /* Tables */
   .table-header {
-    @apply text-xs font-medium text-surface-500;
+    @apply text-xs font-medium text-surface-500 uppercase tracking-wider select-none;
   }
 
   .table-row {
-    @apply border-b border-surface-700/30 hover:bg-surface-800/50 transition-colors;
+    @apply border-b border-surface-800/50 hover:bg-surface-800/40 transition-colors;
   }
 
   .table-cell {
-    @apply py-3 px-4;
+    @apply py-2.5 px-3;
   }
 
   /* Confidence bar */
   .confidence-bar {
-    @apply h-1.5 bg-surface-700 rounded-full overflow-hidden;
+    @apply h-1 bg-surface-700 rounded-full overflow-hidden;
   }
 
   .confidence-bar-fill {
     @apply h-full bg-brand-500 rounded-full transition-all duration-500;
   }
 
-  /* FDR (Fixture Difficulty) badges */
-  .fdr-1 { @apply bg-emerald-600 text-white; }
-  .fdr-2 { @apply bg-emerald-500/70 text-white; }
-  .fdr-3 { @apply bg-surface-600 text-surface-200; }
-  .fdr-4 { @apply bg-red-500/70 text-white; }
-  .fdr-5 { @apply bg-red-700 text-white; }
+  /* FDR badges */
+  .fdr-1 {
+    @apply bg-success-500/80 text-white;
+  }
+  .fdr-2 {
+    @apply bg-success-500/50 text-success-400;
+  }
+  .fdr-3 {
+    @apply bg-surface-600 text-surface-200;
+  }
+  .fdr-4 {
+    @apply bg-danger-500/50 text-danger-400;
+  }
+  .fdr-5 {
+    @apply bg-danger-600 text-white;
+  }
 
   .fdr-badge {
     @apply inline-flex items-center justify-center rounded text-2xs font-bold w-5 h-5;
@@ -251,33 +225,39 @@
   .trend-up {
     @apply text-success-400;
   }
-
   .trend-down {
     @apply text-danger-400;
   }
-
   .trend-neutral {
     @apply text-surface-500;
   }
 
   /* Position badges */
-  .pos-gk { @apply bg-warning-500/20 text-warning-400; }
-  .pos-def { @apply bg-success-500/20 text-success-400; }
-  .pos-mid { @apply bg-brand-500/20 text-brand-400; }
-  .pos-fwd { @apply bg-danger-500/20 text-danger-400; }
+  .pos-gk {
+    @apply bg-warning-500/15 text-warning-400;
+  }
+  .pos-def {
+    @apply bg-success-500/15 text-success-400;
+  }
+  .pos-mid {
+    @apply bg-brand-500/15 text-brand-400;
+  }
+  .pos-fwd {
+    @apply bg-danger-500/15 text-danger-400;
+  }
 
   /* Search input */
   .search-input {
-    @apply bg-surface-800/50 border border-surface-700 rounded-lg px-4 py-2 pl-10
-           text-surface-100 placeholder:text-surface-500 w-full
-           focus:border-surface-600 focus:bg-surface-800 transition-all;
+    @apply bg-surface-800/40 border border-surface-700 rounded px-3 py-1.5 pl-8
+           text-surface-200 placeholder:text-surface-600 w-full text-sm
+           focus:border-surface-600 focus:bg-surface-800 transition-colors;
   }
 
-  /* Button variants */
+  /* Buttons */
   .btn {
-    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg
-           font-medium text-sm transition-all duration-200 cursor-pointer
-           disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded
+           font-medium text-sm transition-colors cursor-pointer
+           disabled:opacity-40 disabled:cursor-not-allowed;
   }
 
   .btn-primary {
@@ -285,135 +265,109 @@
   }
 
   .btn-secondary {
-    @apply btn bg-surface-800 text-surface-100 border border-surface-700
-           hover:bg-surface-700 hover:border-surface-600;
+    @apply btn bg-surface-800 text-surface-300 border border-surface-700
+           hover:bg-surface-700 hover:text-surface-100 hover:border-surface-600;
   }
 
   .btn-ghost {
-    @apply btn text-surface-400 hover:text-surface-100 hover:bg-surface-800;
+    @apply btn text-surface-400 hover:text-surface-200 hover:bg-surface-800/50;
   }
 
   /* Light card variant */
   .card-light {
-    @apply rounded-lg border border-surface-700 bg-surface-800/30;
+    @apply rounded-md border border-surface-700/50 bg-surface-800/30;
   }
 
   /* Tab button */
   .btn-tab {
-    @apply px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
-           bg-surface-800 text-surface-400 hover:text-surface-100;
+    @apply px-2.5 py-1 rounded text-sm font-medium transition-colors
+           bg-surface-800 text-surface-400 hover:text-surface-200;
   }
 
   .btn-tab-active {
     @apply btn-tab bg-brand-600 text-white hover:text-white;
   }
 
-  /* Skeleton loading */
+  /* Section label — reusable heading for content groups */
+  .section-label {
+    @apply text-xs font-medium text-surface-500 uppercase tracking-wide;
+  }
+
+  /* Skeleton — shimmer gradient, no pulse */
   .skeleton {
-    @apply bg-surface-700 animate-pulse rounded;
+    @apply bg-surface-700/40 rounded relative overflow-hidden;
+  }
+
+  .skeleton::after {
+    content: "";
+    @apply absolute inset-0;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgb(var(--surface-600) / 0.08) 40%,
+      rgb(var(--surface-600) / 0.15) 50%,
+      rgb(var(--surface-600) / 0.08) 60%,
+      transparent 100%
+    );
+    animation: shimmer 1.5s ease-in-out infinite;
   }
 }
 
-/* ===========================================
-   LIGHT MODE ENHANCEMENTS
-   =========================================== */
-
-/* Gray content area — white sidebar/header, white cards pop on gray */
-html:not(.dark) main {
-  background: #F1F3F6;
-}
-
-/* Cards: white with subtle shadow for elevation on gray bg */
-html:not(.dark) .card,
-html:not(.dark) .card-stats {
-  background: white;
-  box-shadow: 0 1px 3px rgb(0 0 0 / 0.08), 0 1px 2px rgb(0 0 0 / 0.04);
-}
-
-/* Sidebar & header borders: stronger token for visibility */
-html:not(.dark) aside,
-html:not(.dark) aside > * {
-  border-color: rgb(var(--surface-700));
-}
-
-html:not(.dark) header {
-  border-color: rgb(var(--surface-700));
-}
-
-/* Nav hover: visible on white sidebar */
-html:not(.dark) .nav-item:hover {
-  background: rgb(var(--surface-800));
-}
-
-/* Table row hover inside white cards */
-html:not(.dark) table tbody tr:hover {
-  background-color: rgb(var(--surface-800));
-}
-
-/* Table header tint */
-html:not(.dark) thead {
-  background: rgb(var(--surface-800) / 0.6);
-}
-
-/* Separator lines (h-px) visible on gray content bg */
-html:not(.dark) .h-px {
-  background-color: rgb(var(--surface-700));
-}
-
-/* Selection contrast for light backgrounds */
-html:not(.dark) ::selection {
-  background: rgb(var(--brand-400) / 0.15);
-  color: rgb(var(--surface-100));
-}
-
-/* ===========================================
+/* =========================================
    ANIMATIONS
-   =========================================== */
-@keyframes pulse-glow {
-  0%, 100% {
-    opacity: 1;
-    box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
+   ========================================= */
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
   }
-  50% {
-    opacity: 0.6;
-    box-shadow: 0 0 12px rgba(34, 197, 94, 0.8);
+  100% {
+    transform: translateX(100%);
   }
 }
 
 @keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes slide-up {
   from {
     opacity: 0;
-    transform: translateY(10px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
   }
 }
 
 .animate-fade-in {
-  animation: fade-in 0.2s ease-out;
+  animation: fade-in 0.15s ease-out;
 }
 
 .animate-slide-up {
-  animation: slide-up 0.3s ease-out;
+  animation: fade-in 0.15s ease-out;
 }
 
-/* Stagger animation for lists */
+/* Stagger — crisp fast fade */
 .stagger > * {
-  animation: slide-up 0.3s ease-out backwards;
+  animation: fade-in 0.12s ease-out backwards;
 }
-
-.stagger > *:nth-child(1) { animation-delay: 0ms; }
-.stagger > *:nth-child(2) { animation-delay: 50ms; }
-.stagger > *:nth-child(3) { animation-delay: 100ms; }
-.stagger > *:nth-child(4) { animation-delay: 150ms; }
-.stagger > *:nth-child(5) { animation-delay: 200ms; }
-.stagger > *:nth-child(6) { animation-delay: 250ms; }
-.stagger > *:nth-child(7) { animation-delay: 300ms; }
-.stagger > *:nth-child(8) { animation-delay: 350ms; }
+.stagger > *:nth-child(1) {
+  animation-delay: 0ms;
+}
+.stagger > *:nth-child(2) {
+  animation-delay: 25ms;
+}
+.stagger > *:nth-child(3) {
+  animation-delay: 50ms;
+}
+.stagger > *:nth-child(4) {
+  animation-delay: 75ms;
+}
+.stagger > *:nth-child(5) {
+  animation-delay: 100ms;
+}
+.stagger > *:nth-child(6) {
+  animation-delay: 125ms;
+}
+.stagger > *:nth-child(7) {
+  animation-delay: 150ms;
+}
+.stagger > *:nth-child(8) {
+  animation-delay: 175ms;
+}

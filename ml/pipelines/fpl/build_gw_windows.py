@@ -1,5 +1,4 @@
 # ml/pipelines/fpl/build_gw_windows.py
-import argparse
 from pathlib import Path
 
 import pandas as pd
@@ -57,11 +56,10 @@ def run_one(season: str) -> Path:
 
 
 def main() -> None:
-    snap = find_latest_snapshot(SNAPSHOT_ROOT)
+    find_latest_snapshot(SNAPSHOT_ROOT)
     for season in SEASONS_ALL:
         run_one(season)
-    
-    
+
 
 if __name__ == "__main__":
     main()

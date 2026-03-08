@@ -1,24 +1,47 @@
-.venv/
-outputs/
-node_modules/
-data/raw/
-
-# Generated ML data
-data/features/
-data/processed/
-ml/data/
-
-
+# Python
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
-.env
+.ruff_cache/
+
+# Virtual environments
 venv/
+.venv/
+
+# Environment variables
+.env
 .env.*
 
+# Node
+node_modules/
+
+# Build outputs
+app/dist/
+
+# IDE / OS
 .DS_Store
 .vscode/
+.idea/
+
+# ML data (large, reproducible from raw)
+data/raw/
+data/features/
+data/processed/
+data/inference/
+ml/data/
+
+# ML binary artifacts (large, reproducible from training)
+*.joblib
+*.npz
+
+# Logs
+*.log
+
+# Claude Code / MCP (local config)
+.claude/
 .mcp.json
 
-*.log
+
+CLAUDE.md
+docs/

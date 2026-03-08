@@ -57,7 +57,12 @@ export default function RadarChart({ playerA, playerB, allPlayers, metrics = RAD
   const labelOffset = 18;
 
   return (
-    <svg viewBox="0 0 300 300" className="w-full max-w-[300px] mx-auto" role="img" aria-label="Radar chart comparing two players">
+    <svg
+      viewBox="0 0 300 300"
+      className="w-full max-w-[300px] mx-auto"
+      role="img"
+      aria-label="Radar chart comparing two players"
+    >
       {/* Grid rings */}
       {rings.map((pct) => (
         <polygon

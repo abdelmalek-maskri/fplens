@@ -11,8 +11,9 @@ Feature groups:
 """
 
 import re
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 
@@ -45,15 +46,40 @@ INJURY_PATTERNS = {
 
 # Word-boundary matching to avoid false positives ("back" in "setback")
 _NEGATIVE_KEYWORDS = [
-    "injury", "injured", "out", "miss", "ruled out", "sidelined",
-    "surgery", "operation", "torn", "broken", "fracture",
-    "unknown return", "indefinite", "long-term", "serious",
-    "concern", "doubt", "doubtful", "suspended", "ban",
+    "injury",
+    "injured",
+    "out",
+    "miss",
+    "ruled out",
+    "sidelined",
+    "surgery",
+    "operation",
+    "torn",
+    "broken",
+    "fracture",
+    "unknown return",
+    "indefinite",
+    "long-term",
+    "serious",
+    "concern",
+    "doubt",
+    "doubtful",
+    "suspended",
+    "ban",
 ]
 _POSITIVE_KEYWORDS = [
-    "return", "back", "fit", "available", "training",
-    "recovered", "cleared", "ready", "resumed",
-    "minor", "precaution", "rest",
+    "return",
+    "back",
+    "fit",
+    "available",
+    "training",
+    "recovered",
+    "cleared",
+    "ready",
+    "resumed",
+    "minor",
+    "precaution",
+    "rest",
 ]
 _NEGATIVE_PATTERNS = [re.compile(r"\b" + re.escape(kw) + r"\b") for kw in _NEGATIVE_KEYWORDS]
 _POSITIVE_PATTERNS = [re.compile(r"\b" + re.escape(kw) + r"\b") for kw in _POSITIVE_KEYWORDS]
@@ -63,9 +89,18 @@ _UNKNOWN_RETURN_WEEKS = 12.0
 _DEFAULT_SHORT_TERM_WEEKS = 2.0
 
 _MONTHS = {
-    "jan": 1, "feb": 2, "mar": 3, "apr": 4,
-    "may": 5, "jun": 6, "jul": 7, "aug": 8,
-    "sep": 9, "oct": 10, "nov": 11, "dec": 12,
+    "jan": 1,
+    "feb": 2,
+    "mar": 3,
+    "apr": 4,
+    "may": 5,
+    "jun": 6,
+    "jul": 7,
+    "aug": 8,
+    "sep": 9,
+    "oct": 10,
+    "nov": 11,
+    "dec": 12,
 }
 
 # Fill values for missing injury data (assumes fully available)
@@ -89,6 +124,7 @@ FILL_DEFAULTS = {
 
 # -- Group B: Structured Features ---------------------------------------------
 
+
 def add_structured_features(df: pd.DataFrame) -> pd.DataFrame:
     """Encode raw status/chance fields into numeric features."""
     print("Adding structured features...")
@@ -100,12 +136,8 @@ def add_structured_features(df: pd.DataFrame) -> pd.DataFrame:
     df["is_doubtful"] = (df["status"] == "d").astype(int)
 
     # 100 for available, 0 otherwise
-    df["chance_this_round"] = df["chance_of_playing_this_round"].fillna(
-        df["is_available"] * 100
-    )
-    df["chance_next_round"] = df["chance_of_playing_next_round"].fillna(
-        df["is_available"] * 100
-    )
+    df["chance_this_round"] = df["chance_of_playing_this_round"].fillna(df["is_available"] * 100)
+    df["chance_next_round"] = df["chance_of_playing_next_round"].fillna(df["is_available"] * 100)
 
     df["has_news"] = (df["news"].notna() & (df["news"] != "")).astype(int)
 
@@ -124,9 +156,7 @@ def add_temporal_features(df: pd.DataFrame) -> pd.DataFrame:
     df["gws_since_last_injury"] = grouped["status"].transform(_gws_since_injury)
     df["injury_count_season"] = grouped["status"].transform(_injury_episode_count)
     df["chance_delta"] = grouped["chance_this_round"].diff().fillna(0.0)
-    df["recovery_trajectory"] = grouped["chance_delta"].transform(
-        lambda s: s.rolling(3, min_periods=1).mean()
-    )
+    df["recovery_trajectory"] = grouped["chance_delta"].transform(lambda s: s.rolling(3, min_periods=1).mean())
 
     return df
 
@@ -167,6 +197,7 @@ def _injury_episode_count(status: pd.Series) -> pd.Series:
 
 
 # -- Group C: NLP Features ----------------------------------------------------
+
 
 def extract_injury_type(news: str) -> str:
     """Classify injury type from news text. Returns 'none' if no news."""
@@ -276,6 +307,7 @@ def add_nlp_features(df: pd.DataFrame) -> pd.DataFrame:
 
 # -- Merge with Extended Features ----------------------------------------------
 
+
 def _merge_with_extended(df: pd.DataFrame) -> pd.DataFrame:
     """Merge injury features with the main extended feature set."""
     from ml.pipelines.injury.download_historical import SEASONS as INJURY_SEASONS
@@ -285,10 +317,7 @@ def _merge_with_extended(df: pd.DataFrame) -> pd.DataFrame:
 
     # Deduplicate: injury_count_season is in FILL_DEFAULTS AND starts with "injury_"
     injury_feature_set = dict.fromkeys(FILL_DEFAULTS.keys())
-    injury_feature_set.update(
-        (c, None) for c in df.columns
-        if c.startswith("injury_") and c != "injury_type"
-    )
+    injury_feature_set.update((c, None) for c in df.columns if c.startswith("injury_") and c != "injury_type")
 
     merge_keys = ["season", "GW", "element"]
     available_cols = [c for c in injury_feature_set if c in df.columns]
@@ -311,10 +340,9 @@ def _merge_with_extended(df: pd.DataFrame) -> pd.DataFrame:
     # Seasons without per-GW commits get NaN (not fabricated "available" defaults).
     # LightGBM learns optimal split direction for NaN = "unknown".
     has_injury = combined["season"].isin(INJURY_SEASONS).values
-    all_injury_cols = list(dict.fromkeys(
-        list(FILL_DEFAULTS.keys())
-        + [c for c in combined.columns if c.startswith("injury_")]
-    ))
+    all_injury_cols = list(
+        dict.fromkeys(list(FILL_DEFAULTS.keys()) + [c for c in combined.columns if c.startswith("injury_")])
+    )
     for col in all_injury_cols:
         if col in combined.columns:
             combined[col] = combined[col].astype(float)
@@ -343,6 +371,7 @@ def _merge_with_extended(df: pd.DataFrame) -> pd.DataFrame:
 
 # -- Main ----------------------------------------------------------------------
 
+
 def run() -> None:
     """Build all injury feature groups and merge with extended features."""
     print("=" * 60)
@@ -357,10 +386,18 @@ def run() -> None:
     df = add_temporal_features(df)
 
     structured_cols = ["season", "GW", "element"] + [
-        "status_encoded", "is_available", "is_injured", "is_doubtful",
-        "chance_this_round", "chance_next_round", "has_news",
-        "consecutive_gws_out", "gws_since_last_injury",
-        "injury_count_season", "chance_delta", "recovery_trajectory",
+        "status_encoded",
+        "is_available",
+        "is_injured",
+        "is_doubtful",
+        "chance_this_round",
+        "chance_next_round",
+        "has_news",
+        "consecutive_gws_out",
+        "gws_since_last_injury",
+        "injury_count_season",
+        "chance_delta",
+        "recovery_trajectory",
     ]
     df[structured_cols].to_csv(OUTPUT_DIR / "injury_features_structured.csv", index=False)
     print(f"  Saved structured -> {OUTPUT_DIR / 'injury_features_structured.csv'}")
@@ -369,9 +406,7 @@ def run() -> None:
 
     all_cols = structured_cols + ["injury_type", "expected_return_weeks", "news_sentiment"]
     all_cols.extend(c for c in df.columns if c.startswith("injury_") and c not in all_cols)
-    df[[c for c in all_cols if c in df.columns]].to_csv(
-        OUTPUT_DIR / "injury_features_all.csv", index=False
-    )
+    df[[c for c in all_cols if c in df.columns]].to_csv(OUTPUT_DIR / "injury_features_all.csv", index=False)
     print(f"  Saved all injury -> {OUTPUT_DIR / 'injury_features_all.csv'}")
 
     combined = _merge_with_extended(df)
@@ -382,12 +417,12 @@ def run() -> None:
     print(f"{'=' * 60}")
     print(f"Output: {OUTPUT_DIR / 'extended_with_injury.csv'}")
     print(f"Shape:  {combined.shape}")
-    print(f"\nInjury feature summary:")
+    print("\nInjury feature summary:")
     print(f"Injury types found:      {df['injury_type'].nunique()}")
     print(f"Players with news:       {(df['has_news'] == 1).sum():,}")
     print(f"Max consecutive GWs out: {df['consecutive_gws_out'].max()}")
     print(f"Players ever injured:    {(df['injury_count_season'] > 0).sum():,}")
-    print(f"\nInjury type distribution (top 10):")
+    print("\nInjury type distribution (top 10):")
     print(df["injury_type"].value_counts().head(10).to_string())
 
 

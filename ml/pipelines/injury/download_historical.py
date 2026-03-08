@@ -1,9 +1,7 @@
 """
 Download historical injury/availability snapshots from vaastav's FPL repository.
 
-Uses GitHub API to walk the commit history of players_raw.csv for each season,
-giving per-GW snapshots of player injury status. Each commit corresponds to a
-post-match data update, so snapshot N reflects the state AFTER GW N.
+Uses GitHub API to walk the commit history of players_raw.csv for each season, giving per-GW snapshots of player injury status. Each commit corresponds to a post-match data update, so snapshot N reflects the state AFTER GW N.
 
 The downstream merge (merge_with_fpl.py) shifts these by +1 GW to prevent
 temporal leakage.
@@ -11,8 +9,9 @@ temporal leakage.
 
 import re
 import time
-from pathlib import Path
 from io import StringIO
+from pathlib import Path
+
 import pandas as pd
 import requests
 
@@ -22,8 +21,13 @@ REPO_NAME = "Fantasy-Premier-League"
 # 2016-17 and 2017-18 were bulk-uploaded without per-GW commits.
 # 2019-20 COVID ghost commits (GW30-37) are harmlessly dropped during merge.
 SEASONS = [
-    "2018-19", "2019-20", "2020-21",
-    "2021-22", "2022-23", "2023-24", "2024-25",
+    "2018-19",
+    "2019-20",
+    "2020-21",
+    "2021-22",
+    "2022-23",
+    "2023-24",
+    "2024-25",
 ]
 
 OUTPUT_DIR = Path("data/processed/injury")
@@ -56,11 +60,13 @@ def get_commits_for_file(season: str, per_page: int = 100) -> list[dict]:
             break
 
         for commit in commits:
-            all_commits.append({
-                "sha": commit["sha"],
-                "date": commit["commit"]["committer"]["date"],
-                "message": commit["commit"]["message"].split("\n")[0],
-            })
+            all_commits.append(
+                {
+                    "sha": commit["sha"],
+                    "date": commit["commit"]["committer"]["date"],
+                    "message": commit["commit"]["message"].split("\n")[0],
+                }
+            )
 
         if len(commits) < per_page:
             break
@@ -89,10 +95,7 @@ def extract_gws_from_message(message: str) -> list[int]:
 
 def download_file_at_commit(season: str, sha: str) -> pd.DataFrame | None:
     """Download players_raw.csv at a specific commit SHA."""
-    url = (
-        f"https://raw.githubusercontent.com/{REPO_OWNER}/{REPO_NAME}"
-        f"/{sha}/data/{season}/players_raw.csv"
-    )
+    url = f"https://raw.githubusercontent.com/{REPO_OWNER}/{REPO_NAME}/{sha}/data/{season}/players_raw.csv"
     response = requests.get(url)
     if response.status_code != 200:
         print(f"Error downloading: {response.status_code}")
@@ -105,14 +108,19 @@ def download_file_at_commit(season: str, sha: str) -> pd.DataFrame | None:
         return None
 
 
-def extract_injury_fields(
-    df: pd.DataFrame, season: str, gw: int, commit_date: str
-) -> pd.DataFrame:
+def extract_injury_fields(df: pd.DataFrame, season: str, gw: int, commit_date: str) -> pd.DataFrame:
     """Extract injury-related columns from a players_raw.csv snapshot."""
     wanted = [
-        "id", "first_name", "second_name", "web_name", "team",
-        "status", "chance_of_playing_this_round", "chance_of_playing_next_round",
-        "news", "news_added",
+        "id",
+        "first_name",
+        "second_name",
+        "web_name",
+        "team",
+        "status",
+        "chance_of_playing_this_round",
+        "chance_of_playing_next_round",
+        "news",
+        "news_added",
     ]
     available = [c for c in wanted if c in df.columns]
     result = df[available].copy()
@@ -139,14 +147,16 @@ def build_gw_commit_mapping(seasons: list[str]) -> pd.DataFrame:
 
         for commit in commits:
             for gw in extract_gws_from_message(commit["message"]):
-                all_mappings.append({
-                    "season": season,
-                    "GW": gw,
-                    "commit_sha": commit["sha"],
-                    "commit_date": commit["date"],
-                    "commit_message": commit["message"],
-                })
-                print(f"    GW{gw}: {commit['sha'][:8]} ({commit['date'][:10]})")
+                all_mappings.append(
+                    {
+                        "season": season,
+                        "GW": gw,
+                        "commit_sha": commit["sha"],
+                        "commit_date": commit["date"],
+                        "commit_message": commit["message"],
+                    }
+                )
+                print(f"GW{gw}: {commit['sha'][:8]} ({commit['date'][:10]})")
 
         time.sleep(_REQUEST_DELAY)
 
@@ -185,9 +195,7 @@ def download_all_snapshots(mapping_df: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame()
 
 
-def validate_snapshots(
-    injury_df: pd.DataFrame, mapping_df: pd.DataFrame
-) -> bool:
+def validate_snapshots(injury_df: pd.DataFrame, mapping_df: pd.DataFrame) -> bool:
     """Validate snapshot integrity: ordering, coverage, and commit timing."""
     print("\nValidating snapshot integrity...")
     ok = True
@@ -228,12 +236,13 @@ def validate_snapshots(
 
     pre_match = counts.get("Friday", 0) + counts.get("Saturday", 0)
     if pre_match > total * 0.3:
-        print(f"\nWARNING: {pre_match}/{total} commits on Fri/Sat "
-              f"({pre_match / total * 100:.0f}%) — some may be pre-match")
+        print(
+            f"\nWARNING: {pre_match}/{total} commits on Fri/Sat "
+            f"({pre_match / total * 100:.0f}%) — some may be pre-match"
+        )
         ok = False
     else:
-        print(f"\n{pre_match}/{total} commits on Fri/Sat "
-              f"({pre_match / total * 100:.0f}%) — consistent with post-match")
+        print(f"\n{pre_match}/{total} commits on Fri/Sat ({pre_match / total * 100:.0f}%) — consistent with post-match")
 
     if ok:
         print("\nAll checks passed.")
@@ -282,16 +291,15 @@ def run() -> None:
     print(f"Players: {injury_df['element'].nunique()}")
     print(f"Seasons: {injury_df['season'].unique().tolist()}")
     print(f"GW range: {injury_df['GW'].min()}-{injury_df['GW'].max()}")
-    print(f"\nOutput files:")
+    print("\nOutput files:")
     print(f"{mapping_file}")
     print(f"{output_file}")
     print(f"{SNAPSHOTS_DIR}/ ({len(list(SNAPSHOTS_DIR.glob('*.csv')))} files)")
-    print(f"\nStatus distribution:")
+    print("\nStatus distribution:")
     print(injury_df["status"].value_counts().to_string())
 
     with_news = injury_df[injury_df["news"].notna() & (injury_df["news"] != "")]
-    print(f"\nPlayers with news: {len(with_news):,} "
-          f"({len(with_news) / len(injury_df) * 100:.1f}%)")
+    print(f"\nPlayers with news: {len(with_news):,} ({len(with_news) / len(injury_df) * 100:.1f}%)")
 
 
 if __name__ == "__main__":

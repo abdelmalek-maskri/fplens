@@ -7,6 +7,7 @@ from ml.config.seasons import SEASONS_ALL
 
 US_COLS = ["xG", "xA", "npxG", "xGChain", "xGBuildup", "shots", "key_passes", "time"]
 
+
 def run_one(season: str) -> Path:
     year = int(season.split("-")[0])
 
@@ -42,9 +43,11 @@ def run_one(season: str) -> Path:
     print("Saved:", out, "rows:", len(agg))
     return out
 
+
 def main():
     for season in SEASONS_ALL:
-        run_one(season)  
+        run_one(season)
+
 
 if __name__ == "__main__":
     main()

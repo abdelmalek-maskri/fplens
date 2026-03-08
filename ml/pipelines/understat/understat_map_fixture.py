@@ -4,7 +4,8 @@ from pathlib import Path
 import pandas as pd
 
 from ml.config.seasons import SEASONS_ALL
-from ml.utils.name_normalize import norm  
+from ml.utils.name_normalize import norm
+
 
 def run_one(season: str) -> Path:
     year = int(season.split("-")[0])
@@ -76,7 +77,7 @@ def run_one(season: str) -> Path:
         f"home={under['home_team_id'].isna().mean():.3f}, away={under['away_team_id'].isna().mean():.3f}",
     )
 
-    #strict match on (date, home_team_id, away_team_id).
+    # strict match on (date, home_team_id, away_team_id).
     right = fx[["fixture", "date", "home_team_id", "away_team_id"]].copy()
     merged = under.merge(right, on=["date", "home_team_id", "away_team_id"], how="left")
 
@@ -107,17 +108,13 @@ def run_one(season: str) -> Path:
     print("Saved:", out_path)
     print("Mapped fixture %:", float(merged["fixture"].notna().mean()))
     print("Unmapped sample:")
-    print(
-        merged.loc[merged["fixture"].isna(), ["date", "h_team", "a_team"]]
-        .head(12)
-        .to_string(index=False)
-    )
+    print(merged.loc[merged["fixture"].isna(), ["date", "h_team", "a_team"]].head(12).to_string(index=False))
     return out_path
 
 
 def main():
     for season in SEASONS_ALL:
-        run_one(season)   
+        run_one(season)
 
 
 if __name__ == "__main__":
