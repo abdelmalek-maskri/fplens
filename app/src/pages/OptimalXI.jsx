@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { POSITION_COLORS, FDR_MAP } from "../lib/constants";
 import { PitchView } from "../components/pitch";
@@ -9,73 +8,9 @@ import { SkeletonStatStrip, SkeletonPitch } from "../components/skeletons";
 import { useSquad } from "../hooks";
 
 // ============================================================
-// VALID FORMATIONS — all legal FPL starting formations
-// ============================================================
-const FORMATIONS = [
-  [3, 4, 3],
-  [3, 5, 2],
-  [4, 3, 3],
-  [4, 4, 2],
-  [4, 5, 1],
-  [5, 3, 2],
-  [5, 4, 1],
-];
-
-// ============================================================
-// OPTIMAL XI SOLVER
-// Tries all valid formations, picks the highest-scoring
-// combination of available players for each one.
-// ============================================================
-function solveOptimalXI(squad) {
-  const available = squad.filter((p) => p.status !== "i" && p.chance_of_playing > 0);
-  const gks = available
-    .filter((p) => p.position === "GK")
-    .sort((a, b) => b.predicted_points - a.predicted_points);
-  const defs = available
-    .filter((p) => p.position === "DEF")
-    .sort((a, b) => b.predicted_points - a.predicted_points);
-  const mids = available
-    .filter((p) => p.position === "MID")
-    .sort((a, b) => b.predicted_points - a.predicted_points);
-  const fwds = available
-    .filter((p) => p.position === "FWD")
-    .sort((a, b) => b.predicted_points - a.predicted_points);
-
-  let bestXI = null;
-  let bestTotal = -1;
-  let bestFormation = null;
-
-  for (const [nDef, nMid, nFwd] of FORMATIONS) {
-    if (defs.length < nDef || mids.length < nMid || fwds.length < nFwd || gks.length < 1) continue;
-
-    const xi = [gks[0], ...defs.slice(0, nDef), ...mids.slice(0, nMid), ...fwds.slice(0, nFwd)];
-    const total = xi.reduce((sum, p) => sum + p.predicted_points, 0);
-
-    if (total > bestTotal) {
-      bestTotal = total;
-      bestXI = xi;
-      bestFormation = `${nDef}-${nMid}-${nFwd}`;
-    }
-  }
-
-  // Bench: everyone not in XI, ordered by predicted points (GK first for FPL rules)
-  const xiIds = new Set(bestXI.map((p) => p.element));
-  const benchGK = squad.filter((p) => p.position === "GK" && !xiIds.has(p.element));
-  const benchOutfield = squad
-    .filter((p) => p.position !== "GK" && !xiIds.has(p.element))
-    .sort((a, b) => b.predicted_points - a.predicted_points);
-  const bench = [...benchGK, ...benchOutfield];
-
-  // Captain & vice: top 2 by predicted points
-  const sorted = [...bestXI].sort((a, b) => b.predicted_points - a.predicted_points);
-  const captain = sorted[0];
-  const vice = sorted[1];
-
-  return { xi: bestXI, bench, captain, vice, formation: bestFormation, totalPoints: bestTotal };
-}
-
-// ============================================================
 // OPTIMAL XI PAGE
+// Backend solver picks the best starting 11 from all ~800
+// Premier League players for the upcoming GW.
 // ============================================================
 export default function OptimalXI() {
   const navigate = useNavigate();
@@ -89,8 +24,7 @@ export default function OptimalXI() {
     });
   };
 
-  const { data: squadData, isLoading, error } = useSquad();
-  const result = useMemo(() => (squadData ? solveOptimalXI(squadData.squad) : null), [squadData]);
+  const { data, isLoading, error } = useSquad();
 
   if (isLoading)
     return (
@@ -100,10 +34,10 @@ export default function OptimalXI() {
       </div>
     );
   if (error) return <ErrorState message="Failed to load squad data." />;
-  if (!squadData || !result) return null;
+  if (!data) return null;
 
-  const captainPoints = result.captain.predicted_points * 2;
-  const totalWithCaptain = result.totalPoints + result.captain.predicted_points; // captain counted twice
+  const { starters, bench, captainId, viceId, formation, totalWithCaptain } = data;
+  const captain = starters.find((p) => p.element === captainId);
 
   return (
     <div className="space-y-6 stagger">
@@ -117,15 +51,19 @@ export default function OptimalXI() {
         </div>
         <div className="w-px h-5 bg-surface-700" />
         <div>
-          <span className="text-sm font-semibold text-surface-100">{result.formation}</span>
+          <span className="text-sm font-semibold text-surface-100">{formation}</span>
           <span className="text-xs text-surface-500 ml-1.5">formation</span>
         </div>
         <div className="w-px h-5 bg-surface-700" />
-        <div>
-          <span className="text-sm font-semibold text-surface-100">{result.captain.web_name}</span>
-          <span className="text-xs text-warning-400 ml-1"> (C)</span>
-          <span className="text-xs text-surface-500 ml-1">· {captainPoints.toFixed(1)} pts</span>
-        </div>
+        {captain && (
+          <div>
+            <span className="text-sm font-semibold text-surface-100">{captain.web_name}</span>
+            <span className="text-xs text-warning-400 ml-1"> (C)</span>
+            <span className="text-xs text-surface-500 ml-1">
+              · {(captain.predicted_points * 2).toFixed(1)} pts
+            </span>
+          </div>
+        )}
 
         {/* View toggle */}
         <div className="ml-auto flex items-center border border-surface-700 rounded overflow-hidden">
@@ -146,10 +84,10 @@ export default function OptimalXI() {
 
       {viewMode === "pitch" ? (
         <PitchView
-          starters={result.xi}
-          bench={result.bench}
-          captainId={result.captain.element}
-          viceId={result.vice.element}
+          starters={starters}
+          bench={bench}
+          captainId={captainId}
+          viceId={viceId}
           id="optimal"
           benchLabel="Bench order"
         />
@@ -179,7 +117,7 @@ export default function OptimalXI() {
             </thead>
             <tbody>
               {/* Starters */}
-              {result.xi
+              {[...starters]
                 .sort((a, b) => {
                   const posOrder = { GK: 0, DEF: 1, MID: 2, FWD: 3 };
                   return (
@@ -194,7 +132,7 @@ export default function OptimalXI() {
                   >
                     <td className="py-2.5 px-3">
                       <div
-                        className={`w-1 h-8 rounded-full ${p.element === result.captain.element ? "bg-warning-400" : p.element === result.vice.element ? "bg-surface-400" : "bg-brand-500/40"}`}
+                        className={`w-1 h-8 rounded-full ${p.element === captainId ? "bg-warning-400" : p.element === viceId ? "bg-surface-400" : "bg-brand-500/40"}`}
                       />
                     </td>
                     <td className="py-2.5 px-3">
@@ -221,7 +159,7 @@ export default function OptimalXI() {
                       >
                         {p.predicted_points.toFixed(1)}
                       </span>
-                      {p.element === result.captain.element && (
+                      {p.element === captainId && (
                         <span className="text-xs text-warning-400 ml-1">×2</span>
                       )}
                     </td>
@@ -232,9 +170,9 @@ export default function OptimalXI() {
                       <FdrBadge opponent={p.opponent_name} fdrMap={FDR_MAP} />
                     </td>
                     <td className="py-2.5 px-3">
-                      {p.element === result.captain.element ? (
+                      {p.element === captainId ? (
                         <span className="text-xs font-semibold text-warning-400">Captain</span>
-                      ) : p.element === result.vice.element ? (
+                      ) : p.element === viceId ? (
                         <span className="text-xs text-surface-400">Vice</span>
                       ) : (
                         <span className="text-xs text-surface-500">Starter</span>
@@ -255,7 +193,7 @@ export default function OptimalXI() {
                 </td>
               </tr>
               {/* Bench players */}
-              {result.bench.map((p, idx) => (
+              {bench.map((p, idx) => (
                 <tr key={p.element} className="border-t border-surface-800/60 opacity-60">
                   <td className="py-2.5 px-3 text-xs text-surface-600 font-data">{idx + 1}</td>
                   <td className="py-2.5 px-3">
