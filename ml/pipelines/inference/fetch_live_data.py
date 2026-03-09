@@ -157,6 +157,55 @@ def fetch_all_player_histories(
     return histories
 
 
+def format_player_history(element_id: int, raw_history: list[dict] | None) -> dict:
+    """Format raw FPL history into frontend-friendly shape, it takes the last 10 GWs of data and returns arrays for sparklines/charts.
+    Handles missing history (new signings) and players with < 10 GWs.
+    """
+    empty = {
+        "element": element_id,
+        "pts_history": [],
+        "pts_last5": [],
+        "gw_labels": [],
+        "minutes_history": [],
+        "xg_history": [],
+        "xa_history": [],
+        "bonus_history": [],
+    }
+    if not raw_history:
+        return empty
+
+    last10 = raw_history[-10:]
+    pts = [gw.get("total_points", 0) for gw in last10]
+    return {
+        "element": element_id,
+        "pts_history": pts,
+        "pts_last5": pts[-5:] if len(pts) >= 5 else pts,
+        "gw_labels": [gw.get("round", 0) for gw in last10],
+        "minutes_history": [gw.get("minutes", 0) for gw in last10],
+        "xg_history": [float(gw.get("expected_goals", 0)) for gw in last10],
+        "xa_history": [float(gw.get("expected_assists", 0)) for gw in last10],
+        "bonus_history": [gw.get("bonus", 0) for gw in last10],
+    }
+
+
+def fetch_and_format_player_history(element_id: int) -> dict:
+    """Fetch + format a single player's history in one call."""
+    raw = fetch_player_history(element_id)
+    return format_player_history(element_id, raw)
+
+
+def fetch_and_format_all_histories(
+    element_ids: list[int],
+    max_workers: int = 20,
+) -> dict[int, dict]:
+    """Batch fetch + format histories for all players. it returns {element_id: formatted_history_dict}.
+    """
+    raw_histories = fetch_all_player_histories(element_ids, max_workers)
+    return {
+        eid: format_player_history(eid, hist) for eid, hist in raw_histories.items()
+    }
+
+
 # -- Feature Extraction --------------------------------------------------------
 
 
