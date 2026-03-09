@@ -29,6 +29,11 @@ class TestGetLgbmFromModel:
         model = MagicMock(spec=[])  # no base_models attribute
         assert _get_lgbm_from_model(model) is model
 
+    def test_empty_base_models_returns_model(self):
+        model = MagicMock()
+        model.base_models = {}
+        assert _get_lgbm_from_model(model) is model
+
 
 class TestComputePlayerShap:
     def _make_data(self, n_players=3, n_features=5):

@@ -237,10 +237,13 @@ FEATURE_DISPLAY_NAMES = {
 def _get_lgbm_from_model(model):
     """Extract the primary LightGBM model for SHAP explainer."""
     if hasattr(model, "base_models"):
-        if "lgbm" in model.base_models:
-            return model.base_models["lgbm"][0]
-        first_name = list(model.base_models.keys())[0]
-        return model.base_models[first_name][0]
+        base_models = model.base_models
+        if not base_models:
+            return model
+        if "lgbm" in base_models:
+            return base_models["lgbm"][0]
+        first_name = list(base_models.keys())[0]
+        return base_models[first_name][0]
     return model
 
 
