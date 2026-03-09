@@ -273,7 +273,14 @@ def compute_player_shap(model, X: pd.DataFrame, element_ids, top_n: int = 5) -> 
     try:
         lgbm = _get_lgbm_from_model(model)
         explainer = shap.TreeExplainer(lgbm)
-        shap_values = explainer.shap_values(X)
+        raw_shap = explainer.shap_values(X)
+        # Normalize to 2D numpy array: handle list (multi-class), Explanation, or ndarray
+        if isinstance(raw_shap, list):
+            shap_values = np.array(raw_shap[0])
+        elif hasattr(raw_shap, "values"):
+            shap_values = np.array(raw_shap.values)
+        else:
+            shap_values = np.array(raw_shap)
     except Exception as e:
         print(f"SHAP computation failed: {e}")
         return {}

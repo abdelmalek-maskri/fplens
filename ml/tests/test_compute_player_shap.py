@@ -122,6 +122,33 @@ class TestComputePlayerShap:
         assert compute_player_shap(model, X, eids, top_n=0) == {}
         assert compute_player_shap(model, X, eids, top_n=-1) == {}
 
+    def test_handles_list_shap_values(self):
+        """shap_values() returns a list for multi-class models."""
+        X, eids = self._make_data(n_players=1, n_features=3)
+        shap_list = [np.array([[0.5, -0.8, 0.1]])]  # list wrapping
+        mock_shap = MagicMock()
+        mock_shap.TreeExplainer.return_value.shap_values.return_value = shap_list
+
+        model = MagicMock(spec=[])
+        with patch.dict("sys.modules", {"shap": mock_shap}):
+            result = compute_player_shap(model, X, eids, top_n=2)
+        assert len(result[100]) == 2
+        assert result[100][0]["impact"] == -0.8
+
+    def test_handles_explanation_object(self):
+        """shap_values() returns an Explanation object in newer SHAP versions."""
+        X, eids = self._make_data(n_players=1, n_features=3)
+        explanation = MagicMock()
+        explanation.values = np.array([[0.3, -0.6, 0.9]])
+        mock_shap = MagicMock()
+        mock_shap.TreeExplainer.return_value.shap_values.return_value = explanation
+
+        model = MagicMock(spec=[])
+        with patch.dict("sys.modules", {"shap": mock_shap}):
+            result = compute_player_shap(model, X, eids, top_n=2)
+        assert len(result[100]) == 2
+        assert result[100][0]["impact"] == 0.9
+
     def test_sorted_by_absolute_impact(self):
         X, eids = self._make_data(n_players=1, n_features=4)
         shap_values = np.array([[0.1, -0.9, 0.5, -0.3]])
