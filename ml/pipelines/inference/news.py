@@ -40,6 +40,32 @@ INJURY_KEYWORDS = re.compile(
 
 MIN_SURNAME_LENGTH = 4
 
+# Load NLP models once at module level (avoids reloading on every cache miss)
+_nlp = None
+_sentiment_pipe = None
+
+try:
+    import spacy
+
+    _nlp = spacy.load("en_core_web_sm", disable=["tagger", "parser", "lemmatizer"])
+    logger.info("spaCy NER loaded for player linking")
+except Exception:
+    logger.info("spaCy not available, using regex-only player linking")
+
+try:
+    from transformers import pipeline as hf_pipeline
+
+    _sentiment_pipe = hf_pipeline(
+        "sentiment-analysis",
+        model="cardiffnlp/twitter-roberta-base-sentiment-latest",
+        top_k=3,
+        truncation=True,
+        max_length=512,
+    )
+    logger.info("RoBERTa sentiment model loaded")
+except Exception:
+    logger.info("Transformers not available, using keyword sentiment fallback")
+
 
 def _html_to_text(html):
     if not html:
@@ -267,34 +293,8 @@ def fetch_recent_news(bootstrap_data, days=7):
 
     lookup, player_info = _build_player_lookup(bootstrap_data)
 
-    # try loading NLP models (optional, graceful degradation)
-    nlp = None
-    sentiment_pipe = None
-
-    try:
-        import spacy
-
-        nlp = spacy.load("en_core_web_sm", disable=["tagger", "parser", "lemmatizer"])
-        logger.info("spaCy NER loaded for player linking")
-    except Exception:
-        logger.info("spaCy not available, using regex-only player linking")
-
-    try:
-        from transformers import pipeline as hf_pipeline
-
-        sentiment_pipe = hf_pipeline(
-            "sentiment-analysis",
-            model="cardiffnlp/twitter-roberta-base-sentiment-latest",
-            top_k=3,
-            truncation=True,
-            max_length=512,
-        )
-        logger.info("RoBERTa sentiment model loaded")
-    except Exception:
-        logger.info("Transformers not available, using keyword sentiment fallback")
-
-    articles = _link_articles_to_players(articles, lookup, nlp)
-    articles = _compute_sentiment(articles, sentiment_pipe)
+    articles = _link_articles_to_players(articles, lookup, _nlp)
+    articles = _compute_sentiment(articles, _sentiment_pipe)
 
     # format articles for frontend
     formatted = []
@@ -328,7 +328,7 @@ def fetch_recent_news(bootstrap_data, days=7):
             mention_counts[eid]["sentiments"].append(article["sentiment"])
 
     trending = []
-    for _eid, data in sorted(mention_counts.items(), key=lambda x: x[1]["count"], reverse=True):
+    for _, data in sorted(mention_counts.items(), key=lambda x: x[1]["count"], reverse=True):
         sents = data["sentiments"]
         trending.append(
             {
