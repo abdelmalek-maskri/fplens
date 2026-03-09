@@ -197,6 +197,87 @@ def predict(
     return result
 
 
+# Human-readable feature names for SHAP display
+FEATURE_DISPLAY_NAMES = {
+    "minutes_lag1": "Minutes (last GW)",
+    "total_points_lag1": "Points (last GW)",
+    "total_points_season_avg": "Points (season avg)",
+    "total_points_roll3": "Points (last 3 GW avg)",
+    "total_points_roll5": "Points (last 5 GW avg)",
+    "total_points_roll10": "Points (last 10 GW avg)",
+    "value": "Price (£m)",
+    "form": "Form",
+    "bps_lag1": "BPS (last GW)",
+    "bps_roll3": "BPS (last 3 GW avg)",
+    "ict_index_lag1": "ICT Index (last GW)",
+    "ict_index_roll3": "ICT Index (last 3 GW avg)",
+    "us_xG_lag1": "xG (last GW)",
+    "us_xG_roll3": "xG (last 3 GW avg)",
+    "us_xA_lag1": "xA (last GW)",
+    "us_xA_roll3": "xA (last 3 GW avg)",
+    "us_shots_lag1": "Shots (last GW)",
+    "us_key_passes_lag1": "Key passes (last GW)",
+    "bonus_lag1": "Bonus (last GW)",
+    "bonus_roll3": "Bonus (last 3 GW avg)",
+    "clean_sheets_lag1": "Clean sheets (last GW)",
+    "goals_scored_lag1": "Goals (last GW)",
+    "assists_lag1": "Assists (last GW)",
+    "was_home": "Home game",
+    "opponent_strength": "Opponent strength",
+    "played_lag1": "Played (last GW)",
+    "consecutive_starts": "Consecutive starts",
+    "minutes_trend": "Minutes trend",
+    "points_momentum": "Points momentum",
+    "chance_this_round": "Chance of playing",
+    "status_encoded": "Availability status",
+    "selected_by_percent": "Ownership %",
+}
+
+
+def _get_lgbm_from_model(model):
+    """Extract the primary LightGBM model for SHAP explainer."""
+    if hasattr(model, "base_models"):
+        if "lgbm" in model.base_models:
+            return model.base_models["lgbm"][0]
+        first_name = list(model.base_models.keys())[0]
+        return model.base_models[first_name][0]
+    return model
+
+
+def compute_player_shap(model, X: pd.DataFrame, element_ids, top_n: int = 5) -> dict:
+    """it compute per-player SHAP feature importance, and returns {element_id: [{"feature": ..., "display": ..., "value": ..., "impact": ...}, ...]}.
+    Falls back to empty dict on failure.
+    """
+    try:
+        import shap
+    except ImportError:
+        print("SHAP not installed, skipping per-player SHAP computation")
+        return {}
+
+    try:
+        lgbm = _get_lgbm_from_model(model)
+        explainer = shap.TreeExplainer(lgbm)
+        shap_values = explainer.shap_values(X)
+    except Exception as e:
+        print(f"SHAP computation failed: {e}")
+        return {}
+
+    result = {}
+    for i, eid in enumerate(element_ids):
+        player_shap = shap_values[i]
+        top_indices = np.argsort(np.abs(player_shap))[-top_n:][::-1]
+        result[int(eid)] = [
+            {
+                "feature": X.columns[j],
+                "display": FEATURE_DISPLAY_NAMES.get(X.columns[j], X.columns[j].replace("_", " ").title()),
+                "value": round(float(X.iloc[i, j]), 3),
+                "impact": round(float(player_shap[j]), 3),
+            }
+            for j in top_indices
+        ]
+    return result
+
+
 def get_top_picks(predictions: pd.DataFrame, n: int = 15) -> pd.DataFrame:
     # Get top N picks by position for team selection.
     picks = []
