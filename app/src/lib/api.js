@@ -59,6 +59,10 @@ export function getModelInsights() {
   return apiFetch("/api/model-insights");
 }
 
+export function getNews(days = 7) {
+  return apiFetch(`/api/news?days=${days}`);
+}
+
 export function getMultiGW(horizon = 6) {
   return apiFetch(`/api/predictions/multi-gw?horizon=${horizon}`);
 }

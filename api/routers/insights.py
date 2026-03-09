@@ -1,11 +1,13 @@
 """Model insights and news endpoints, static training metrics + Guardian articles."""
 
 import json
+import logging
 from pathlib import Path
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Query, Request
 
 router = APIRouter(tags=["Insights"])
+logger = logging.getLogger(__name__)
 
 OUTPUTS = Path("outputs")
 
@@ -38,8 +40,24 @@ def get_model_insights():
     }
 
 
+NEWS_CACHE_TTL = 60  # minutes
+
+
 @router.get("/news")
-def get_news():
-    # Recent Guardian articles with sentiment and player links
-    # FF-20: Will wire Guardian pipeline once implemented
-    return []
+def get_news(request: Request, days: int = Query(default=7, ge=1, le=30)):
+    # Recent Guardian articles with sentiment and player links.
+    # Uses separate 60-min cache since news doesn't change fast.
+    cache = request.app.state.cache
+
+    def _fetch_news():
+        from ml.pipelines.inference.fetch_live_data import get_bootstrap_data
+        from ml.pipelines.inference.news import fetch_recent_news
+
+        try:
+            bootstrap = cache.get_or_fetch("bootstrap", get_bootstrap_data)
+            return fetch_recent_news(bootstrap, days=days)
+        except Exception as e:
+            logger.error("News fetch failed: %s", e)
+            return {"articles": [], "trending": []}
+
+    return cache.get_or_fetch(f"news_{days}", _fetch_news)
