@@ -205,10 +205,7 @@ def _link_articles_to_players(articles, lookup, nlp=None):
     # Optionally uses spaCy NER if nlp model is provided.
 
     # pre-compile regex patterns once (avoids re-compiling per article)
-    compiled = {
-        variant: re.compile(r"\b" + re.escape(variant) + r"\b", re.IGNORECASE)
-        for variant in lookup
-    }
+    compiled = {variant: re.compile(r"\b" + re.escape(variant) + r"\b", re.IGNORECASE) for variant in lookup}
 
     for article in articles:
         title = article["title"]

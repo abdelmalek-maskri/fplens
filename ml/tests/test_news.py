@@ -37,24 +37,51 @@ class TestBuildPlayerLookup:
         }
 
     def test_lookup_contains_web_name(self):
-        bootstrap = self._make_bootstrap([
-            {"id": 1, "web_name": "Salah", "first_name": "Mohamed", "second_name": "Salah", "team": 1, "element_type": 3},
-        ])
+        bootstrap = self._make_bootstrap(
+            [
+                {
+                    "id": 1,
+                    "web_name": "Salah",
+                    "first_name": "Mohamed",
+                    "second_name": "Salah",
+                    "team": 1,
+                    "element_type": 3,
+                },
+            ]
+        )
         lookup, player_info = _build_player_lookup(bootstrap)
         assert "salah" in lookup
         assert lookup["salah"] == 1
 
     def test_lookup_contains_full_name(self):
-        bootstrap = self._make_bootstrap([
-            {"id": 1, "web_name": "Salah", "first_name": "Mohamed", "second_name": "Salah", "team": 1, "element_type": 3},
-        ])
+        bootstrap = self._make_bootstrap(
+            [
+                {
+                    "id": 1,
+                    "web_name": "Salah",
+                    "first_name": "Mohamed",
+                    "second_name": "Salah",
+                    "team": 1,
+                    "element_type": 3,
+                },
+            ]
+        )
         lookup, _ = _build_player_lookup(bootstrap)
         assert "mohamed salah" in lookup
 
     def test_player_info_has_required_fields(self):
-        bootstrap = self._make_bootstrap([
-            {"id": 5, "web_name": "Gabriel", "first_name": "Gabriel", "second_name": "Magalhaes", "team": 2, "element_type": 2},
-        ])
+        bootstrap = self._make_bootstrap(
+            [
+                {
+                    "id": 5,
+                    "web_name": "Gabriel",
+                    "first_name": "Gabriel",
+                    "second_name": "Magalhaes",
+                    "team": 2,
+                    "element_type": 2,
+                },
+            ]
+        )
         _, player_info = _build_player_lookup(bootstrap)
         p = player_info[5]
         assert p["element"] == 5

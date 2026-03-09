@@ -7,7 +7,7 @@ vi.mock("../lib/api", () => ({
     import("../mocks/news").then((m) => ({
       articles: m.mockArticles,
       trending: [],
-    })),
+    }))
   ),
 }));
 
@@ -61,5 +61,4 @@ describe("useNews", () => {
     expect(typeof article.injury_flag).toBe("boolean");
     expect(Array.isArray(article.players)).toBe(true);
   });
-
 });
