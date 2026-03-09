@@ -120,13 +120,14 @@ export default function Watchlist() {
       {watchedPlayers.length > 0 ? (
         <div className="space-y-3">
           {watchedPlayers.map((p) => {
-            const sum3 = p.fdr_next3.reduce((s, f) => s + f, 0);
+            const fdrNext3 = p.fdr_next3 ?? [];
+            const sum3 = fdrNext3.reduce((s, f) => s + f, 0);
             return (
               <div key={p.element} className="py-3 border-b border-surface-800 last:border-0">
                 <div className="flex items-center gap-4">
                   {/* Player Info */}
                   <div className="flex items-center gap-3 w-48">
-                    <TeamBadge team={p.team} />
+                    <TeamBadge team={p.team_name ?? p.team} />
                     <div>
                       <p
                         className="text-sm font-semibold text-surface-100 hover:text-brand-400 transition-colors cursor-pointer"
@@ -147,27 +148,34 @@ export default function Watchlist() {
                       <p className="text-2xs text-surface-500">Form</p>
                       <p className="text-sm font-bold text-surface-100">{p.form}</p>
                     </div>
-                    <MiniSparkline pts={p.pts_last5} />
+                    <MiniSparkline pts={p.pts_last5 ?? []} />
                   </div>
 
                   {/* Predicted */}
                   <div className="text-center">
                     <p className="text-2xs text-surface-500">Predicted</p>
-                    <p className="text-sm font-bold text-brand-400">{p.predicted}</p>
-                    <UncertaintyBar predicted={p.predicted} uncertainty={p.uncertainty} />
+                    <p className="text-sm font-bold text-brand-400">
+                      {p.predicted_points ?? p.predicted}
+                    </p>
+                    <UncertaintyBar
+                      predicted={p.predicted_points ?? p.predicted}
+                      uncertainty={p.uncertainty}
+                    />
                   </div>
 
                   {/* Ownership */}
                   <div className="text-center">
                     <p className="text-2xs text-surface-500">Own%</p>
-                    <p className="text-sm text-surface-300">{p.ownership}%</p>
+                    <p className="text-sm text-surface-300">
+                      {p.selected_by_percent ?? p.ownership ?? "—"}%
+                    </p>
                   </div>
 
                   {/* Next 3 FDR */}
                   <div>
                     <p className="text-2xs text-surface-500 mb-1">Next 3 GWs</p>
                     <div className="flex items-center gap-1">
-                      {p.fdr_next3.map((fdr, i) => (
+                      {fdrNext3.map((fdr, i) => (
                         <span
                           key={i}
                           className={`inline-flex items-center justify-center w-6 h-6 rounded text-2xs font-bold ${FDR_COLORS[fdr].text} ${FDR_COLORS[fdr].bg}`}
