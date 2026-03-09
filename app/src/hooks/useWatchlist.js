@@ -26,7 +26,7 @@ export function useWatchlist() {
     }
 
     getPredictions()
-      .then(setAllPlayers)
+      .then((res) => setAllPlayers(res?.predictions ?? []))
       .catch(setError)
       .finally(() => setIsLoading(false));
   }, []);
@@ -53,5 +53,12 @@ export function useWatchlist() {
     });
   }, []);
 
-  return { data: { players }, isLoading, error, add, remove, watchIds };
+  return {
+    data: { players, allPlayers: allPlayers ?? [] },
+    isLoading,
+    error,
+    add,
+    remove,
+    watchIds,
+  };
 }

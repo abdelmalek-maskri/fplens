@@ -14,24 +14,24 @@ import EmptyState from "../components/EmptyState";
 // ============================================================
 export default function Watchlist() {
   const navigate = useNavigate();
-  const { data: watchData, isLoading, error } = useWatchlist();
-  const [watchedIds, setWatchedIds] = useState([50, 60, 62, 65, 5]);
+  const { data: watchData, isLoading, error, add, remove, watchIds } = useWatchlist();
+  const watchedIds = watchIds;
   const [search, setSearch] = useState("");
   const [showAdd, setShowAdd] = useState(false);
 
-  const allPlayers = watchData ? watchData.players : [];
-
-  const watchedPlayers = useMemo(
-    () => allPlayers.filter((p) => watchedIds.includes(p.element)),
-    [allPlayers, watchedIds]
-  );
+  const allPlayers = watchData ? watchData.allPlayers : [];
+  const watchedPlayers = watchData ? watchData.players : [];
 
   const searchResults = useMemo(() => {
     if (!search) return [];
     const q = search.toLowerCase();
     return allPlayers
       .filter((p) => !watchedIds.includes(p.element))
-      .filter((p) => p.web_name.toLowerCase().includes(q) || p.team.toLowerCase().includes(q));
+      .filter(
+        (p) =>
+          p.web_name.toLowerCase().includes(q) ||
+          (p.team_name || p.team || "").toLowerCase().includes(q)
+      );
   }, [allPlayers, search, watchedIds]);
 
   if (isLoading)
@@ -48,7 +48,7 @@ export default function Watchlist() {
   if (!watchData) return null;
 
   const toggleWatch = (id) => {
-    setWatchedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+    watchedIds.includes(id) ? remove(id) : add(id);
   };
 
   return (
