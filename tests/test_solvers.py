@@ -11,7 +11,7 @@ from api.solvers import solve_best_xi, FORMATIONS
 print("Loading model and running predictions...")
 from ml.pipelines.inference.predict import run as run_predictions
 model = joblib.load("outputs/experiments/ablation_injury/config_D/model.joblib")
-df = run_predictions(model=model, save_output=False)
+df = run_predictions(model=model, save_output=False)["predictions"]
 print(f"\nTotal players: {len(df)}")
 available = df[(df["status"] != "i") & (df["chance_of_playing"] > 0)]
 print(f"Available players: {len(available)}")
