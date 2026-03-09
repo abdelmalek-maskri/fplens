@@ -116,6 +116,12 @@ class TestComputePlayerShap:
             result = compute_player_shap(model, X, eids)
         assert result == {}
 
+    def test_returns_empty_for_non_positive_top_n(self):
+        X, eids = self._make_data()
+        model = MagicMock(spec=[])
+        assert compute_player_shap(model, X, eids, top_n=0) == {}
+        assert compute_player_shap(model, X, eids, top_n=-1) == {}
+
     def test_sorted_by_absolute_impact(self):
         X, eids = self._make_data(n_players=1, n_features=4)
         shap_values = np.array([[0.1, -0.9, 0.5, -0.3]])

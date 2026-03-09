@@ -248,9 +248,22 @@ def _get_lgbm_from_model(model):
 
 
 def compute_player_shap(model, X: pd.DataFrame, element_ids, top_n: int = 5) -> dict:
-    """it compute per-player SHAP feature importance, and returns {element_id: [{"feature": ..., "display": ..., "value": ..., "impact": ...}, ...]}.
-    Falls back to empty dict on failure.
+    """Compute per-player SHAP feature importances.
+
+    Args:
+        model: Trained model or ensemble containing a LightGBM estimator.
+        X (pd.DataFrame): Feature matrix aligned with the model's training features.
+        element_ids: Iterable of player element IDs corresponding to the rows of ``X``.
+        top_n (int): Number of top features to return per player.
+
+    Returns:
+        dict: Mapping ``element_id -> list`` of feature impact dicts, where each dict
+            has keys ``"feature"``, ``"display"``, ``"value"``, and ``"impact"``.
+            Returns an empty dict if SHAP is unavailable or computation fails.
     """
+    if top_n <= 0:
+        return {}
+
     try:
         import shap
     except ImportError:
