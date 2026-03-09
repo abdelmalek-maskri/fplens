@@ -9,8 +9,10 @@ from ml.pipelines.inference.predict import run as run_predictions
 router = APIRouter(tags=["Predictions"])
 
 
-def _get_predictions(request: Request) -> pd.DataFrame:
-    # shared helper: run predictions (cached for 15 min)
+def _get_inference_result(request: Request) -> dict:
+    """Shared helper: run inference (cached for 15 min).
+    Returns {"predictions": DataFrame, "feature_matrix": DataFrame, "element_ids": list}.
+    """
     cache = request.app.state.cache
     model = request.app.state.model
 
@@ -18,6 +20,10 @@ def _get_predictions(request: Request) -> pd.DataFrame:
         return run_predictions(model=model, save_output=False)
 
     return cache.get_or_fetch("predictions", fetch)
+
+
+def _get_predictions(request: Request) -> pd.DataFrame:
+    return _get_inference_result(request)["predictions"]
 
 
 @router.get("/predictions")

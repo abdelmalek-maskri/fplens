@@ -20,8 +20,7 @@ async def lifespan(app: FastAPI):
     # Load model and initialise cache on startup
     if not MODEL_PATH.exists():
         raise FileNotFoundError(
-            f"Model file not found: {MODEL_PATH}\n"
-            f"Set MODEL_PATH env var or ensure the file exists."
+            f"Model file not found: {MODEL_PATH}\nSet MODEL_PATH env var or ensure the file exists."
         )
     print(f"Loading ML model from {MODEL_PATH}...")
     app.state.model = joblib.load(MODEL_PATH)

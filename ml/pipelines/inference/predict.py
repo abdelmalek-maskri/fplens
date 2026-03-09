@@ -429,7 +429,11 @@ def run(model_path: Path | None = None, model=None, save_output: bool = True, in
         )
     )
 
-    return predictions
+    return {
+        "predictions": predictions,
+        "feature_matrix": X,
+        "element_ids": list(player_info["element"]) if "element" in player_info.columns else [],
+    }
 
 
 if __name__ == "__main__":
@@ -443,4 +447,5 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    run(model_path=args.model, save_output=not args.no_save, include_history=not args.no_history)
+    result = run(model_path=args.model, save_output=not args.no_save, include_history=not args.no_history)
+    print(f"\nPredicted {len(result['predictions'])} players")
