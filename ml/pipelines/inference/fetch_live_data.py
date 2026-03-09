@@ -180,7 +180,7 @@ def format_player_history(element_id: int, raw_history: list[dict] | None) -> di
         "element": element_id,
         "pts_history": pts,
         "pts_last5": pts[-5:] if len(pts) >= 5 else pts,
-        "gw_labels": [gw.get("round", 0) for gw in last10],
+        "gw_labels": [f"GW{gw.get('round', 0)}" for gw in last10],
         "minutes_history": [gw.get("minutes", 0) for gw in last10],
         "xg_history": [float(gw.get("expected_goals", 0)) for gw in last10],
         "xa_history": [float(gw.get("expected_assists", 0)) for gw in last10],
