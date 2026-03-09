@@ -1,5 +1,6 @@
 """Tests for compute_player_shap() in predict.py."""
 
+import builtins
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -112,7 +113,14 @@ class TestComputePlayerShap:
     def test_returns_empty_when_shap_not_installed(self):
         X, eids = self._make_data()
         model = MagicMock(spec=[])
-        with patch.dict("sys.modules", {"shap": None}):
+        real_import = builtins.__import__
+
+        def _block_shap(name, *args, **kwargs):
+            if name == "shap":
+                raise ImportError("No module named 'shap'")
+            return real_import(name, *args, **kwargs)
+
+        with patch("builtins.__import__", side_effect=_block_shap):
             result = compute_player_shap(model, X, eids)
         assert result == {}
 
