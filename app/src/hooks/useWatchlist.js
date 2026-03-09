@@ -26,7 +26,7 @@ export function useWatchlist() {
     }
 
     getPredictions()
-      .then((res) => setAllPlayers(res?.predictions ?? []))
+      .then((res) => setAllPlayers(Array.isArray(res) ? res : (res?.predictions ?? [])))
       .catch(setError)
       .finally(() => setIsLoading(false));
   }, []);
