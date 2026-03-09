@@ -198,9 +198,11 @@ def fetch_and_format_all_histories(
     element_ids: list[int],
     max_workers: int = 20,
 ) -> dict[int, dict]:
-    """Batch fetch + format histories for all players. it returns {element_id: formatted_history_dict}."""
+    """Batch fetch + format histories for all requested players, it returns {element_id: formatted_history_dict} for every element_id,
+    including empty-history entries for players whose fetch failed.
+    """
     raw_histories = fetch_all_player_histories(element_ids, max_workers)
-    return {eid: format_player_history(eid, hist) for eid, hist in raw_histories.items()}
+    return {eid: format_player_history(eid, raw_histories.get(eid)) for eid in element_ids}
 
 
 # -- Feature Extraction --------------------------------------------------------
