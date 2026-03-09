@@ -177,6 +177,13 @@ def _build_player_lookup(bootstrap_data):
 def _link_articles_to_players(articles, lookup, nlp=None):
     # Link articles to players using regex matching.
     # Optionally uses spaCy NER if nlp model is provided.
+
+    # pre-compile regex patterns once (avoids re-compiling per article)
+    compiled = {
+        variant: re.compile(r"\b" + re.escape(variant) + r"\b", re.IGNORECASE)
+        for variant in lookup
+    }
+
     for article in articles:
         title = article["title"]
         body = article["body_text"][:5000]
@@ -184,8 +191,7 @@ def _link_articles_to_players(articles, lookup, nlp=None):
 
         # regex on title (all variants, low FP risk)
         for variant, element in lookup.items():
-            pattern = re.compile(r"\b" + re.escape(variant) + r"\b", re.IGNORECASE)
-            if pattern.search(title):
+            if compiled[variant].search(title):
                 found[element] = True
 
         # regex on body for full names only (2+ words)
@@ -194,8 +200,7 @@ def _link_articles_to_players(articles, lookup, nlp=None):
                 continue
             if element in found:
                 continue
-            pattern = re.compile(r"\b" + re.escape(variant) + r"\b", re.IGNORECASE)
-            if pattern.search(body):
+            if compiled[variant].search(body):
                 found[element] = True
 
         # spaCy NER if available (better recall for unusual name forms)
