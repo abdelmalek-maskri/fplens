@@ -22,11 +22,12 @@ class FPLDataCache:
                 self._key_locks[key] = threading.Lock()
             return self._key_locks[key]
 
-    def get_or_fetch(self, key: str, fetch_fn: Callable) -> Any:
+    def get_or_fetch(self, key: str, fetch_fn: Callable, ttl_minutes: int | None = None) -> Any:
         # check cache under global lock first (fast path)
+        ttl = timedelta(minutes=ttl_minutes) if ttl_minutes is not None else self.ttl
         with self._lock:
             now = datetime.now()
-            if key in self._cache and (now - self._timestamps[key]) < self.ttl:
+            if key in self._cache and (now - self._timestamps[key]) < ttl:
                 return self._cache[key]
 
         # per-key lock prevents duplicate fetches for the same key
@@ -35,7 +36,7 @@ class FPLDataCache:
             # re-check: another thread may have populated while we waited
             with self._lock:
                 now = datetime.now()
-                if key in self._cache and (now - self._timestamps[key]) < self.ttl:
+                if key in self._cache and (now - self._timestamps[key]) < ttl:
                     return self._cache[key]
 
             data = fetch_fn()

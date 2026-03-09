@@ -60,4 +60,4 @@ def get_news(request: Request, days: int = Query(default=7, ge=1, le=30)):
             logger.error("News fetch failed: %s", e)
             return {"articles": [], "trending": []}
 
-    return cache.get_or_fetch(f"news_{days}", _fetch_news)
+    return cache.get_or_fetch(f"news_{days}", _fetch_news, ttl_minutes=NEWS_CACHE_TTL)
