@@ -68,8 +68,17 @@ export default function MyTeam() {
       return p;
     });
   };
-  const [fplId, setFplId] = useState("");
-  const [submittedId, setSubmittedId] = useState(null);
+  const submittedId = searchParams.get("fpl_id") || null;
+  const [fplId, setFplId] = useState(submittedId || "");
+
+  const setSubmittedId = (id) => {
+    setSearchParams((prev) => {
+      const p = new URLSearchParams(prev);
+      if (id) p.set("fpl_id", id);
+      else p.delete("fpl_id");
+      return p;
+    });
+  };
 
   const { data: teamData, isLoading, error } = useTeam(submittedId);
 
