@@ -96,7 +96,7 @@ function WatchedPlayerRow({ p, onNavigate, onRemove }) {
       <div className="flex items-center gap-4">
         {/* Player Info */}
         <div className="flex items-center gap-3 w-48">
-          <TeamBadge team={p.team_name ?? p.team} />
+          <TeamBadge team={p.team_name} />
           <div>
             <p
               className="text-sm font-semibold text-surface-100 hover:text-brand-400 transition-colors cursor-pointer"
@@ -203,9 +203,7 @@ export default function Watchlist() {
     return allPlayers
       .filter((p) => !watchIds.includes(p.element))
       .filter(
-        (p) =>
-          p.web_name.toLowerCase().includes(q) ||
-          (p.team_name || p.team || "").toLowerCase().includes(q)
+        (p) => p.web_name.toLowerCase().includes(q) || (p.team_name || "").toLowerCase().includes(q)
       );
   }, [allPlayers, search, watchIds]);
 
@@ -287,7 +285,7 @@ export default function Watchlist() {
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium text-surface-100">{p.web_name}</span>
                     <span className="text-2xs text-surface-500">
-                      {p.team_name ?? p.team} ·{" "}
+                      {p.team_name} ·{" "}
                       <span className={POSITION_COLORS[p.position]}>{p.position}</span> · £{p.value}
                       m
                     </span>

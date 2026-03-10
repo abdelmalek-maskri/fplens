@@ -6,9 +6,7 @@ export function useGameweek() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    getStatus()
-      .then(setData)
-      .catch(setError);
+    getStatus().then(setData).catch(setError);
   }, []);
 
   return { data, error };

@@ -18,8 +18,12 @@ const PAGE_TITLES = {
 function formatDeadlineShort(iso) {
   if (!iso) return null;
   const d = new Date(iso);
-  return "Deadline " + d.toLocaleDateString("en-GB", { weekday: "short" }) +
-    " " + d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+  return (
+    "Deadline " +
+    d.toLocaleDateString("en-GB", { weekday: "short" }) +
+    " " +
+    d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
+  );
 }
 
 export default function Header({ onMenuToggle, gwData }) {
@@ -28,9 +32,12 @@ export default function Header({ onMenuToggle, gwData }) {
   const [spinning, setSpinning] = useState(false);
 
   const currentGw = gwData?.current_gw;
-  const pageTitle = pathname === "/"
-    ? (currentGw ? `Gameweek ${currentGw}` : "Dashboard")
-    : (PAGE_TITLES[pathname] || "Fantasy Foresight");
+  const pageTitle =
+    pathname === "/"
+      ? currentGw
+        ? `Gameweek ${currentGw}`
+        : "Dashboard"
+      : PAGE_TITLES[pathname] || "Fantasy Foresight";
   const deadlineLabel = formatDeadlineShort(gwData?.deadline);
 
   const handleRefresh = useCallback(() => {
@@ -63,7 +70,9 @@ export default function Header({ onMenuToggle, gwData }) {
           </svg>
         </button>
         <h2 className="text-sm font-semibold text-surface-100 leading-none">{pageTitle}</h2>
-        {deadlineLabel && <span className="text-2xs text-surface-600 hidden sm:inline">{deadlineLabel}</span>}
+        {deadlineLabel && (
+          <span className="text-2xs text-surface-600 hidden sm:inline">{deadlineLabel}</span>
+        )}
       </div>
 
       <div className="flex items-center gap-2">

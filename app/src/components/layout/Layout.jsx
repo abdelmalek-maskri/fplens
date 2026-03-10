@@ -60,7 +60,12 @@ export default function Layout({ children }) {
         />
       )}
 
-      <Sidebar ref={sidebarRef} open={sidebarOpen} onClose={() => setSidebarOpen(false)} gwData={gwData} />
+      <Sidebar
+        ref={sidebarRef}
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        gwData={gwData}
+      />
       <Header onMenuToggle={() => setSidebarOpen((o) => !o)} gwData={gwData} />
 
       <main className="lg:ml-[200px] pt-11 min-h-screen">

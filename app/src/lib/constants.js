@@ -13,9 +13,7 @@ export const FDR_COLORS = {
 
 // Flat FDR lookups for Fixture Ticker (fdr level → CSS class)
 export const FDR_BG = Object.fromEntries(Object.entries(FDR_COLORS).map(([k, v]) => [k, v.bg]));
-export const FDR_TEXT = Object.fromEntries(
-  Object.entries(FDR_COLORS).map(([k, v]) => [k, v.text]),
-);
+export const FDR_TEXT = Object.fromEntries(Object.entries(FDR_COLORS).map(([k, v]) => [k, v.text]));
 
 export const FDR_MAP = {
   ARS: 5,
