@@ -1,8 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { getPredictions } from "../lib/api";
-import { mockWatchlistPlayers } from "../mocks/watchlist";
 
-const USE_MOCKS = import.meta.env.VITE_USE_MOCKS === "true";
 const STORAGE_KEY = "fpl-watchlist";
 
 function getWatchlistIds() {
@@ -16,26 +14,17 @@ function getWatchlistIds() {
 export function useWatchlist() {
   const [allPlayers, setAllPlayers] = useState(null);
   const [watchIds, setWatchIds] = useState(getWatchlistIds);
-  const [isLoading, setIsLoading] = useState(!USE_MOCKS);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (USE_MOCKS) {
-      setAllPlayers(mockWatchlistPlayers);
-      return;
-    }
-
     getPredictions()
       .then((res) => setAllPlayers(Array.isArray(res) ? res : (res?.predictions ?? [])))
       .catch(setError)
       .finally(() => setIsLoading(false));
   }, []);
 
-  const players = allPlayers
-    ? USE_MOCKS
-      ? allPlayers
-      : allPlayers.filter((p) => watchIds.includes(p.element))
-    : [];
+  const players = allPlayers ? allPlayers.filter((p) => watchIds.includes(p.element)) : [];
 
   const add = useCallback((elementId) => {
     setWatchIds((prev) => {

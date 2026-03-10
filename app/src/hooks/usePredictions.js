@@ -1,30 +1,19 @@
 import { useState, useEffect } from "react";
 import { getPredictions } from "../lib/api";
-import { mockPredictions, mockLocalShap, defaultShap, MODEL_OPTIONS } from "../mocks/predictions";
-
-const USE_MOCKS = import.meta.env.VITE_USE_MOCKS === "true";
-
-const _mockData = {
-  predictions: mockPredictions,
-  localShap: mockLocalShap,
-  defaultShap,
-  modelOptions: MODEL_OPTIONS,
-};
+import { MODEL_OPTIONS, DEFAULT_SHAP } from "../lib/constants";
 
 export function usePredictions() {
-  const [data, setData] = useState(USE_MOCKS ? _mockData : null);
-  const [isLoading, setIsLoading] = useState(!USE_MOCKS);
+  const [data, setData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (USE_MOCKS) return;
-
     getPredictions()
       .then((predictions) => {
         setData({
           predictions,
-          localShap: mockLocalShap,
-          defaultShap,
+          localShap: {}, // populated when per-player SHAP API is wired
+          defaultShap: DEFAULT_SHAP,
           modelOptions: MODEL_OPTIONS,
         });
       })

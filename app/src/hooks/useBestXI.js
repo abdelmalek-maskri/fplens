@@ -1,18 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import { getBestXI } from "../lib/api";
-import { mockBestXI } from "../mocks/squad";
-
-const USE_MOCKS = import.meta.env.VITE_USE_MOCKS === "true";
 
 export function useBestXI() {
-  const [data, setData] = useState(USE_MOCKS ? mockBestXI : null);
-  const [isLoading, setIsLoading] = useState(!USE_MOCKS);
+  const [data, setData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const cancelledRef = useRef(false);
 
   useEffect(() => {
-    if (USE_MOCKS) return;
-
     cancelledRef.current = false;
     setData(null);
     setIsLoading(true);

@@ -37,15 +37,23 @@ export default function FixtureTicker() {
     fdrText: FDR_TEXT,
   } = fixtureData;
 
-  const gameweeks = [24, 25, 26, 27, 28, 29];
+  // Derive gameweeks from fixture data (all unique GWs across all teams, sorted)
+  const gameweeks = [...new Set(Object.values(FIXTURES).flatMap((fs) => fs.map((f) => f.gw)))].sort(
+    (a, b) => a - b
+  );
 
-  // Compute avg FDR for sorting
+  // Compute avg FDR for sorting + build per-GW lookup for aligned rendering
   const teamData = TEAMS.map((team) => {
     const fixtures = FIXTURES[team] || [];
-    const avgAtk = fixtures.reduce((s, f) => s + f.atkFdr, 0) / fixtures.length;
-    const avgDef = fixtures.reduce((s, f) => s + f.defFdr, 0) / fixtures.length;
+    const fixtureByGw = Object.fromEntries(fixtures.map((f) => [f.gw, f]));
+    const avgAtk = fixtures.length
+      ? fixtures.reduce((s, f) => s + f.atkFdr, 0) / fixtures.length
+      : 3;
+    const avgDef = fixtures.length
+      ? fixtures.reduce((s, f) => s + f.defFdr, 0) / fixtures.length
+      : 3;
     const avgCombined = (avgAtk + avgDef) / 2;
-    return { team, fixtures, avgAtk, avgDef, avgCombined };
+    return { team, fixtures, fixtureByGw, avgAtk, avgDef, avgCombined };
   });
 
   const sortedTeams = [...teamData].sort((a, b) => {
@@ -156,10 +164,20 @@ export default function FixtureTicker() {
                       <span className="text-xs text-surface-500 ml-2">{TEAM_FULL[row.team]}</span>
                     </div>
                   </td>
-                  {row.fixtures.map((fix) => {
+                  {gameweeks.map((gw) => {
+                    const fix = row.fixtureByGw[gw];
+                    if (!fix) {
+                      return (
+                        <td key={gw} className="py-2 px-1 text-center">
+                          <div className="mx-auto rounded-md px-1 py-2">
+                            <p className="text-xs text-surface-600">—</p>
+                          </div>
+                        </td>
+                      );
+                    }
                     const fdr = getFdr(fix);
                     return (
-                      <td key={fix.gw} className="py-2 px-1 text-center">
+                      <td key={gw} className="py-2 px-1 text-center">
                         <div
                           className={`mx-auto rounded-md px-1 py-2 ${FDR_BG[fdr]}`}
                           title={`ATK: ${fix.atkFdr} | DEF: ${fix.defFdr}`}
@@ -189,7 +207,7 @@ export default function FixtureTicker() {
       {/* Quick Analysis */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div>
-          <span className="section-label">Easiest to attack (next 6 GWs)</span>
+          <span className="section-label">Easiest to attack (next {gameweeks.length} GWs)</span>
           <div className="mt-3 space-y-2">
             {[...teamData]
               .sort((a, b) => a.avgAtk - b.avgAtk)
@@ -215,7 +233,9 @@ export default function FixtureTicker() {
           </div>
         </div>
         <div>
-          <span className="section-label">Easiest to keep clean sheets (next 6 GWs)</span>
+          <span className="section-label">
+            Easiest to keep clean sheets (next {gameweeks.length} GWs)
+          </span>
           <div className="mt-3 space-y-2">
             {[...teamData]
               .sort((a, b) => a.avgDef - b.avgDef)

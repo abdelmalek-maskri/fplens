@@ -1,5 +1,3 @@
-import { useState, useEffect } from "react";
-import { getModelInsights } from "../lib/api";
 import {
   modelVariants,
   baselines,
@@ -19,9 +17,9 @@ import {
   TABS,
 } from "../mocks/modelInsights";
 
-const USE_MOCKS = import.meta.env.VITE_USE_MOCKS === "true";
-
-const _mockData = {
+// Static evaluation data from training outputs.
+// TODO: Replace with /api/model-insights once API schema matches frontend.
+const INSIGHTS_DATA = {
   modelVariants,
   baselines,
   positionPerformance,
@@ -41,23 +39,5 @@ const _mockData = {
 };
 
 export function useModelInsights() {
-  const [data, setData] = useState(USE_MOCKS ? _mockData : null);
-  const [isLoading, setIsLoading] = useState(!USE_MOCKS);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    if (USE_MOCKS) return;
-
-    getModelInsights()
-      .then(() => {
-        // API returns raw training summaries with different structure
-        // than what the page expects. Use curated mock data for now
-        // until the API output is aligned with the frontend schema.
-        setData(_mockData);
-      })
-      .catch(setError)
-      .finally(() => setIsLoading(false));
-  }, []);
-
-  return { data, isLoading, error };
+  return { data: INSIGHTS_DATA, isLoading: false, error: null };
 }

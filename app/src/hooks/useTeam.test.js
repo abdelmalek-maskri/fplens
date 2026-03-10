@@ -1,23 +1,28 @@
 import { describe, it, expect, vi } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
 
-// Mock the API to return snake_case response matching real API shape
+const MOCK_API_RESPONSE = {
+  manager: "Abdelmalek Maskri",
+  team_name: "ML FC",
+  overall_rank: 48201,
+  overall_points: 1284,
+  bank: 2.3,
+  free_transfers: 1,
+  picks: Array.from({ length: 15 }, (_, i) => ({
+    element: i + 1,
+    web_name: `Player ${i + 1}`,
+    player_position: i < 2 ? "GK" : i < 7 ? "DEF" : i < 12 ? "MID" : "FWD",
+    team_name: "MCI",
+    predicted_points: 4 + Math.random() * 3,
+    is_captain: i === 0,
+    is_vice_captain: i === 1,
+    multiplier: i === 0 ? 2 : i < 11 ? 1 : 0,
+  })),
+  transfer_suggestions: [],
+};
+
 vi.mock("../lib/api", () => ({
-  getTeam: vi.fn(() =>
-    import("../mocks/team").then((m) => ({
-      manager: m.mockUserTeam.manager,
-      team_name: m.mockUserTeam.teamName,
-      overall_rank: m.mockUserTeam.overallRank,
-      overall_points: m.mockUserTeam.totalPoints,
-      bank: m.mockUserTeam.budget,
-      free_transfers: m.mockUserTeam.freeTransfers,
-      picks: m.mockUserTeam.picks.map((p) => ({
-        ...p,
-        player_position: p.position,
-      })),
-      transfer_suggestions: m.mockTransferSuggestions,
-    }))
-  ),
+  getTeam: vi.fn(() => Promise.resolve(MOCK_API_RESPONSE)),
 }));
 
 import { useTeam } from "./useTeam";

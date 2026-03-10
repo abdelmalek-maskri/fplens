@@ -1,8 +1,5 @@
 import { useState, useEffect, useRef } from "react";
 import { getPlayer } from "../lib/api";
-import { mockPlayers, defaultPlayer } from "../mocks/playerDetail";
-
-const USE_MOCKS = import.meta.env.VITE_USE_MOCKS === "true";
 
 function normalizePlayer(raw) {
   const nameParts = (raw.name || raw.web_name || "").split(" ");
@@ -21,22 +18,12 @@ function normalizePlayer(raw) {
 }
 
 export function usePlayer(playerId) {
-  const mockData = USE_MOCKS
-    ? mockPlayers[playerId] || {
-        ...defaultPlayer,
-        element: Number(playerId) || 0,
-        web_name: `Player #${playerId}`,
-      }
-    : null;
-
-  const [data, setData] = useState(mockData);
-  const [isLoading, setIsLoading] = useState(!USE_MOCKS);
+  const [data, setData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const cancelledRef = useRef(false);
 
   useEffect(() => {
-    if (USE_MOCKS) return;
-
     cancelledRef.current = false;
     setData(null);
     setIsLoading(true);
