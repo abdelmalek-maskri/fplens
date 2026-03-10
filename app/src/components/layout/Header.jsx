@@ -1,8 +1,8 @@
 import { useLocation } from "react-router-dom";
 import { useState, useCallback } from "react";
+import { refresh } from "../../lib/api";
 
 const PAGE_TITLES = {
-  "/": "Gameweek 24",
   "/optimal-xi": "Optimal XI",
   "/my-team": "My Team",
   "/transfers": "Transfers",
@@ -15,19 +15,34 @@ const PAGE_TITLES = {
   "/season-planner": "Season Planner",
 };
 
-export default function Header({ onMenuToggle }) {
+function formatDeadlineShort(iso) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  return "Deadline " + d.toLocaleDateString("en-GB", { weekday: "short" }) +
+    " " + d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+}
+
+export default function Header({ onMenuToggle, gwData }) {
   const { pathname } = useLocation();
   const [lastUpdated, setLastUpdated] = useState("Just now");
   const [spinning, setSpinning] = useState(false);
 
-  const pageTitle = PAGE_TITLES[pathname] || "Fantasy Foresight";
+  const currentGw = gwData?.current_gw;
+  const pageTitle = pathname === "/"
+    ? (currentGw ? `Gameweek ${currentGw}` : "Dashboard")
+    : (PAGE_TITLES[pathname] || "Fantasy Foresight");
+  const deadlineLabel = formatDeadlineShort(gwData?.deadline);
 
   const handleRefresh = useCallback(() => {
     setSpinning(true);
-    setTimeout(() => {
-      setLastUpdated(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
-      setSpinning(false);
-    }, 600);
+    refresh()
+      .then(() => {
+        setLastUpdated(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
+      })
+      .catch(() => {
+        setLastUpdated("Sync failed");
+      })
+      .finally(() => setSpinning(false));
   }, []);
 
   return (
@@ -48,7 +63,7 @@ export default function Header({ onMenuToggle }) {
           </svg>
         </button>
         <h2 className="text-sm font-semibold text-surface-100 leading-none">{pageTitle}</h2>
-        <span className="text-2xs text-surface-600 hidden sm:inline">Deadline Sat 11:00</span>
+        {deadlineLabel && <span className="text-2xs text-surface-600 hidden sm:inline">{deadlineLabel}</span>}
       </div>
 
       <div className="flex items-center gap-2">

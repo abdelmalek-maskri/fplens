@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
+import { useGameweek } from "../../hooks/useGameweek";
 
 export default function Layout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { data: gwData } = useGameweek();
   const sidebarRef = useRef(null);
 
   useEffect(() => {
@@ -58,8 +60,8 @@ export default function Layout({ children }) {
         />
       )}
 
-      <Sidebar ref={sidebarRef} open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <Header onMenuToggle={() => setSidebarOpen((o) => !o)} />
+      <Sidebar ref={sidebarRef} open={sidebarOpen} onClose={() => setSidebarOpen(false)} gwData={gwData} />
+      <Header onMenuToggle={() => setSidebarOpen((o) => !o)} gwData={gwData} />
 
       <main className="lg:ml-[200px] pt-11 min-h-screen">
         <div className="p-4 sm:p-5">{children}</div>

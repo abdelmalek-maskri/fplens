@@ -33,7 +33,17 @@ const navItems = [
   },
 ];
 
-const Sidebar = forwardRef(function Sidebar({ open, onClose }, ref) {
+function formatDeadline(iso) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }) +
+    " · " +
+    d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+}
+
+const Sidebar = forwardRef(function Sidebar({ open, onClose, gwData }, ref) {
+  const currentGw = gwData?.current_gw;
+  const deadline = formatDeadline(gwData?.deadline);
   return (
     <aside
       ref={ref}
@@ -50,7 +60,7 @@ const Sidebar = forwardRef(function Sidebar({ open, onClose }, ref) {
               <h1 className="font-semibold text-surface-100 text-sm leading-none">
                 Fantasy Foresight
               </h1>
-              <p className="text-2xs text-surface-500 mt-0.5">GW 24</p>
+              <p className="text-2xs text-surface-500 mt-0.5">{currentGw ? `GW ${currentGw}` : "—"}</p>
             </div>
           </div>
           <button
@@ -102,9 +112,8 @@ const Sidebar = forwardRef(function Sidebar({ open, onClose }, ref) {
         <div className="flex items-center gap-1.5 px-0.5">
           <span className="status-live" />
           <span className="text-2xs text-surface-400">Live</span>
-          <span className="text-2xs text-surface-600 ml-auto">2m ago</span>
         </div>
-        <p className="text-2xs text-surface-600 mt-1.5 px-0.5">Sat 8 Feb · 11:00</p>
+        {deadline && <p className="text-2xs text-surface-600 mt-1.5 px-0.5">{deadline}</p>}
       </div>
     </aside>
   );
