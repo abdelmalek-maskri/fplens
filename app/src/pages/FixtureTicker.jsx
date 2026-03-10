@@ -37,7 +37,7 @@ export default function FixtureTicker() {
     fdrText: FDR_TEXT,
   } = fixtureData;
 
-  // Derive gameweeks from fixture data (all unique GWs across all teams, sorted)
+  // Derive gameweeks from actual fixture data so blank GWs don't break alignment
   const gameweeks = [...new Set(Object.values(FIXTURES).flatMap((fs) => fs.map((f) => f.gw)))].sort(
     (a, b) => a - b
   );
@@ -46,12 +46,8 @@ export default function FixtureTicker() {
   const teamData = TEAMS.map((team) => {
     const fixtures = FIXTURES[team] || [];
     const fixtureByGw = Object.fromEntries(fixtures.map((f) => [f.gw, f]));
-    const avgAtk = fixtures.length
-      ? fixtures.reduce((s, f) => s + f.atkFdr, 0) / fixtures.length
-      : 3;
-    const avgDef = fixtures.length
-      ? fixtures.reduce((s, f) => s + f.defFdr, 0) / fixtures.length
-      : 3;
+    const avgAtk = fixtures.reduce((s, f) => s + f.atkFdr, 0) / (fixtures.length || 1);
+    const avgDef = fixtures.reduce((s, f) => s + f.defFdr, 0) / (fixtures.length || 1);
     const avgCombined = (avgAtk + avgDef) / 2;
     return { team, fixtures, fixtureByGw, avgAtk, avgDef, avgCombined };
   });
@@ -169,7 +165,7 @@ export default function FixtureTicker() {
                     if (!fix) {
                       return (
                         <td key={gw} className="py-2 px-1 text-center">
-                          <div className="mx-auto rounded-md px-1 py-2">
+                          <div className="mx-auto rounded-md px-1 py-2 bg-surface-800/30">
                             <p className="text-xs text-surface-600">—</p>
                           </div>
                         </td>
