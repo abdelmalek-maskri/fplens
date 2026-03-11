@@ -11,9 +11,10 @@ Adds to baseline features:
 """
 
 from pathlib import Path
-
 import numpy as np
 import pandas as pd
+
+from ml.pipelines.features.build_future_fixtures import add_future_fixture_features
 
 IN_PATH = Path("data/processed/merged/fpl_with_target.csv")
 OUT_PATH = Path("data/features/extended_features.csv")
@@ -51,7 +52,7 @@ SEASON_AVG_COLS = [
 def add_season_avg_features(df: pd.DataFrame, num_cols: list) -> pd.DataFrame:
     """Add expanding season average features (all games so far this season)."""
 
-    print("  Adding season average features...")
+    print("adding season average features...")
 
     # Group by season and element for expanding mean
     g_season = df.groupby(["season", "element"], sort=False)
@@ -73,7 +74,7 @@ def add_season_avg_features(df: pd.DataFrame, num_cols: list) -> pd.DataFrame:
 def add_availability_features(df: pd.DataFrame, g) -> pd.DataFrame:
     """Add features related to player availability/rotation."""
 
-    print("  Adding availability features...")
+    print("adding availability features...")
 
     new_cols = {}
 
@@ -133,7 +134,7 @@ def add_availability_features(df: pd.DataFrame, g) -> pd.DataFrame:
 
 def add_form_momentum_features(df: pd.DataFrame, g) -> pd.DataFrame:
     """Add form momentum features (short-term vs long-term form)."""
-    print("  Adding form momentum features...")
+    print("adding form momentum features...")
     new_cols = {}
 
     # Form momentum: roll3 - roll10 (positive = improving form)
@@ -218,6 +219,10 @@ def run() -> None:
     # Form momentum (after roll features exist)
     df = add_form_momentum_features(df, g)
 
+    # Future fixture features for multi-horizon prediction
+    print("\nBuilding future fixture features...")
+    df = add_future_fixture_features(df)
+
     print("\nCleaning up...")
     # Require at least 1 previous GW
     before = len(df)
@@ -240,6 +245,8 @@ def run() -> None:
         "opponent_team",
         "value",
         "points_next_gw",
+        "points_gw_plus_2",
+        "points_gw_plus_3",
         "played_lag1",
     ]
     keep = [c for c in keep if c in df.columns]
@@ -258,7 +265,14 @@ def run() -> None:
         and c != "played_lag1"
     ]
 
-    keep += feature_cols
+    # Future fixture features for multi-horizon models
+    future_fixture_cols = [
+        c
+        for c in df.columns
+        if c.startswith(("opponent_gw", "was_home_gw", "fdr_gw", "fdr_attack_gw", "fdr_defence_gw"))
+    ]
+
+    keep += feature_cols + future_fixture_cols
     out = df[keep].copy()
 
     OUT_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -273,13 +287,24 @@ def run() -> None:
     availability_features = len(
         [c for c in out.columns if c in ["consecutive_starts", "minutes_trend", "games_since_start"]]
     )
+    fixture_features = len(
+        [
+            c
+            for c in out.columns
+            if c.startswith(("opponent_gw", "was_home_gw", "fdr_gw", "fdr_attack_gw", "fdr_defence_gw"))
+        ]
+    )
+    target_count = len([c for c in out.columns if c.startswith("points_")])
 
     print("\nFeature breakdown:")
     print(f"   Baseline (lag1, roll3, roll5): {baseline_features}")
     print(f"   Extended (roll10, season_avg, momentum): {extended_features}")
     print(f"   Availability: {availability_features}")
-    print(f"   Metadata: {len(keep) - baseline_features - extended_features - availability_features}")
-    print(f"   Total: {len(out.columns)}")
+    print(f"future fixtures: {fixture_features}")
+    print(f"targets: {target_count}")
+    remaining = len(out.columns) - baseline_features - extended_features - availability_features - fixture_features - target_count
+    print(f"metadata: {remaining}")
+    print(f"total: {len(out.columns)}")
 
 
 if __name__ == "__main__":
