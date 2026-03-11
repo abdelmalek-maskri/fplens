@@ -29,8 +29,10 @@ MIN_TRAIN_SEASONS = 3
 # FEATURE CONFIGURATION
 # -----------------------------------------------------------------------------
 
-# Columns to always drop before training (identifiers, not features)
-DROP_COLS = ["name", "element"]
+# Columns to always drop before training (identifiers + all target columns).
+# Every horizon target must be dropped to prevent leakage — e.g. the GW+1
+# model must not see points_gw_plus_2/3 as input features.
+DROP_COLS = ["name", "element", "points_next_gw", "points_gw_plus_2", "points_gw_plus_3"]
 
 # Categorical columns for tree-based models
 CAT_COLS = ["season", "position", "team", "opponent_team"]
