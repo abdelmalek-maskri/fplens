@@ -11,6 +11,10 @@ export const FDR_COLORS = {
   5: { bg: "bg-danger-700", text: "text-white", label: "Very Hard" },
 };
 
+// Flat FDR lookups for Fixture Ticker (fdr level → CSS class)
+export const FDR_BG = Object.fromEntries(Object.entries(FDR_COLORS).map(([k, v]) => [k, v.bg]));
+export const FDR_TEXT = Object.fromEntries(Object.entries(FDR_COLORS).map(([k, v]) => [k, v.text]));
+
 export const FDR_MAP = {
   ARS: 5,
   AVL: 3,
@@ -70,3 +74,52 @@ export const POSITION_BG = {
   MID: "bg-brand-500/20",
   FWD: "bg-danger-500/20",
 };
+
+// ============================================================
+// PLAYER STATUS
+// ============================================================
+export const STATUS_CONFIG = {
+  a: { label: "Available", cls: "text-success-400" },
+  d: { label: "Doubtful", cls: "text-warning-400" },
+  i: { label: "Injured", cls: "text-danger-400" },
+  u: { label: "Unavailable", cls: "text-surface-400" },
+};
+
+// ============================================================
+// FPL SQUAD RULES
+// ============================================================
+export const FPL_BUDGET = 100;
+export const POS_LIMITS = { GK: 2, DEF: 5, MID: 5, FWD: 3 };
+export const MAX_PER_TEAM = 3;
+
+// ============================================================
+// MODEL DISPLAY
+// ============================================================
+export const MODEL_OPTIONS = [
+  {
+    id: "lgbm_c",
+    name: "LightGBM Config C",
+    mae: 1.043,
+    description: "Best overall — 141 features, tuned",
+  },
+  {
+    id: "lgbm_a",
+    name: "LightGBM Config A",
+    mae: 1.06,
+    description: "Baseline — FPL + Understat only",
+  },
+  {
+    id: "lgbm_b",
+    name: "LightGBM Config B",
+    mae: 1.051,
+    description: "With injury features",
+  },
+];
+
+export const DEFAULT_SHAP = [
+  { feature: "minutes_lag1", value: 90, impact: +0.8 },
+  { feature: "total_points_season_avg", value: 4.5, impact: +0.5 },
+  { feature: "form", value: 5.0, impact: +0.3 },
+  { feature: "opponent_strength", value: "FDR 3", impact: -0.1 },
+  { feature: "was_home", value: "No", impact: -0.2 },
+];

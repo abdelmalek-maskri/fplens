@@ -1,9 +1,19 @@
 import { describe, it, expect, vi } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
 
-// Mock the API to return mock data
+const MOCK_PLAYER = {
+  element: 2,
+  web_name: "Haaland",
+  name: "Erling Haaland",
+  team_name: "MCI",
+  position: "FWD",
+  value: 15.3,
+  predicted_points: 7.2,
+  form: 8.8,
+};
+
 vi.mock("../lib/api", () => ({
-  getPredictions: vi.fn(() => import("../mocks/predictions").then((m) => m.mockPredictions)),
+  getPredictions: vi.fn(() => Promise.resolve([MOCK_PLAYER])),
 }));
 
 import { usePredictions } from "./usePredictions";

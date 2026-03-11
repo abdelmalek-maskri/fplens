@@ -8,5 +8,6 @@ export { useTransfers } from "./useTransfers";
 export { useChips } from "./useChips";
 export { useModelInsights } from "./useModelInsights";
 export { usePlayer } from "./usePlayer";
-export { usePlayerPool, STATUS_CONFIG } from "./usePlayerPool";
+export { usePlayerPool } from "./usePlayerPool";
 export { useSeasonPlanner } from "./useSeasonPlanner";
+export { useGameweek } from "./useGameweek";

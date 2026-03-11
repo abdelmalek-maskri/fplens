@@ -10,9 +10,9 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from api.cache import FPLDataCache
 from api.routers import fixtures, insights, predictions, team
+from ml.pipelines.inference.predict import DEFAULT_MODEL
 
-DEFAULT_MODEL_PATH = "outputs/experiments/ablation_injury/config_D/model.joblib"
-MODEL_PATH = Path(os.environ.get("MODEL_PATH", DEFAULT_MODEL_PATH))
+MODEL_PATH = Path(os.environ.get("MODEL_PATH", str(DEFAULT_MODEL)))
 
 
 @asynccontextmanager
@@ -57,6 +57,21 @@ def health():
         "model_loaded": hasattr(app.state, "model"),
         "cache_keys": list(app.state.cache.keys()) if hasattr(app.state, "cache") else [],
     }
+
+
+@app.get("/api/status")
+def status():
+    """Current gameweek number and next deadline for the frontend shell."""
+    from ml.pipelines.inference.fetch_live_data import get_bootstrap_data, get_current_gameweek
+
+    cache = app.state.cache
+
+    def fetch():
+        bootstrap = get_bootstrap_data()
+        event = get_current_gameweek(bootstrap["events"])
+        return {"current_gw": event["id"], "deadline": event.get("deadline_time")}
+
+    return cache.get_or_fetch("status", fetch)
 
 
 # When I deploy, set REFRESH_SECRET in .env to something strong:

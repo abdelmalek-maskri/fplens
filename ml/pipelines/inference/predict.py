@@ -21,6 +21,11 @@ from ml.pipelines.inference.fetch_live_data import fetch_current_gw_data
 DEFAULT_MODEL = Path("outputs/experiments/ablation_injury/config_D/model.joblib")
 OUTPUT_DIR = Path("data/inference")
 
+# Prediction constants
+UNCERTAINTY_MULTIPLIER = 1.5  # predicted_range = prediction ± N × uncertainty
+CAPTAIN_OWNERSHIP_FACTOR = 0.15  # captain_pct ≈ selected_by_percent × factor
+BUDGET_THRESHOLD = 7.0  # max price (£m) for "budget pick" summary
+
 
 def load_model(model_path: Path = DEFAULT_MODEL):
     # Load a trained model from the specified path. Supports both plain LightGBM and StackedEnsemble models.
@@ -147,8 +152,8 @@ def predict(
     result = player_info.copy()
     result["predicted_points"] = np.round(predictions, 2)
     result["uncertainty"] = np.round(uncertainty, 3)
-    result["predicted_range_low"] = np.clip(predictions - 1.5 * uncertainty, 0, None).round(2)
-    result["predicted_range_high"] = (predictions + 1.5 * uncertainty).round(2)
+    result["predicted_range_low"] = np.clip(predictions - UNCERTAINTY_MULTIPLIER * uncertainty, 0, None).round(2)
+    result["predicted_range_high"] = (predictions + UNCERTAINTY_MULTIPLIER * uncertainty).round(2)
 
     # Rename columns to match frontend field names
     rename_map = {
@@ -170,7 +175,7 @@ def predict(
         )
 
     if "selected_by_percent" in result.columns:
-        result["captain_pct"] = (result["selected_by_percent"] * 0.15).round(1)
+        result["captain_pct"] = (result["selected_by_percent"] * CAPTAIN_OWNERSHIP_FACTOR).round(1)
 
     # Fill NaN in numeric output columns
     fill_zero = [
@@ -422,7 +427,7 @@ def run(model_path: Path | None = None, model=None, save_output: bool = True, in
     # Price efficiency
     print("\n--- BEST VALUE (points per £m) ---")
     predictions["value_score"] = predictions["predicted_points"] / predictions["value"]
-    budget_picks = predictions[predictions["value"] <= 7.0].nlargest(10, "value_score")
+    budget_picks = predictions[predictions["value"] <= BUDGET_THRESHOLD].nlargest(10, "value_score")
     print(
         budget_picks[["web_name", "team_name", "position", "value", "predicted_points", "value_score"]].to_string(
             index=False

@@ -77,3 +77,7 @@ export function refresh(secret = "dev-secret") {
 export function health() {
   return apiFetch("/api/health");
 }
+
+export function getStatus() {
+  return apiFetch("/api/status");
+}
