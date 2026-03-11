@@ -303,7 +303,14 @@ def run() -> None:
     print(f"   Availability: {availability_features}")
     print(f"future fixtures: {fixture_features}")
     print(f"targets: {target_count}")
-    remaining = len(out.columns) - baseline_features - extended_features - availability_features - fixture_features - target_count
+    remaining = (
+        len(out.columns)
+        - baseline_features
+        - extended_features
+        - availability_features
+        - fixture_features
+        - target_count
+    )
     print(f"metadata: {remaining}")
     print(f"total: {len(out.columns)}")
 

@@ -17,6 +17,7 @@ VAASTAV_DIR = Path("data/raw/fpl/vaastav_snapshot_2025-12-30")
 # Seasons where teams.csv with strength ratings exists
 STRENGTH_SEASONS_START = "2019-20"
 
+
 def load_team_strengths() -> dict[str, pd.DataFrame]:
     """Load per-season team strength ratings from vaastav teams.csv.
     Returns:
