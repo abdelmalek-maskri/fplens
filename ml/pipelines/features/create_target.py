@@ -1,6 +1,7 @@
 # ml/pipelines/features/create_target.py (12)
 
 from pathlib import Path
+
 import pandas as pd
 
 IN_PATH = Path("data/processed/merged/fpl_base_enriched.csv")
@@ -59,7 +60,7 @@ def run():
     print("Final shape:", df.shape)
 
     # Per-horizon coverage
-    for col, shift_n in TARGET_HORIZONS.items():
+    for col in TARGET_HORIZONS:
         valid = df[col].notna().sum()
         print(f"  {col}: {valid} valid rows ({len(df) - valid} NaN at season boundaries)")
 

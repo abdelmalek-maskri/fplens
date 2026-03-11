@@ -8,6 +8,7 @@ team strength ratings (from FPL API teams.csv).
 """
 
 from pathlib import Path
+
 import numpy as np
 import pandas as pd
 
