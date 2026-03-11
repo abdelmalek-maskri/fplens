@@ -42,7 +42,7 @@ export default function FixtureTicker() {
     (a, b) => a - b
   );
 
-  // Compute avg FDR for sorting
+  // Compute avg FDR for sorting + build per-GW lookup for aligned rendering
   const teamData = TEAMS.map((team) => {
     const fixtures = FIXTURES[team] || [];
     const fixtureByGw = Object.fromEntries(fixtures.map((f) => [f.gw, f]));
@@ -203,7 +203,7 @@ export default function FixtureTicker() {
       {/* Quick Analysis */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div>
-          <span className="section-label">Easiest to attack (next 6 GWs)</span>
+          <span className="section-label">Easiest to attack (next {gameweeks.length} GWs)</span>
           <div className="mt-3 space-y-2">
             {[...teamData]
               .sort((a, b) => a.avgAtk - b.avgAtk)
@@ -229,7 +229,9 @@ export default function FixtureTicker() {
           </div>
         </div>
         <div>
-          <span className="section-label">Easiest to keep clean sheets (next 6 GWs)</span>
+          <span className="section-label">
+            Easiest to keep clean sheets (next {gameweeks.length} GWs)
+          </span>
           <div className="mt-3 space-y-2">
             {[...teamData]
               .sort((a, b) => a.avgDef - b.avgDef)

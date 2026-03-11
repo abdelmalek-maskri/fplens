@@ -1,71 +1,14 @@
 import { useState, useEffect, useRef } from "react";
 import { getBestSquad, getPredictions } from "../lib/api";
-import { playerPool, BUDGET, POS_LIMITS, MAX_PER_TEAM } from "../mocks/seasonPlanner";
-
-const USE_MOCKS = import.meta.env.VITE_USE_MOCKS === "true";
-
-// Build mock recommended squad from player pool (greedy pick by predicted_6gw)
-const _buildMockRecommended = () => {
-  const byPos = { GK: [], DEF: [], MID: [], FWD: [] };
-  [...playerPool]
-    .sort((a, b) => b.predicted_6gw - a.predicted_6gw)
-    .forEach((p) => byPos[p.position].push(p));
-  const squad = [
-    ...byPos.GK.slice(0, POS_LIMITS.GK),
-    ...byPos.DEF.slice(0, POS_LIMITS.DEF),
-    ...byPos.MID.slice(0, POS_LIMITS.MID),
-    ...byPos.FWD.slice(0, POS_LIMITS.FWD),
-  ];
-  const totalValue = squad.reduce((s, p) => s + p.value, 0);
-  // Best XI: 4-4-2 from the 15
-  const gks = squad
-    .filter((p) => p.position === "GK")
-    .sort((a, b) => b.predicted_1gw - a.predicted_1gw);
-  const defs = squad
-    .filter((p) => p.position === "DEF")
-    .sort((a, b) => b.predicted_1gw - a.predicted_1gw);
-  const mids = squad
-    .filter((p) => p.position === "MID")
-    .sort((a, b) => b.predicted_1gw - a.predicted_1gw);
-  const fwds = squad
-    .filter((p) => p.position === "FWD")
-    .sort((a, b) => b.predicted_1gw - a.predicted_1gw);
-  const starters = [gks[0], ...defs.slice(0, 4), ...mids.slice(0, 4), ...fwds.slice(0, 2)];
-  const starterIds = new Set(starters.map((p) => p.element));
-  const bench = squad.filter((p) => !starterIds.has(p.element));
-  const sorted = [...starters].sort((a, b) => b.predicted_1gw - a.predicted_1gw);
-  const totalPoints = starters.reduce((s, p) => s + p.predicted_1gw, 0);
-  return {
-    squad,
-    totalValue,
-    totalPoints,
-    budgetRemaining: BUDGET - totalValue,
-    starters,
-    bench,
-    captainId: sorted[0].element,
-    viceId: sorted[1].element,
-    formation: "4-4-2",
-    totalWithCaptain: totalPoints + sorted[0].predicted_1gw,
-  };
-};
-
-const _mockData = {
-  recommended: _buildMockRecommended(),
-  playerPool,
-  budget: BUDGET,
-  posLimits: POS_LIMITS,
-  maxPerTeam: MAX_PER_TEAM,
-};
+import { POS_LIMITS, MAX_PER_TEAM } from "../lib/constants";
 
 export function useSeasonPlanner(budget = 100) {
-  const [data, setData] = useState(USE_MOCKS ? _mockData : null);
-  const [isLoading, setIsLoading] = useState(!USE_MOCKS);
+  const [data, setData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const cancelledRef = useRef(false);
 
   useEffect(() => {
-    if (USE_MOCKS) return;
-
     cancelledRef.current = false;
     setData(null);
     setIsLoading(true);

@@ -248,6 +248,8 @@ def extract_player_features(
         row = {
             # Identifiers
             "element": player["id"],
+            "first_name": player["first_name"],
+            "second_name": player["second_name"],
             "name": f"{player['first_name']} {player['second_name']}",
             "web_name": player["web_name"],
             "season": season,

@@ -1,13 +1,13 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { FDR_COLORS, POSITION_COLORS } from "../lib/constants";
+import { FDR_COLORS, POSITION_COLORS, STATUS_CONFIG } from "../lib/constants";
 import TeamBadge from "../components/TeamBadge";
 import TabBar from "../components/TabBar";
 import RadarChart from "../components/RadarChart";
 import ErrorState from "../components/ErrorState";
 import EmptyState from "../components/EmptyState";
 import { SkeletonCard } from "../components/skeletons";
-import { usePlayerPool, STATUS_CONFIG } from "../hooks";
+import { usePlayerPool } from "../hooks";
 
 // ============================================================
 // SUB-COMPONENTS

@@ -1,13 +1,22 @@
 import { describe, it, expect, vi } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
 
-// Mock the API to return mock data
+const MOCK_ARTICLE = {
+  headline: "Haaland injury update",
+  date: "2026-03-08",
+  source: "The Guardian",
+  snippet: "Erling Haaland trained with the squad ahead of the weekend.",
+  sentiment: 0.35,
+  players: ["Haaland"],
+  injury_flag: false,
+};
+
 vi.mock("../lib/api", () => ({
   getNews: vi.fn(() =>
-    import("../mocks/news").then((m) => ({
-      articles: m.mockArticles,
+    Promise.resolve({
+      articles: [MOCK_ARTICLE],
       trending: [],
-    }))
+    })
   ),
 }));
 

@@ -105,7 +105,9 @@ export default function PlayerDetail() {
             )}
           </div>
           <h2 className="text-xl font-bold text-surface-100">
-            {player.first_name} {player.second_name}
+            {player.first_name?.startsWith(player.web_name)
+              ? player.web_name
+              : `${player.first_name?.split(" ")[0]} ${player.web_name}`}
           </h2>
           <p className="text-sm text-surface-500">
             {player.team_name} · £{player.value}m · {player.selected_by_percent}% owned
