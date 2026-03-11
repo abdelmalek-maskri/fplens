@@ -85,6 +85,8 @@ def run() -> None:
         "opponent_team",
         "value",
         "points_next_gw",
+        "points_gw_plus_2",
+        "points_gw_plus_3",
         "played_lag1",
     ]
     keep = [c for c in keep if c in df.columns]
