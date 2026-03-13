@@ -1,0 +1,56 @@
+{
+  "experiment": "loss_linex_a0.5",
+  "horizon": 2,
+  "target_col": "points_gw_plus_2",
+  "holdout_season": "2024-25",
+  "train_seasons": [
+    "2016-17",
+    "2017-18",
+    "2018-19",
+    "2019-20",
+    "2020-21",
+    "2021-22",
+    "2022-23",
+    "2023-24"
+  ],
+  "n_train": 179486,
+  "n_test": 25199,
+  "n_features": 116,
+  "loss_function": "linex_a0.5",
+  "holdout": {
+    "model": {
+      "mae": 1.0081107227125656,
+      "rmse": 2.2360243857139537,
+      "r2": 0.13698167475339806,
+      "spearman_rho": 0.649520915976389,
+      "spearman_p": 0.0,
+      "haul_mae": 8.04615904661031,
+      "haul_count": 1283
+    },
+    "baselines": {
+      "zero_baseline": {
+        "mae": 1.2115560141275448,
+        "rmse": 2.6890225907845684,
+        "r2": -0.24811857908342705
+      },
+      "mean_baseline": {
+        "mean_value": 1.2761663862362524,
+        "mae": 1.5631263041623418,
+        "rmse": 2.4081856875056267,
+        "r2": -0.0010295279037937366
+      }
+    },
+    "improvements": {
+      "vs_zero": {
+        "mae_improve": 0.20344529141497913,
+        "rmse_improve": 0.4529982050706147,
+        "r2_improve": 0.3851002538368251
+      },
+      "vs_mean": {
+        "mae_improve": 0.5550155814497761,
+        "rmse_improve": 0.172161301791673,
+        "r2_improve": 0.1380112026571918
+      }
+    }
+  }
+}
