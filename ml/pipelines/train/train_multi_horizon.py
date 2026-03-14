@@ -525,6 +525,7 @@ def run_experiment_4(df: pd.DataFrame, horizons: list[int]) -> list[dict]:
 
         cat_cols = [c for c in CAT_COLS if c in X_train.columns]
 
+        # In FPL, points > 0 ⟺ played (minutes > 0 guarantees ≥1 appearance point)
         y_played_train = (y_train > 0).astype(int)
         played_mask = y_train > 0
 
@@ -1071,7 +1072,7 @@ def run(experiment: int | None = None, horizon: int | None = None):
     if all_results:
         summary_df = pd.DataFrame(all_results)
         OUT_ROOT.mkdir(parents=True, exist_ok=True)
-        summary_df.to_csv(OUT_ROOT / "comparison_summary.csv", index=False)
+        summary_df.to_csv(OUT_ROOT / "comparison_summary_raw.csv", index=False)
 
         print("\n" + "=" * 65)
         print("  COMPARISON SUMMARY")
