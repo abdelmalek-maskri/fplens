@@ -34,6 +34,7 @@ ml/data/
 # ML binary artifacts (large, reproducible from training)
 *.joblib
 *.npz
+catboost_info/
 
 # Logs
 *.log

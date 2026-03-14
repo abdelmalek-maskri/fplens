@@ -1,0 +1,138 @@
+{
+  "experiment": "catboost_tweedie_vp1.2",
+  "horizon": 2,
+  "target_col": "points_gw_plus_2",
+  "holdout_season": "2024-25",
+  "train_seasons": [
+    "2016-17",
+    "2017-18",
+    "2018-19",
+    "2019-20",
+    "2020-21",
+    "2021-22",
+    "2022-23",
+    "2023-24"
+  ],
+  "n_train": 179486,
+  "n_test": 25199,
+  "n_features": 116,
+  "variance_power": 1.2,
+  "top_features": [
+    {
+      "feature": "value",
+      "importance": 14.166181221006346
+    },
+    {
+      "feature": "GW",
+      "importance": 6.9333572480737224
+    },
+    {
+      "feature": "minutes_season_avg",
+      "importance": 6.656835240729172
+    },
+    {
+      "feature": "influence_season_avg",
+      "importance": 5.207381389777462
+    },
+    {
+      "feature": "minutes_trend",
+      "importance": 4.047411817917799
+    },
+    {
+      "feature": "total_points_season_avg",
+      "importance": 4.015510225649182
+    },
+    {
+      "feature": "bps_roll10",
+      "importance": 3.9018701439451
+    },
+    {
+      "feature": "position",
+      "importance": 3.8801443255918047
+    },
+    {
+      "feature": "bps_season_avg",
+      "importance": 3.204971028794023
+    },
+    {
+      "feature": "ict_index_roll10",
+      "importance": 2.75282379915068
+    },
+    {
+      "feature": "total_points_roll10",
+      "importance": 2.591650144612854
+    },
+    {
+      "feature": "games_since_start",
+      "importance": 2.1262875029779904
+    },
+    {
+      "feature": "minutes_roll10",
+      "importance": 2.0551523789033395
+    },
+    {
+      "feature": "us_xa_roll10",
+      "importance": 1.9167358540332262
+    },
+    {
+      "feature": "creativity_roll10",
+      "importance": 1.8532146213830027
+    },
+    {
+      "feature": "played_lag1",
+      "importance": 1.8261997541976893
+    },
+    {
+      "feature": "minutes_roll3",
+      "importance": 1.6606567610950156
+    },
+    {
+      "feature": "ict_index_roll5",
+      "importance": 1.4804542880097136
+    },
+    {
+      "feature": "creativity_roll5",
+      "importance": 1.4012418892418566
+    },
+    {
+      "feature": "total_points_roll3",
+      "importance": 1.3465068757186542
+    }
+  ],
+  "holdout": {
+    "model": {
+      "mae": 1.0719387873350972,
+      "rmse": 2.1148180928923237,
+      "r2": 0.22800767809481548,
+      "spearman_rho": 0.64303929391423,
+      "spearman_p": 0.0,
+      "haul_mae": 7.22379375032944,
+      "haul_count": 1283
+    },
+    "baselines": {
+      "zero_baseline": {
+        "mae": 1.2115560141275448,
+        "rmse": 2.6890225907845684,
+        "r2": -0.24811857908342705
+      },
+      "mean_baseline": {
+        "mean_value": 1.2761663862362524,
+        "mae": 1.5631263041623418,
+        "rmse": 2.4081856875056267,
+        "r2": -0.0010295279037937366
+      }
+    },
+    "improvements": {
+      "vs_zero": {
+        "mae_improve": 0.1396172267924476,
+        "rmse_improve": 0.5742044978922447,
+        "r2_improve": 0.47612625717824253
+      },
+      "vs_mean": {
+        "mae_improve": 0.4911875168272446,
+        "rmse_improve": 0.293367594613303,
+        "r2_improve": 0.22903720599860922
+      }
+    }
+  }
+}

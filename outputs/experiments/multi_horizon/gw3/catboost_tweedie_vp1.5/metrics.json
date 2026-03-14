@@ -1,0 +1,138 @@
+{
+  "experiment": "catboost_tweedie_vp1.5",
+  "horizon": 3,
+  "target_col": "points_gw_plus_3",
+  "holdout_season": "2024-25",
+  "train_seasons": [
+    "2016-17",
+    "2017-18",
+    "2018-19",
+    "2019-20",
+    "2020-21",
+    "2021-22",
+    "2022-23",
+    "2023-24"
+  ],
+  "n_train": 173847,
+  "n_test": 24398,
+  "n_features": 116,
+  "variance_power": 1.5,
+  "top_features": [
+    {
+      "feature": "value",
+      "importance": 14.393683942588611
+    },
+    {
+      "feature": "GW",
+      "importance": 9.71948133008369
+    },
+    {
+      "feature": "minutes_season_avg",
+      "importance": 6.919322582945254
+    },
+    {
+      "feature": "position",
+      "importance": 6.452900889854334
+    },
+    {
+      "feature": "influence_season_avg",
+      "importance": 5.651534903006647
+    },
+    {
+      "feature": "bps_season_avg",
+      "importance": 5.318745888320032
+    },
+    {
+      "feature": "minutes_roll10",
+      "importance": 4.713084432590983
+    },
+    {
+      "feature": "total_points_season_avg",
+      "importance": 4.045768869527474
+    },
+    {
+      "feature": "games_since_start",
+      "importance": 3.7780134227496993
+    },
+    {
+      "feature": "creativity_roll10",
+      "importance": 2.196309758177564
+    },
+    {
+      "feature": "minutes_trend",
+      "importance": 2.029104226507007
+    },
+    {
+      "feature": "us_xg_roll10",
+      "importance": 1.7201347203676072
+    },
+    {
+      "feature": "team",
+      "importance": 1.5488297656276224
+    },
+    {
+      "feature": "ict_index_roll5",
+      "importance": 1.4334630368125687
+    },
+    {
+      "feature": "us_npxg_roll10",
+      "importance": 1.329872640601867
+    },
+    {
+      "feature": "influence_roll10",
+      "importance": 1.2957382215444493
+    },
+    {
+      "feature": "total_points_roll10",
+      "importance": 1.211006841739112
+    },
+    {
+      "feature": "total_points_roll3",
+      "importance": 1.1445801375265705
+    },
+    {
+      "feature": "fdr_gw3",
+      "importance": 1.072826769902778
+    },
+    {
+      "feature": "ict_index_roll10",
+      "importance": 1.037123390600767
+    }
+  ],
+  "holdout": {
+    "model": {
+      "mae": 1.1113781024783747,
+      "rmse": 2.1152377444556545,
+      "r2": 0.22342293381835598,
+      "spearman_rho": 0.6275070850688417,
+      "spearman_p": 0.0,
+      "haul_mae": 7.125027679905412,
+      "haul_count": 1240
+    },
+    "baselines": {
+      "zero_baseline": {
+        "mae": 1.2099352405934913,
+        "rmse": 2.6822457321041204,
+        "r2": -0.24871495153871592
+      },
+      "mean_baseline": {
+        "mean_value": 1.2765017515401473,
+        "mae": 1.5627324263666775,
+        "rmse": 2.401621722907022,
+        "r2": -0.0010952304110218858
+      }
+    },
+    "improvements": {
+      "vs_zero": {
+        "mae_improve": 0.09855713811511668,
+        "rmse_improve": 0.5670079876484659,
+        "r2_improve": 0.4721378853570719
+      },
+      "vs_mean": {
+        "mae_improve": 0.4513543238883029,
+        "rmse_improve": 0.2863839784513673,
+        "r2_improve": 0.22451816422937787
+      }
+    }
+  }
+}
