@@ -397,8 +397,9 @@ def linex_loss(a: float):
     LinEx (Linear-Exponential) loss:
     L = exp(a * (ŷ - y)) - a * (ŷ - y) - 1
 
-    Exponential penalty for under-prediction (ŷ < y → negative exponent arg),
-    linear penalty for over-prediction.
+    With a > 0 and diff = (ŷ - y):
+      - Over-prediction (ŷ > y → diff > 0) receives an exponential penalty.
+      - Under-prediction (ŷ < y → diff < 0) is closer to linear.
 
     grad = a * (exp(a * (ŷ - y)) - 1)
     hess = a² * exp(a * (ŷ - y))
