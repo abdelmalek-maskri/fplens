@@ -79,7 +79,7 @@ def split_data(df: pd.DataFrame):
 
 
 def extended_metrics(y_true: np.ndarray, y_pred: np.ndarray, y_train: np.ndarray) -> dict:
-    """Full evaluation + Spearman rho + haul MAE + captain accuracy."""
+    """Full evaluation + Spearman rho + haul MAE."""
     base = full_evaluation(y_true, y_pred, y_train)
 
     # Spearman rank correlation
