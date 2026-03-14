@@ -276,6 +276,9 @@ def run_experiment_2(df: pd.DataFrame, horizons: list[int]) -> list[dict]:
     train_df, test_df, train_seasons = split_data(df)
 
     for h in horizons:
+        if h == 1:
+            print(f"\n  --- GW+1: skipped (no features to drop, model identical to baseline) ---")
+            continue
         target_col = HORIZON_TARGETS[h]
         drop_feats = HORIZON_DROP_FEATURES[h]
         print(f"\n  --- GW+{h} (target: {target_col}, dropping {len(drop_feats)} features) ---")

@@ -6,12 +6,12 @@
     "r2": 0.2192,
     "spearman_rho": 0.6606,
     "haul_mae": 7.4239,
-    "composite_score": 0.192,
+    "composite_score": 0.1920,
     "n_features": 116,
     "runner_up": {
       "experiment": "gbm_avg_3seeds",
       "mae": 1.0532,
-      "composite_score": 0.194
+      "composite_score": 0.1940
     }
   },
   "gw_plus_2": {
@@ -33,7 +33,7 @@
     "recommended": "gbm_avg_3seeds",
     "mae": 1.1052,
     "rmse": 2.1118,
-    "r2": 0.226,
+    "r2": 0.2260,
     "spearman_rho": 0.6301,
     "haul_mae": 7.0955,
     "composite_score": 0.1923,
@@ -41,7 +41,7 @@
     "runner_up": {
       "experiment": "lgbm_reduced",
       "mae": 1.1019,
-      "composite_score": 0.198
+      "composite_score": 0.1980
     }
   }
 }

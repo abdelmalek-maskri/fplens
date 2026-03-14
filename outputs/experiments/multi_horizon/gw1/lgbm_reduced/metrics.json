@@ -217,6 +217,8 @@
       "importance": 187
     }
   ],
+  "status": "duplicate",
+  "note": "GW+1 lgbm_reduced is identical to lgbm_baseline: no features are dropped at horizon 1 and build_lgbm_regularized(1) returns the baseline config. Kept for completeness but excluded from future runs.",
   "holdout": {
     "model": {
       "mae": 1.0544239866204277,

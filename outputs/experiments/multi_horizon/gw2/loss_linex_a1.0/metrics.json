@@ -52,5 +52,7 @@
         "r2_improve": -4.357638102745913
       }
     }
-  }
+  },
+  "status": "unstable",
+  "note": "Configuration loss_linex_a1.0 is unstable on GW+2 (horizon 2): MAE > 3 (5.10) and R^2 < 0 (-4.36), far worse than both baselines. This artifact is kept for diagnostic purposes and should be treated as clearly broken and excluded from --summary aggregations."
 }
