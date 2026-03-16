@@ -1,8 +1,15 @@
 import { useState, useEffect, useMemo } from "react";
-import { getMultiGW } from "../lib/api";
+import { getMultiGW, getTeam } from "../lib/api";
+
+const POS_MAP = { 1: "GK", 2: "DEF", 3: "MID", 4: "FWD" };
+const toPos = (v) => {
+  if (typeof v === "string" && ["GK", "DEF", "MID", "FWD"].includes(v)) return v;
+  return POS_MAP[v] || null;
+};
 
 export function useTransfers(horizon = 6) {
   const [multiGW, setMultiGW] = useState(null);
+  const [myTeamRaw, setMyTeamRaw] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -10,10 +17,15 @@ export function useTransfers(horizon = 6) {
     let cancelled = false;
     setIsLoading(true);
 
-    getMultiGW(horizon)
-      .then((data) => {
+    const fplId = localStorage.getItem("fpl_id");
+    const promises = [getMultiGW(horizon)];
+    if (fplId) promises.push(getTeam(fplId));
+
+    Promise.all(promises)
+      .then(([mgw, team]) => {
         if (!cancelled) {
-          setMultiGW(data);
+          setMultiGW(mgw);
+          if (team) setMyTeamRaw(team);
           setIsLoading(false);
         }
       })
@@ -34,6 +46,12 @@ export function useTransfers(horizon = 6) {
 
     const gwLabels = Array.from({ length: horizon }, (_, i) => `GW+${i + 1}`);
 
+    // Build a lookup from element_id -> multi-GW predictions
+    const mgwByElement = {};
+    for (const p of multiGW) {
+      mgwByElement[p.element] = p;
+    }
+
     const targets = multiGW
       .filter((p) => p.predicted && p.predicted.length > 0)
       .map((p) => ({
@@ -52,10 +70,31 @@ export function useTransfers(horizon = 6) {
         pts_last5: [],
       }));
 
-    // myTeam is empty until user connects via FPL ID (My Team page).
-    // The transfer planner still works for browsing targets.
-    return { myTeam: [], targets, gwLabels };
-  }, [multiGW, horizon]);
+    // Build myTeam from FPL team picks + multi-GW predictions
+    let myTeam = [];
+    if (myTeamRaw && myTeamRaw.picks) {
+      myTeam = myTeamRaw.picks.map((pick) => {
+        const mgw = mgwByElement[pick.element] || {};
+        return {
+          element: pick.element,
+          web_name: pick.web_name || mgw.web_name || "Unknown",
+          team: pick.team_name || mgw.team_name || "",
+          position: toPos(mgw.position) || toPos(pick.element_type) || "MID",
+          value: pick.value || mgw.value || 0,
+          selling_price: pick.selling_price || pick.value || 0,
+          status: pick.status || mgw.status || "a",
+          form: pick.form || mgw.form || 0,
+          predicted: mgw.predicted || Array(horizon).fill(0),
+          fdr: mgw.fdr || Array(horizon).fill(3),
+          predicted_total: mgw.predicted_total || 0,
+          fdr_avg: mgw.fdr_avg || 3,
+          pts_last5: [],
+        };
+      });
+    }
+
+    return { myTeam, targets, gwLabels };
+  }, [multiGW, myTeamRaw, horizon]);
 
   return { data, isLoading, error };
 }
