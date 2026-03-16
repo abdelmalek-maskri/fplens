@@ -63,7 +63,7 @@ export function getNews(days = 7) {
   return apiFetch(`/api/news?days=${days}`);
 }
 
-export function getMultiGW(horizon = 6) {
+export function getMultiGW(horizon = 3) {
   return apiFetch(`/api/predictions/multi-gw?horizon=${horizon}`);
 }
 

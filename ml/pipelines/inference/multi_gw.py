@@ -208,7 +208,7 @@ def predict_multi_gw(
     feature_matrix: pd.DataFrame,
     horizon_models: dict,
     fixtures_data: dict,
-    horizon: int = 6,
+    horizon: int = 3,
 ) -> list[dict]:
     """Generate multi-horizon predictions for all players.
 
@@ -217,11 +217,12 @@ def predict_multi_gw(
         feature_matrix: Live feature matrix from fetch_current_gw_data().
         horizon_models: Dict of {2: model_gw2, 3: model_gw3} from load_horizon_models().
         fixtures_data: Fixture grid from fetch_fixtures().
-        horizon: Number of gameweeks to predict (1-8).
+        horizon: Number of gameweeks to predict (1-3, backed by trained models).
 
     Returns:
         List of dicts, one per player, matching the frontend's expected format.
     """
+    horizon = min(horizon, 3)  # Only GW+1/2/3 have trained models
     n_players = len(gw1_predictions)
     gw1_preds = gw1_predictions["predicted_points"].values
 
@@ -242,11 +243,7 @@ def predict_multi_gw(
         if len(gw3_preds) != n_players:
             gw3_preds = np.full(n_players, np.mean(gw3_preds))
 
-    # GW+4 through GW+N: reuse GW+3 predictions with FDR adjustment
-    # This is a projection, not a validated prediction.
-    extended_preds = [gw1_preds, gw2_preds, gw3_preds]
-    for _k in range(4, horizon + 1):
-        extended_preds.append(gw3_preds.copy())  # base = GW+3 prediction
+    preds_per_gw = [gw1_preds, gw2_preds, gw3_preds]
 
     # Build per-player output
     results = []
@@ -254,22 +251,12 @@ def predict_multi_gw(
         team_name = row.get("team_name", "")
         element_id = int(row.get("element", 0))
 
-        # Get FDR and opponents for this player's team
         fdr_list = _get_team_fdr_list(team_name, horizon, fixtures_data)
         opponents = _get_team_opponents(team_name, horizon, fixtures_data)
 
-        # Apply FDR adjustment for GW+4+
-        # Higher FDR = harder fixture = lower expected points
-        # Neutral FDR = 3, so adjustment = 3 / actual_fdr
         predicted = []
-        for gw_idx in range(min(horizon, len(extended_preds))):
-            base_pred = float(extended_preds[gw_idx][i])
-            if gw_idx >= 3:  # GW+4+
-                fdr = fdr_list[gw_idx] if gw_idx < len(fdr_list) else 3
-                fdr_adjustment = 3.0 / max(fdr, 1)  # easier fixture → higher prediction
-                base_pred = base_pred * fdr_adjustment
-                base_pred = max(base_pred, 0)
-            predicted.append(round(base_pred, 2))
+        for gw_idx in range(min(horizon, len(preds_per_gw))):
+            predicted.append(round(float(preds_per_gw[gw_idx][i]), 2))
 
         predicted_total = round(sum(predicted), 2)
         fdr_avg = round(np.mean(fdr_list[:horizon]), 2) if fdr_list else 3.0

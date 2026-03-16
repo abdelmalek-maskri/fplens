@@ -7,7 +7,7 @@ const toPos = (v) => {
   return POS_MAP[v] || null;
 };
 
-export function useTransfers(horizon = 6) {
+export function useTransfers(horizon = 3) {
   const [multiGW, setMultiGW] = useState(null);
   const [myTeamRaw, setMyTeamRaw] = useState(null);
   const [isLoading, setIsLoading] = useState(true);

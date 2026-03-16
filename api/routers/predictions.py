@@ -54,9 +54,9 @@ def get_best_squad(
 @router.get("/predictions/multi-gw")
 def get_multi_gw(
     request: Request,
-    horizon: int = Query(default=6, ge=1, le=8),
+    horizon: int = Query(default=3, ge=1, le=3),
 ):
-    # All players with multi-GW predictions across trained horizons + FDR-adjusted projections
+    # All players with multi-GW predictions (GW+1/2/3, each backed by a trained model)
     cache = request.app.state.cache
     horizon_models = getattr(request.app.state, "horizon_models", {})
 
