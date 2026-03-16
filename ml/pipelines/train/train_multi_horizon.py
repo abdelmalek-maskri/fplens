@@ -634,13 +634,17 @@ def run_experiment_4(df: pd.DataFrame, horizons: list[int]) -> list[dict]:
 # ===========================================================================
 
 
-def cats_to_codes(X: pd.DataFrame) -> pd.DataFrame:
-    """Convert categorical columns to numeric codes for models that can't handle them (ElasticNet)."""
-    X = X.copy()
-    for c in X.columns:
-        if X[c].dtype.name == "category":
-            X[c] = X[c].cat.codes.astype(float)
-    return X
+def cats_to_codes(X_train: pd.DataFrame, X_test: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Convert categorical columns to numeric codes, aligning test categories to train."""
+    X_train = X_train.copy()
+    X_test = X_test.copy()
+    for c in X_train.columns:
+        if X_train[c].dtype.name == "category":
+            # Align test categories to train so codes are consistent
+            unified = X_train[c].cat.categories.union(X_test[c].cat.categories)
+            X_train[c] = X_train[c].cat.set_categories(unified).cat.codes.astype(float)
+            X_test[c] = X_test[c].cat.set_categories(unified).cat.codes.astype(float)
+    return X_train, X_test
 
 
 def run_experiment_5(df: pd.DataFrame, horizons: list[int]) -> list[dict]:
@@ -722,8 +726,7 @@ def run_experiment_5(df: pd.DataFrame, horizons: list[int]) -> list[dict]:
             })
 
         # ----- 5b: ElasticNet -----
-        X_train_num = cats_to_codes(X_train)
-        X_test_num = cats_to_codes(X_test)
+        X_train_num, X_test_num = cats_to_codes(X_train, X_test)
 
         # Scale features for linear model
         scaler = StandardScaler()
