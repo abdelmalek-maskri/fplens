@@ -23,10 +23,10 @@ import numpy as np
 import pandas as pd
 from catboost import CatBoostRegressor
 from lightgbm import LGBMClassifier, LGBMRegressor
+from scipy.stats import spearmanr
 from sklearn.linear_model import ElasticNet
 from sklearn.metrics import roc_auc_score
 from sklearn.preprocessing import StandardScaler
-from scipy.stats import spearmanr
 
 from ml.config.eval_config import (
     CAT_COLS,
@@ -290,7 +290,7 @@ def run_experiment_2(df: pd.DataFrame, horizons: list[int]) -> list[dict]:
 
     for h in horizons:
         if h == 1:
-            print(f"\n  --- GW+1: skipped (no features to drop, model identical to baseline) ---")
+            print("\n  --- GW+1: skipped (no features to drop, model identical to baseline) ---")
             continue
         target_col = HORIZON_TARGETS[h]
         drop_feats = HORIZON_DROP_FEATURES[h]
@@ -1048,7 +1048,7 @@ def generate_final_summary():
         top = df_stable[df_stable["horizon"] == h].iloc[0]
         print(f"  GW+{h}: {top['experiment']:<30s} (MAE={top['mae']:.4f}, ρ={top['spearman_rho']:.4f})")
 
-    print(f"\n  Output files:")
+    print("\n  Output files:")
     print(f"    {root / 'comparison_summary.csv'}")
     print(f"    {root / 'best_per_horizon.json'}")
     print("=" * 75)
@@ -1081,7 +1081,7 @@ def run(experiment: int | None = None, horizon: int | None = None):
             raise ValueError(f"Experiment {experiment} not implemented yet. Available: {list(EXPERIMENT_RUNNERS.keys())}")
         all_results.extend(runner(df, horizons))
     else:
-        for exp_num, runner in sorted(EXPERIMENT_RUNNERS.items()):
+        for _exp_num, runner in sorted(EXPERIMENT_RUNNERS.items()):
             all_results.extend(runner(df, horizons))
 
     # Save comparison summary
