@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from api.cache import FPLDataCache
 from api.routers import fixtures, insights, predictions, team
+from ml.pipelines.inference.multi_gw import load_horizon_models
 from ml.pipelines.inference.predict import DEFAULT_MODEL
 
 MODEL_PATH = Path(os.environ.get("MODEL_PATH", str(DEFAULT_MODEL)))
@@ -24,8 +25,10 @@ async def lifespan(app: FastAPI):
         )
     print(f"Loading ML model from {MODEL_PATH}...")
     app.state.model = joblib.load(MODEL_PATH)
-    app.state.cache = FPLDataCache(ttl_minutes=15)
     print(f"Model loaded: {type(app.state.model).__name__}")
+    print("Loading horizon models (GW+2, GW+3)...")
+    app.state.horizon_models = load_horizon_models()
+    app.state.cache = FPLDataCache(ttl_minutes=15)
     yield
     print("Shutting down...")
 
