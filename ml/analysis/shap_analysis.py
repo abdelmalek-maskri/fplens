@@ -49,6 +49,14 @@ except Exception:
         pass
 
 
+try:
+    from ml.pipelines.train.train_stacked_with_injury import StackedEnsembleInjury
+except Exception:
+
+    class StackedEnsembleInjury:
+        pass
+
+
 OUT_DIR = Path("outputs/analysis/shap")
 FEATURES_PATH = Path("data/features/extended_features.csv")
 SAMPLE_SIZE = 5000  # For SHAP computation (full dataset is slow)

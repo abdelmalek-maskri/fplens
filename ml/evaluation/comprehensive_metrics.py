@@ -39,6 +39,14 @@ except Exception:
 
 
 try:
+    from ml.pipelines.train.train_stacked_with_injury import StackedEnsembleInjury
+except Exception:
+
+    class StackedEnsembleInjury:
+        pass
+
+
+try:
     from ml.pipelines.train.train_twohead_model import TwoHeadModel
 except Exception:
 
@@ -452,8 +460,14 @@ def _load_holdout_data(features_path: Path) -> tuple[pd.DataFrame, np.ndarray, n
 
 
 def _align_features_for_model(X: pd.DataFrame, model) -> pd.DataFrame:
+    # LightGBM uses feature_name_, CatBoost uses feature_names_
+    feature_names = None
     if hasattr(model, "feature_name_"):
         feature_names = list(model.feature_name_)
+    elif hasattr(model, "feature_names_"):
+        feature_names = list(model.feature_names_)
+
+    if feature_names is not None:
         missing = [c for c in feature_names if c not in X.columns]
         if missing:
             raise ValueError(f"Missing features required by model: {missing}")
