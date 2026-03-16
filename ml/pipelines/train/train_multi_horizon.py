@@ -210,10 +210,12 @@ def run_experiment_1(df: pd.DataFrame, horizons: list[int]) -> list[dict]:
         eval_result = extended_metrics(y_test, preds, y_train)
 
         # Feature importance (top 20)
-        imp = pd.DataFrame({
-            "feature": X_train.columns,
-            "importance": model.feature_importances_,
-        }).sort_values("importance", ascending=False)
+        imp = pd.DataFrame(
+            {
+                "feature": X_train.columns,
+                "importance": model.feature_importances_,
+            }
+        ).sort_values("importance", ascending=False)
 
         metrics = {
             "experiment": "lgbm_baseline",
@@ -233,11 +235,13 @@ def run_experiment_1(df: pd.DataFrame, horizons: list[int]) -> list[dict]:
         imp.to_csv(out_dir / "feature_importance.csv", index=False)
         print_horizon_result("lgbm_baseline", h, metrics)
 
-        results.append({
-            "experiment": "lgbm_baseline",
-            "horizon": h,
-            **eval_result["model"],
-        })
+        results.append(
+            {
+                "experiment": "lgbm_baseline",
+                "horizon": h,
+                **eval_result["model"],
+            }
+        )
 
     return results
 
@@ -247,27 +251,66 @@ def run_experiment_1(df: pd.DataFrame, horizons: list[int]) -> list[dict]:
 # ===========================================================================
 
 # Features to drop at each horizon (cumulative: GW+2 drops apply to GW+3 too)
-DROP_GW2 = [c for c in [
-    # lag-1 features (too noisy 2 weeks out)
-    "played_lag1", "total_points_lag1", "minutes_lag1", "starts_lag1",
-    "expected_goals_lag1", "expected_assists_lag1", "expected_goal_involvements_lag1",
-    "expected_goals_conceded_lag1", "influence_lag1", "creativity_lag1", "threat_lag1",
-    "ict_index_lag1", "bps_lag1", "bonus_lag1",
-    "us_xg_lag1", "us_xa_lag1", "us_npxg_lag1", "us_xgchain_lag1",
-    "us_xgbuildup_lag1", "us_shots_lag1", "us_key_passes_lag1", "us_time_lag1",
-    # momentum (derived from short-term, noisy at distance)
-    "points_momentum", "bps_momentum", "xg_momentum",
-]]
+DROP_GW2 = [
+    c
+    for c in [
+        # lag-1 features (too noisy 2 weeks out)
+        "played_lag1",
+        "total_points_lag1",
+        "minutes_lag1",
+        "starts_lag1",
+        "expected_goals_lag1",
+        "expected_assists_lag1",
+        "expected_goal_involvements_lag1",
+        "expected_goals_conceded_lag1",
+        "influence_lag1",
+        "creativity_lag1",
+        "threat_lag1",
+        "ict_index_lag1",
+        "bps_lag1",
+        "bonus_lag1",
+        "us_xg_lag1",
+        "us_xa_lag1",
+        "us_npxg_lag1",
+        "us_xgchain_lag1",
+        "us_xgbuildup_lag1",
+        "us_shots_lag1",
+        "us_key_passes_lag1",
+        "us_time_lag1",
+        # momentum (derived from short-term, noisy at distance)
+        "points_momentum",
+        "bps_momentum",
+        "xg_momentum",
+    ]
+]
 
-DROP_GW3 = DROP_GW2 + [c for c in [
-    # roll3 features (3-game window too short for 3 weeks out)
-    "total_points_roll3", "minutes_roll3", "starts_roll3",
-    "expected_goals_roll3", "expected_assists_roll3", "expected_goal_involvements_roll3",
-    "expected_goals_conceded_roll3", "influence_roll3", "creativity_roll3", "threat_roll3",
-    "ict_index_roll3", "bps_roll3", "bonus_roll3",
-    "us_xg_roll3", "us_xa_roll3", "us_npxg_roll3", "us_xgchain_roll3",
-    "us_xgbuildup_roll3", "us_shots_roll3", "us_key_passes_roll3", "us_time_roll3",
-]]
+DROP_GW3 = DROP_GW2 + [
+    c
+    for c in [
+        # roll3 features (3-game window too short for 3 weeks out)
+        "total_points_roll3",
+        "minutes_roll3",
+        "starts_roll3",
+        "expected_goals_roll3",
+        "expected_assists_roll3",
+        "expected_goal_involvements_roll3",
+        "expected_goals_conceded_roll3",
+        "influence_roll3",
+        "creativity_roll3",
+        "threat_roll3",
+        "ict_index_roll3",
+        "bps_roll3",
+        "bonus_roll3",
+        "us_xg_roll3",
+        "us_xa_roll3",
+        "us_npxg_roll3",
+        "us_xgchain_roll3",
+        "us_xgbuildup_roll3",
+        "us_shots_roll3",
+        "us_key_passes_roll3",
+        "us_time_roll3",
+    ]
+]
 
 HORIZON_DROP_FEATURES = {1: [], 2: DROP_GW2, 3: DROP_GW3}
 
@@ -348,10 +391,12 @@ def run_experiment_2(df: pd.DataFrame, horizons: list[int]) -> list[dict]:
         eval_result = extended_metrics(y_test, preds, y_train)
 
         # Feature importance
-        imp = pd.DataFrame({
-            "feature": X_train.columns,
-            "importance": model.feature_importances_,
-        }).sort_values("importance", ascending=False)
+        imp = pd.DataFrame(
+            {
+                "feature": X_train.columns,
+                "importance": model.feature_importances_,
+            }
+        ).sort_values("importance", ascending=False)
 
         metrics = {
             "experiment": "lgbm_reduced",
@@ -377,11 +422,13 @@ def run_experiment_2(df: pd.DataFrame, horizons: list[int]) -> list[dict]:
         )
         print_horizon_result("lgbm_reduced", h, metrics)
 
-        results.append({
-            "experiment": "lgbm_reduced",
-            "horizon": h,
-            **eval_result["model"],
-        })
+        results.append(
+            {
+                "experiment": "lgbm_reduced",
+                "horizon": h,
+                **eval_result["model"],
+            }
+        )
 
     return results
 
@@ -527,11 +574,13 @@ def run_experiment_3(df: pd.DataFrame, horizons: list[int]) -> list[dict]:
             save_experiment(out_dir, metrics, model=None)
             print_horizon_result(f"loss_{loss_name}", h, metrics)
 
-            results.append({
-                "experiment": f"loss_{loss_name}",
-                "horizon": h,
-                **eval_result["model"],
-            })
+            results.append(
+                {
+                    "experiment": f"loss_{loss_name}",
+                    "horizon": h,
+                    **eval_result["model"],
+                }
+            )
 
     return results
 
@@ -596,9 +645,7 @@ def run_experiment_4(df: pd.DataFrame, horizons: list[int]) -> list[dict]:
             n_jobs=-1,
             verbose=-1,
         )
-        regressor.fit(
-            X_train[played_mask], y_train[played_mask], categorical_feature=cat_cols
-        )
+        regressor.fit(X_train[played_mask], y_train[played_mask], categorical_feature=cat_cols)
 
         # Predict
         play_prob = classifier.predict_proba(X_test)[:, 1]
@@ -639,11 +686,13 @@ def run_experiment_4(df: pd.DataFrame, horizons: list[int]) -> list[dict]:
             save_experiment(out_dir, metrics)
             print_horizon_result(variant_name, h, metrics)
 
-            results.append({
-                "experiment": variant_name,
-                "horizon": h,
-                **eval_result["model"],
-            })
+            results.append(
+                {
+                    "experiment": variant_name,
+                    "horizon": h,
+                    **eval_result["model"],
+                }
+            )
 
         # Save models (once per horizon, under hurdle_soft dir)
         out_dir = OUT_ROOT / f"gw{h}" / "hurdle_soft"
@@ -722,10 +771,12 @@ def run_experiment_5(df: pd.DataFrame, horizons: list[int]) -> list[dict]:
             eval_result = extended_metrics(y_test, preds, y_train)
 
             # Feature importance
-            imp = pd.DataFrame({
-                "feature": list(X_train.columns),
-                "importance": model.get_feature_importance(),
-            }).sort_values("importance", ascending=False)
+            imp = pd.DataFrame(
+                {
+                    "feature": list(X_train.columns),
+                    "importance": model.get_feature_importance(),
+                }
+            ).sort_values("importance", ascending=False)
 
             metrics = {
                 "experiment": exp_name,
@@ -746,11 +797,13 @@ def run_experiment_5(df: pd.DataFrame, horizons: list[int]) -> list[dict]:
             imp.to_csv(out_dir / "feature_importance.csv", index=False)
             print_horizon_result(exp_name, h, metrics)
 
-            results.append({
-                "experiment": exp_name,
-                "horizon": h,
-                **eval_result["model"],
-            })
+            results.append(
+                {
+                    "experiment": exp_name,
+                    "horizon": h,
+                    **eval_result["model"],
+                }
+            )
 
         # ----- 5b: ElasticNet -----
         # NOTE: Only the raw ElasticNet estimator is saved — the StandardScaler
@@ -780,10 +833,12 @@ def run_experiment_5(df: pd.DataFrame, horizons: list[int]) -> list[dict]:
             eval_result = extended_metrics(y_test, preds, y_train)
 
             # Feature importance (absolute coefficients)
-            coef_imp = pd.DataFrame({
-                "feature": list(X_train.columns),
-                "importance": np.abs(model.coef_),
-            }).sort_values("importance", ascending=False)
+            coef_imp = pd.DataFrame(
+                {
+                    "feature": list(X_train.columns),
+                    "importance": np.abs(model.coef_),
+                }
+            ).sort_values("importance", ascending=False)
 
             n_nonzero = int((model.coef_ != 0).sum())
             print(f"  Non-zero coefficients: {n_nonzero}/{len(model.coef_)}")
@@ -809,11 +864,13 @@ def run_experiment_5(df: pd.DataFrame, horizons: list[int]) -> list[dict]:
             coef_imp.to_csv(out_dir / "feature_importance.csv", index=False)
             print_horizon_result(exp_name, h, metrics)
 
-            results.append({
-                "experiment": exp_name,
-                "horizon": h,
-                **eval_result["model"],
-            })
+            results.append(
+                {
+                    "experiment": exp_name,
+                    "horizon": h,
+                    **eval_result["model"],
+                }
+            )
 
         # ----- 5c: Simple GBM Average (3 seeds) -----
         exp_name = "gbm_avg_3seeds"
@@ -843,10 +900,12 @@ def run_experiment_5(df: pd.DataFrame, horizons: list[int]) -> list[dict]:
 
         # Average feature importance across the 3 models
         avg_imp = np.mean([m.feature_importances_ for m in models_to_save], axis=0)
-        imp = pd.DataFrame({
-            "feature": list(X_train.columns),
-            "importance": avg_imp,
-        }).sort_values("importance", ascending=False)
+        imp = pd.DataFrame(
+            {
+                "feature": list(X_train.columns),
+                "importance": avg_imp,
+            }
+        ).sort_values("importance", ascending=False)
 
         # Also compute std of predictions across seeds (diversity measure)
         pred_std = float(np.mean(np.std(individual_preds, axis=0)))
@@ -874,11 +933,13 @@ def run_experiment_5(df: pd.DataFrame, horizons: list[int]) -> list[dict]:
         imp.to_csv(out_dir / "feature_importance.csv", index=False)
         print_horizon_result(exp_name, h, metrics)
 
-        results.append({
-            "experiment": exp_name,
-            "horizon": h,
-            **eval_result["model"],
-        })
+        results.append(
+            {
+                "experiment": exp_name,
+                "horizon": h,
+                **eval_result["model"],
+            }
+        )
 
     return results
 
@@ -907,19 +968,21 @@ def generate_final_summary():
             m = json.loads(mf.read_text())
             model = m["holdout"]["model"]
             baselines = m["holdout"]["baselines"]
-            rows.append({
-                "horizon": h,
-                "experiment": m["experiment"],
-                "mae": model["mae"],
-                "rmse": model["rmse"],
-                "r2": model["r2"],
-                "spearman_rho": model.get("spearman_rho"),
-                "haul_mae": model.get("haul_mae"),
-                "haul_count": model.get("haul_count"),
-                "n_features": m.get("n_features"),
-                "mae_vs_mean": baselines["mean_baseline"]["mae"] - model["mae"],
-                "mae_vs_zero": baselines["zero_baseline"]["mae"] - model["mae"],
-            })
+            rows.append(
+                {
+                    "horizon": h,
+                    "experiment": m["experiment"],
+                    "mae": model["mae"],
+                    "rmse": model["rmse"],
+                    "r2": model["r2"],
+                    "spearman_rho": model.get("spearman_rho"),
+                    "haul_mae": model.get("haul_mae"),
+                    "haul_count": model.get("haul_count"),
+                    "n_features": m.get("n_features"),
+                    "mae_vs_mean": baselines["mean_baseline"]["mae"] - model["mae"],
+                    "mae_vs_zero": baselines["zero_baseline"]["mae"] - model["mae"],
+                }
+            )
 
     df = pd.DataFrame(rows)
 
@@ -966,9 +1029,18 @@ def generate_final_summary():
 
     # Save full comparison
     out_cols = [
-        "horizon", "rank", "experiment", "mae", "rmse", "r2",
-        "spearman_rho", "haul_mae", "haul_count", "n_features",
-        "mae_vs_mean", "composite",
+        "horizon",
+        "rank",
+        "experiment",
+        "mae",
+        "rmse",
+        "r2",
+        "spearman_rho",
+        "haul_mae",
+        "haul_count",
+        "n_features",
+        "mae_vs_mean",
+        "composite",
     ]
     df_stable[out_cols].to_csv(root / "comparison_summary.csv", index=False)
 
@@ -1019,7 +1091,7 @@ def generate_final_summary():
         print(f"  GW+{h} — TOP 10")
         print(f"  {'─' * 71}")
         print(f"  {'Rank':<5} {'Experiment':<30} {'MAE':<8} {'ρ':<8} {'Haul':<8} {'R²':<8} {'Score':<6}")
-        print(f"  {'─'*5} {'─'*30} {'─'*8} {'─'*8} {'─'*8} {'─'*8} {'─'*6}")
+        print(f"  {'─' * 5} {'─' * 30} {'─' * 8} {'─' * 8} {'─' * 8} {'─' * 8} {'─' * 6}")
         for _, row in horizon_df.iterrows():
             print(
                 f"  {int(row['rank']):<5} {row['experiment']:<30} "
@@ -1038,10 +1110,7 @@ def generate_final_summary():
         if len(baseline) > 0:
             bl = baseline.iloc[0]
             delta_mae = top["mae"] - bl["mae"]
-            print(
-                f"  GW+{h}: Best={top['experiment']:<28s} MAE={top['mae']:.4f} "
-                f"(Δ vs baseline: {delta_mae:+.4f})"
-            )
+            print(f"  GW+{h}: Best={top['experiment']:<28s} MAE={top['mae']:.4f} (Δ vs baseline: {delta_mae:+.4f})")
 
     # Key insights
     print(f"\n  {'─' * 71}")
@@ -1109,7 +1178,9 @@ def run(experiment: int | None = None, horizon: int | None = None):
     if experiment:
         runner = EXPERIMENT_RUNNERS.get(experiment)
         if not runner:
-            raise ValueError(f"Experiment {experiment} not implemented yet. Available: {list(EXPERIMENT_RUNNERS.keys())}")
+            raise ValueError(
+                f"Experiment {experiment} not implemented yet. Available: {list(EXPERIMENT_RUNNERS.keys())}"
+            )
         all_results.extend(runner(df, horizons))
     else:
         for _exp_num, runner in sorted(EXPERIMENT_RUNNERS.items()):
