@@ -55,18 +55,90 @@ def _get_features(model) -> list[str]:
     return get_model_features(model)
 
 
-def _prepare_and_predict(model, live_df: pd.DataFrame) -> np.ndarray:
+def _add_future_fixture_features(df: pd.DataFrame, fixtures_data: dict) -> pd.DataFrame:
+    """Add future fixture features (opponent_gw2/3, fdr_gw2/3, was_home_gw2/3).
+
+    The GW+2/3 models were trained with these columns. Without them,
+    predictions default to conservative estimates.
+    """
+    df = df.copy()
+    fixture_map = fixtures_data.get("fixtures", {})
+    team_full = fixtures_data.get("team_full", {})
+
+    # Build reverse map: full name -> short name
+    full_to_short = {v: k for k, v in team_full.items()}
+
+    for horizon_offset in [1, 2]:  # gw2 = offset 1, gw3 = offset 2
+        gw_label = horizon_offset + 1  # gw2, gw3
+        opp_col = f"opponent_gw{gw_label}"
+        home_col = f"was_home_gw{gw_label}"
+        fdr_col = f"fdr_gw{gw_label}"
+        fdr_atk_col = f"fdr_attack_gw{gw_label}"
+        fdr_def_col = f"fdr_defence_gw{gw_label}"
+
+        opp_vals, home_vals, fdr_vals, fdr_atk_vals, fdr_def_vals = [], [], [], [], []
+
+        for _, row in df.iterrows():
+            team_name = row.get("team_name", "")
+            short = full_to_short.get(team_name, team_name)
+            gws = fixture_map.get(short, [])
+
+            if horizon_offset < len(gws):
+                fix = gws[horizon_offset]
+                opp_vals.append(fix.get("opponent", ""))
+                home_vals.append(1 if fix.get("home") else 0)
+                atk = fix.get("atkFdr", 3)
+                dfn = fix.get("defFdr", 3)
+                fdr_vals.append(round((atk + dfn) / 2))
+                fdr_atk_vals.append(atk)
+                fdr_def_vals.append(dfn)
+            else:
+                opp_vals.append("")
+                home_vals.append(0)
+                fdr_vals.append(3)
+                fdr_atk_vals.append(3)
+                fdr_def_vals.append(3)
+
+        df[opp_col] = opp_vals
+        df[home_col] = home_vals
+        df[fdr_col] = fdr_vals
+        df[fdr_atk_col] = fdr_atk_vals
+        df[fdr_def_col] = fdr_def_vals
+
+    return df
+
+
+def _prepare_and_predict(model, live_df: pd.DataFrame, fixtures_data: dict | None = None) -> np.ndarray:
     """Align features and run prediction for a single model."""
     features = _get_features(model)
+
+    # Add future fixture features if available and needed
+    if fixtures_data is not None:
+        missing = [
+            f
+            for f in features
+            if f not in live_df.columns
+            and f.startswith(("opponent_gw", "was_home_gw", "fdr_gw", "fdr_attack_gw", "fdr_defence_gw"))
+        ]
+        if missing:
+            live_df = _add_future_fixture_features(live_df, fixtures_data)
+
     drop = set(DROP_COLS)
     X = live_df.drop(columns=[c for c in drop if c in live_df.columns], errors="ignore")
     X = align_features(X, features)
 
     # Convert categoricals — CatBoost requires string categories, not numeric.
     # Column may already be category dtype from upstream, so convert to str first.
+    # Only convert the 4 standard CAT_COLS that were declared as cat_features during training.
     for c in CAT_COLS:
         if c in X.columns:
             X[c] = X[c].astype(str).replace("nan", "missing").astype("category")
+
+    # opponent_gw* columns are numeric in training (team IDs, not strings).
+    # Encode them as numeric codes if present as strings.
+    for c in X.columns:
+        if c.startswith("opponent_gw") and X[c].dtype == object:
+            X[c] = pd.Categorical(X[c]).codes.astype(float)
 
     # Fill NaN
     numeric_cols = X.select_dtypes(include=[np.number]).columns
@@ -156,7 +228,7 @@ def predict_multi_gw(
     # GW+2 predictions (direct model)
     gw2_preds = np.full(n_players, 0.0)
     if horizon >= 2 and 2 in horizon_models:
-        gw2_preds = _prepare_and_predict(horizon_models[2], feature_matrix)
+        gw2_preds = _prepare_and_predict(horizon_models[2], feature_matrix, fixtures_data)
         # Align to same player order as gw1_predictions
         if len(gw2_preds) == n_players:
             pass  # Already aligned (same feature_matrix rows)
@@ -166,7 +238,7 @@ def predict_multi_gw(
     # GW+3 predictions (direct model)
     gw3_preds = np.full(n_players, 0.0)
     if horizon >= 3 and 3 in horizon_models:
-        gw3_preds = _prepare_and_predict(horizon_models[3], feature_matrix)
+        gw3_preds = _prepare_and_predict(horizon_models[3], feature_matrix, fixtures_data)
         if len(gw3_preds) != n_players:
             gw3_preds = np.full(n_players, np.mean(gw3_preds))
 
