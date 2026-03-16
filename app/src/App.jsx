@@ -9,7 +9,6 @@ const Dashboard = lazy(() => import("./pages/Dashboard"));
 const OptimalXI = lazy(() => import("./pages/OptimalXI"));
 const MyTeam = lazy(() => import("./pages/MyTeam"));
 const TransferPlanner = lazy(() => import("./pages/TransferPlanner"));
-const ChipAdvisor = lazy(() => import("./pages/ChipAdvisor"));
 const FixtureTicker = lazy(() => import("./pages/FixtureTicker"));
 const PlayerComparison = lazy(() => import("./pages/PlayerComparison"));
 const NewsSentiment = lazy(() => import("./pages/NewsSentiment"));
@@ -30,7 +29,6 @@ export default function App() {
               <Route path="/optimal-xi" element={<OptimalXI />} />
               <Route path="/my-team" element={<MyTeam />} />
               <Route path="/transfers" element={<TransferPlanner />} />
-              <Route path="/chip-advisor" element={<ChipAdvisor />} />
               <Route path="/fixtures" element={<FixtureTicker />} />
               <Route path="/compare" element={<PlayerComparison />} />
               <Route path="/news" element={<NewsSentiment />} />

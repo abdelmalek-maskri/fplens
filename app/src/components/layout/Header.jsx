@@ -6,7 +6,6 @@ const PAGE_TITLES = {
   "/optimal-xi": "Optimal XI",
   "/my-team": "My Team",
   "/transfers": "Transfers",
-  "/chip-advisor": "Chip Advisor",
   "/fixtures": "Fixture Ticker",
   "/compare": "Player Compare",
   "/news": "News & Sentiment",
