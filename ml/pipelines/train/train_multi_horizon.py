@@ -99,12 +99,25 @@ def extended_metrics(y_true: np.ndarray, y_pred: np.ndarray, y_train: np.ndarray
     return base
 
 
-def save_experiment(out_dir: Path, metrics: dict, model=None, model_name: str = "model"):
-    """Save metrics JSON and optionally a model joblib."""
+def save_experiment(
+    out_dir: Path,
+    metrics: dict,
+    model=None,
+    model_name: str = "model",
+    y_true=None,
+    y_pred=None,
+):
+    """Save metrics JSON, optionally a model joblib and holdout predictions."""
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "metrics.json").write_text(json.dumps(metrics, indent=2, default=str))
     if model is not None:
         joblib.dump(model, out_dir / f"{model_name}.joblib")
+    if y_true is not None and y_pred is not None:
+        np.savez(
+            out_dir / "holdout_predictions.npz",
+            y_true=np.asarray(y_true),
+            y_pred=np.asarray(y_pred),
+        )
 
 
 def print_horizon_result(experiment: str, horizon: int, metrics: dict):
