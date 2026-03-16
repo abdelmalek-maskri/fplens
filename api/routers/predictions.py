@@ -67,15 +67,12 @@ def get_multi_gw(
         gw1_preds = inference_result["predictions"]
         feature_matrix = inference_result["feature_matrix"]
 
-        # Rebuild full live_df from feature_matrix + player info columns
-        # feature_matrix has the model features; we need the raw live data for GW+2/3 models
-        live_df = pd.concat(
-            [
-                gw1_preds[["element", "team_name", "position"]].reset_index(drop=True),
-                feature_matrix.reset_index(drop=True),
-            ],
-            axis=1,
-        )
+        # Rebuild live_df: feature_matrix already has model features (including
+        # position, team etc). Only add columns not already present.
+        live_df = feature_matrix.reset_index(drop=True).copy()
+        for col in ["element", "team_name"]:
+            if col not in live_df.columns and col in gw1_preds.columns:
+                live_df[col] = gw1_preds[col].reset_index(drop=True)
 
         fixtures_data = fetch_fixtures(num_gws=horizon)
         return predict_multi_gw(gw1_preds, live_df, horizon_models, fixtures_data, horizon)

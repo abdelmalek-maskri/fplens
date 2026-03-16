@@ -34,21 +34,27 @@ export function useTransfers(horizon = 6) {
 
     const gwLabels = Array.from({ length: horizon }, (_, i) => `GW+${i + 1}`);
 
-    const targets = multiGW.map((p) => ({
-      element: p.element,
-      web_name: p.web_name,
-      team: p.team_name,
-      position: p.position,
-      value: p.value,
-      status: p.status,
-      form: p.form,
-      predicted: p.predicted,
-      fdr: p.fdr,
-      predicted_total: p.predicted_total,
-      fdr_avg: p.fdr_avg,
-    }));
+    const targets = multiGW
+      .filter((p) => p.predicted && p.predicted.length > 0)
+      .map((p) => ({
+        element: p.element,
+        web_name: p.web_name,
+        team: p.team_name,
+        position: p.position,
+        value: p.value,
+        selling_price: p.value,
+        status: p.status || "a",
+        form: p.form || 0,
+        predicted: p.predicted,
+        fdr: p.fdr || Array(horizon).fill(3),
+        predicted_total: p.predicted_total || 0,
+        fdr_avg: p.fdr_avg || 3,
+        pts_last5: [],
+      }));
 
-    return { targets, gwLabels };
+    // myTeam is empty until user connects via FPL ID (My Team page).
+    // The transfer planner still works for browsing targets.
+    return { myTeam: [], targets, gwLabels };
   }, [multiGW, horizon]);
 
   return { data, isLoading, error };

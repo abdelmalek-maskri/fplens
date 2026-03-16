@@ -62,10 +62,11 @@ def _prepare_and_predict(model, live_df: pd.DataFrame) -> np.ndarray:
     X = live_df.drop(columns=[c for c in drop if c in live_df.columns], errors="ignore")
     X = align_features(X, features)
 
-    # Convert categoricals
+    # Convert categoricals — CatBoost requires string categories, not numeric.
+    # Column may already be category dtype from upstream, so convert to str first.
     for c in CAT_COLS:
         if c in X.columns:
-            X[c] = X[c].astype("category")
+            X[c] = X[c].astype(str).replace("nan", "missing").astype("category")
 
     # Fill NaN
     numeric_cols = X.select_dtypes(include=[np.number]).columns
@@ -75,60 +76,59 @@ def _prepare_and_predict(model, live_df: pd.DataFrame) -> np.ndarray:
     return np.clip(preds, 0, None)
 
 
-def _get_player_fdr(element_id: int, gw_offset: int, fixtures_data: dict) -> int:
-    """Get FDR for a player's team at a specific GW offset.
+def _resolve_team_short(team_name: str, fixtures_data: dict) -> str | None:
+    """Resolve a team name (full or short) to the short name used in fixtures_data."""
+    team_full = fixtures_data.get("team_full", {})  # {short: full_name}
+    fixture_keys = fixtures_data.get("fixtures", {})
 
-    Args:
-        element_id: Player element ID.
-        gw_offset: 0-indexed offset from current GW (0 = next GW).
-        fixtures_data: Fixture grid from fetch_fixtures().
+    # Already a short name?
+    if team_name in fixture_keys:
+        return team_name
 
-    Returns:
-        FDR value (1-5), or 3 as neutral default if unavailable.
-    """
-    teams = fixtures_data.get("teams", [])
-    for team in teams:
-        players = team.get("players", [])
-        if element_id in players:
-            gws = team.get("fixtures", [])
-            if gw_offset < len(gws):
-                return gws[gw_offset].get("difficulty", 3)
-    return 3
+    # Try matching full name
+    for short, full in team_full.items():
+        if full == team_name:
+            return short
+
+    return None
 
 
 def _get_team_fdr_list(team_name: str, num_gws: int, fixtures_data: dict) -> list[int]:
     """Get FDR list for a team across next N gameweeks."""
-    teams = fixtures_data.get("teams", [])
-    for team in teams:
-        if team.get("name") == team_name or team.get("short_name") == team_name:
-            gws = team.get("fixtures", [])
-            fdrs = []
-            for i in range(num_gws):
-                if i < len(gws):
-                    fdrs.append(gws[i].get("difficulty", 3))
-                else:
-                    fdrs.append(3)
-            return fdrs
-    return [3] * num_gws
+    short = _resolve_team_short(team_name, fixtures_data)
+    if short is None:
+        return [3] * num_gws
+
+    gws = fixtures_data.get("fixtures", {}).get(short, [])
+    fdrs = []
+    for i in range(num_gws):
+        if i < len(gws):
+            # Average of atkFdr and defFdr for overall difficulty
+            atk = gws[i].get("atkFdr", 3)
+            dfn = gws[i].get("defFdr", 3)
+            fdrs.append(round((atk + dfn) / 2))
+        else:
+            fdrs.append(3)
+    return fdrs
 
 
 def _get_team_opponents(team_name: str, num_gws: int, fixtures_data: dict) -> list[str]:
     """Get opponent short names for a team across next N gameweeks."""
-    teams = fixtures_data.get("teams", [])
-    for team in teams:
-        if team.get("name") == team_name or team.get("short_name") == team_name:
-            gws = team.get("fixtures", [])
-            opponents = []
-            for i in range(num_gws):
-                if i < len(gws):
-                    opp = gws[i].get("opponent", "???")
-                    venue = gws[i].get("venue", "")
-                    suffix = " (H)" if venue == "H" else " (A)" if venue == "A" else ""
-                    opponents.append(f"{opp}{suffix}")
-                else:
-                    opponents.append("???")
-            return opponents
-    return ["???"] * num_gws
+    short = _resolve_team_short(team_name, fixtures_data)
+    if short is None:
+        return ["???"] * num_gws
+
+    gws = fixtures_data.get("fixtures", {}).get(short, [])
+    opponents = []
+    for i in range(num_gws):
+        if i < len(gws):
+            opp = gws[i].get("opponent", "???")
+            home = gws[i].get("home", None)
+            suffix = " (H)" if home is True else " (A)" if home is False else ""
+            opponents.append(f"{opp}{suffix}")
+        else:
+            opponents.append("???")
+    return opponents
 
 
 def predict_multi_gw(
