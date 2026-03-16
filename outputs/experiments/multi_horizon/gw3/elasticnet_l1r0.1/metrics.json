@@ -1,0 +1,140 @@
+{
+  "experiment": "elasticnet_l1r0.1",
+  "horizon": 3,
+  "target_col": "points_gw_plus_3",
+  "holdout_season": "2024-25",
+  "train_seasons": [
+    "2016-17",
+    "2017-18",
+    "2018-19",
+    "2019-20",
+    "2020-21",
+    "2021-22",
+    "2022-23",
+    "2023-24"
+  ],
+  "n_train": 173847,
+  "n_test": 24398,
+  "n_features": 116,
+  "l1_ratio": 0.1,
+  "alpha": 0.1,
+  "n_nonzero_coefs": 52,
+  "top_features": [
+    {
+      "feature": "value",
+      "importance": 0.25680924478233397
+    },
+    {
+      "feature": "played_lag1",
+      "importance": 0.15571025021241183
+    },
+    {
+      "feature": "total_points_season_avg",
+      "importance": 0.10771225071848976
+    },
+    {
+      "feature": "minutes_season_avg",
+      "importance": 0.09899219446608992
+    },
+    {
+      "feature": "fdr_gw3",
+      "importance": 0.07741900904766241
+    },
+    {
+      "feature": "minutes_lag1",
+      "importance": 0.07192887668021163
+    },
+    {
+      "feature": "was_home_gw3",
+      "importance": 0.06206123615666595
+    },
+    {
+      "feature": "minutes_roll10",
+      "importance": 0.056094575705852044
+    },
+    {
+      "feature": "total_points_roll10",
+      "importance": 0.05605417342308703
+    },
+    {
+      "feature": "total_points_roll3",
+      "importance": 0.05594002924328657
+    },
+    {
+      "feature": "bps_season_avg",
+      "importance": 0.05593239633165845
+    },
+    {
+      "feature": "us_time_roll10",
+      "importance": 0.05287263606381142
+    },
+    {
+      "feature": "minutes_roll5",
+      "importance": 0.04842712381990115
+    },
+    {
+      "feature": "minutes_roll3",
+      "importance": 0.04605050825274266
+    },
+    {
+      "feature": "total_points_roll5",
+      "importance": 0.044522966627755886
+    },
+    {
+      "feature": "us_xgchain_roll10",
+      "importance": 0.03870424387284838
+    },
+    {
+      "feature": "us_shots_roll10",
+      "importance": 0.029265323213003076
+    },
+    {
+      "feature": "fdr_defence_gw3",
+      "importance": 0.02913407655671409
+    },
+    {
+      "feature": "us_time_roll5",
+      "importance": 0.028334275073323357
+    },
+    {
+      "feature": "influence_season_avg",
+      "importance": 0.02371477161678851
+    }
+  ],
+  "holdout": {
+    "model": {
+      "mae": 1.1218964051715168,
+      "rmse": 2.139776601328071,
+      "r2": 0.20530029053533072,
+      "spearman_rho": 0.6033970342485185,
+      "spearman_p": 0.0,
+      "haul_mae": 7.326293822168948,
+      "haul_count": 1240
+    },
+    "baselines": {
+      "zero_baseline": {
+        "mae": 1.2099352405934913,
+        "rmse": 2.6822457321041204,
+        "r2": -0.24871495153871592
+      },
+      "mean_baseline": {
+        "mean_value": 1.2765017515401473,
+        "mae": 1.5627324263666775,
+        "rmse": 2.401621722907022,
+        "r2": -0.0010952304110218858
+      }
+    },
+    "improvements": {
+      "vs_zero": {
+        "mae_improve": 0.08803883542197455,
+        "rmse_improve": 0.5424691307760496,
+        "r2_improve": 0.45401524207404664
+      },
+      "vs_mean": {
+        "mae_improve": 0.44083602119516074,
+        "rmse_improve": 0.261845121578951,
+        "r2_improve": 0.2063955209463526
+      }
+    }
+  }
+}

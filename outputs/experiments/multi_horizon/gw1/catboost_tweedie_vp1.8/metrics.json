@@ -1,0 +1,138 @@
+{
+  "experiment": "catboost_tweedie_vp1.8",
+  "horizon": 1,
+  "target_col": "points_next_gw",
+  "holdout_season": "2024-25",
+  "train_seasons": [
+    "2016-17",
+    "2017-18",
+    "2018-19",
+    "2019-20",
+    "2020-21",
+    "2021-22",
+    "2022-23",
+    "2023-24"
+  ],
+  "n_train": 185149,
+  "n_test": 26000,
+  "n_features": 116,
+  "variance_power": 1.8,
+  "top_features": [
+    {
+      "feature": "value",
+      "importance": 11.818957635382617
+    },
+    {
+      "feature": "GW",
+      "importance": 10.206861434426681
+    },
+    {
+      "feature": "minutes_season_avg",
+      "importance": 6.9131198103449565
+    },
+    {
+      "feature": "games_since_start",
+      "importance": 6.216807959422362
+    },
+    {
+      "feature": "position",
+      "importance": 5.208701788817949
+    },
+    {
+      "feature": "influence_season_avg",
+      "importance": 4.534602179397199
+    },
+    {
+      "feature": "bps_season_avg",
+      "importance": 4.047498360644647
+    },
+    {
+      "feature": "total_points_season_avg",
+      "importance": 3.3739766826655564
+    },
+    {
+      "feature": "influence_roll5",
+      "importance": 2.5273146347483704
+    },
+    {
+      "feature": "us_npxg_roll10",
+      "importance": 2.361083124208297
+    },
+    {
+      "feature": "minutes_trend",
+      "importance": 2.344421777847728
+    },
+    {
+      "feature": "minutes_roll10",
+      "importance": 2.2241878978629708
+    },
+    {
+      "feature": "team",
+      "importance": 1.9501519113286487
+    },
+    {
+      "feature": "played_lag1",
+      "importance": 1.9488907107029692
+    },
+    {
+      "feature": "minutes_lag1",
+      "importance": 1.8979072722372419
+    },
+    {
+      "feature": "creativity_season_avg",
+      "importance": 1.7626051154100189
+    },
+    {
+      "feature": "bps_roll10",
+      "importance": 1.573369389045568
+    },
+    {
+      "feature": "us_time_roll10",
+      "importance": 1.3515133839266031
+    },
+    {
+      "feature": "us_xgchain_roll10",
+      "importance": 1.3452108751715075
+    },
+    {
+      "feature": "total_points_roll3",
+      "importance": 1.2761969231531107
+    }
+  ],
+  "holdout": {
+    "model": {
+      "mae": 1.0263105304300717,
+      "rmse": 2.136926192293729,
+      "r2": 0.21335880812528696,
+      "spearman_rho": 0.657725688574875,
+      "spearman_p": 0.0,
+      "haul_mae": 7.460012783616941,
+      "haul_count": 1317
+    },
+    "baselines": {
+      "zero_baseline": {
+        "mae": 1.2101923076923078,
+        "rmse": 2.690574716987489,
+        "r2": -0.24706116051447968
+      },
+      "mean_baseline": {
+        "mean_value": 1.2749137181405246,
+        "mae": 1.5610559746682193,
+        "rmse": 2.4105980172721924,
+        "r2": -0.001030314899999718
+      }
+    },
+    "improvements": {
+      "vs_zero": {
+        "mae_improve": 0.1838817772622361,
+        "rmse_improve": 0.5536485246937604,
+        "r2_improve": 0.46041996863976664
+      },
+      "vs_mean": {
+        "mae_improve": 0.5347454442381476,
+        "rmse_improve": 0.27367182497846354,
+        "r2_improve": 0.21438912302528668
+      }
+    }
+  }
+}
