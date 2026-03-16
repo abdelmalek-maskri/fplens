@@ -99,6 +99,28 @@ def extended_metrics(y_true: np.ndarray, y_pred: np.ndarray, y_train: np.ndarray
     return base
 
 
+def _has_nan(obj) -> bool:
+    """Check if a nested dict/list contains NaN or Inf floats."""
+    if isinstance(obj, float) and (np.isnan(obj) or np.isinf(obj)):
+        return True
+    if isinstance(obj, dict):
+        return any(_has_nan(v) for v in obj.values())
+    if isinstance(obj, list):
+        return any(_has_nan(v) for v in obj)
+    return False
+
+
+def _sanitize_nan(obj):
+    """Replace NaN/Inf with None for valid JSON output."""
+    if isinstance(obj, float) and (np.isnan(obj) or np.isinf(obj)):
+        return None
+    if isinstance(obj, dict):
+        return {k: _sanitize_nan(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_sanitize_nan(v) for v in obj]
+    return obj
+
+
 def save_experiment(
     out_dir: Path,
     metrics: dict,
@@ -109,7 +131,12 @@ def save_experiment(
 ):
     """Save metrics JSON, optionally a model joblib and holdout predictions."""
     out_dir.mkdir(parents=True, exist_ok=True)
-    (out_dir / "metrics.json").write_text(json.dumps(metrics, indent=2, default=str))
+    # Sanitize non-finite floats (NaN/Inf) to null for valid JSON
+    (out_dir / "metrics.json").write_text(
+        json.dumps(metrics, indent=2, default=str, allow_nan=False)
+        if not _has_nan(metrics)
+        else json.dumps(_sanitize_nan(metrics), indent=2, default=str)
+    )
     if model is not None:
         joblib.dump(model, out_dir / f"{model_name}.joblib")
     if y_true is not None and y_pred is not None:
@@ -726,6 +753,10 @@ def run_experiment_5(df: pd.DataFrame, horizons: list[int]) -> list[dict]:
             })
 
         # ----- 5b: ElasticNet -----
+        # NOTE: Only the raw ElasticNet estimator is saved — the StandardScaler
+        # and categorical encoding (cats_to_codes) are NOT persisted. These
+        # models are for comparison only; reloading for inference would require
+        # re-fitting the scaler and encoder on training data.
         X_train_num, X_test_num = cats_to_codes(X_train, X_test)
 
         # Scale features for linear model
