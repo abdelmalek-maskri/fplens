@@ -1,0 +1,257 @@
+{
+  "experiment": "lgbm_reduced",
+  "horizon": 3,
+  "target_col": "points_gw_plus_3",
+  "holdout_season": "2024-25",
+  "train_seasons": [
+    "2016-17",
+    "2017-18",
+    "2018-19",
+    "2019-20",
+    "2020-21",
+    "2021-22",
+    "2022-23",
+    "2023-24"
+  ],
+  "n_train": 173847,
+  "n_test": 24398,
+  "n_features": 70,
+  "features_dropped": [
+    "played_lag1",
+    "total_points_lag1",
+    "minutes_lag1",
+    "starts_lag1",
+    "expected_goals_lag1",
+    "expected_assists_lag1",
+    "expected_goal_involvements_lag1",
+    "expected_goals_conceded_lag1",
+    "influence_lag1",
+    "creativity_lag1",
+    "threat_lag1",
+    "ict_index_lag1",
+    "bps_lag1",
+    "bonus_lag1",
+    "us_xg_lag1",
+    "us_xa_lag1",
+    "us_npxg_lag1",
+    "us_xgchain_lag1",
+    "us_xgbuildup_lag1",
+    "us_shots_lag1",
+    "us_key_passes_lag1",
+    "us_time_lag1",
+    "points_momentum",
+    "bps_momentum",
+    "xg_momentum",
+    "total_points_roll3",
+    "minutes_roll3",
+    "starts_roll3",
+    "expected_goals_roll3",
+    "expected_assists_roll3",
+    "expected_goal_involvements_roll3",
+    "expected_goals_conceded_roll3",
+    "influence_roll3",
+    "creativity_roll3",
+    "threat_roll3",
+    "ict_index_roll3",
+    "bps_roll3",
+    "bonus_roll3",
+    "us_xg_roll3",
+    "us_xa_roll3",
+    "us_npxg_roll3",
+    "us_xgchain_roll3",
+    "us_xgbuildup_roll3",
+    "us_shots_roll3",
+    "us_key_passes_roll3",
+    "us_time_roll3"
+  ],
+  "features_used": [
+    "season",
+    "GW",
+    "position",
+    "team",
+    "was_home",
+    "opponent_team",
+    "value",
+    "total_points_roll5",
+    "minutes_roll5",
+    "starts_roll5",
+    "expected_goals_roll5",
+    "expected_assists_roll5",
+    "expected_goal_involvements_roll5",
+    "expected_goals_conceded_roll5",
+    "influence_roll5",
+    "creativity_roll5",
+    "threat_roll5",
+    "ict_index_roll5",
+    "bps_roll5",
+    "bonus_roll5",
+    "us_xg_roll5",
+    "us_xa_roll5",
+    "us_npxg_roll5",
+    "us_xgchain_roll5",
+    "us_xgbuildup_roll5",
+    "us_shots_roll5",
+    "us_key_passes_roll5",
+    "us_time_roll5",
+    "total_points_roll10",
+    "minutes_roll10",
+    "starts_roll10",
+    "expected_goals_roll10",
+    "expected_assists_roll10",
+    "expected_goal_involvements_roll10",
+    "expected_goals_conceded_roll10",
+    "influence_roll10",
+    "creativity_roll10",
+    "threat_roll10",
+    "ict_index_roll10",
+    "bps_roll10",
+    "bonus_roll10",
+    "us_xg_roll10",
+    "us_xa_roll10",
+    "us_npxg_roll10",
+    "us_xgchain_roll10",
+    "us_xgbuildup_roll10",
+    "us_shots_roll10",
+    "us_key_passes_roll10",
+    "us_time_roll10",
+    "total_points_season_avg",
+    "minutes_season_avg",
+    "expected_goals_season_avg",
+    "expected_assists_season_avg",
+    "influence_season_avg",
+    "creativity_season_avg",
+    "threat_season_avg",
+    "bps_season_avg",
+    "consecutive_starts",
+    "minutes_trend",
+    "games_since_start",
+    "opponent_gw2",
+    "was_home_gw2",
+    "opponent_gw3",
+    "was_home_gw3",
+    "fdr_gw2",
+    "fdr_gw3",
+    "fdr_attack_gw2",
+    "fdr_attack_gw3",
+    "fdr_defence_gw2",
+    "fdr_defence_gw3"
+  ],
+  "top_features": [
+    {
+      "feature": "team",
+      "importance": 430
+    },
+    {
+      "feature": "value",
+      "importance": 336
+    },
+    {
+      "feature": "opponent_team",
+      "importance": 206
+    },
+    {
+      "feature": "minutes_trend",
+      "importance": 166
+    },
+    {
+      "feature": "fdr_gw3",
+      "importance": 110
+    },
+    {
+      "feature": "minutes_roll5",
+      "importance": 101
+    },
+    {
+      "feature": "position",
+      "importance": 97
+    },
+    {
+      "feature": "total_points_season_avg",
+      "importance": 92
+    },
+    {
+      "feature": "fdr_defence_gw3",
+      "importance": 88
+    },
+    {
+      "feature": "was_home_gw3",
+      "importance": 80
+    },
+    {
+      "feature": "us_shots_roll10",
+      "importance": 69
+    },
+    {
+      "feature": "total_points_roll10",
+      "importance": 69
+    },
+    {
+      "feature": "ict_index_roll5",
+      "importance": 62
+    },
+    {
+      "feature": "us_time_roll5",
+      "importance": 61
+    },
+    {
+      "feature": "bps_roll5",
+      "importance": 59
+    },
+    {
+      "feature": "opponent_gw3",
+      "importance": 51
+    },
+    {
+      "feature": "bonus_roll10",
+      "importance": 51
+    },
+    {
+      "feature": "threat_roll10",
+      "importance": 50
+    },
+    {
+      "feature": "GW",
+      "importance": 50
+    },
+    {
+      "feature": "influence_season_avg",
+      "importance": 49
+    }
+  ],
+  "holdout": {
+    "model": {
+      "mae": 1.1019026299358414,
+      "rmse": 2.109608274772051,
+      "r2": 0.2275509800802643,
+      "spearman_rho": 0.6276867853883914,
+      "spearman_p": 0.0,
+      "haul_mae": 7.1473093676299895,
+      "haul_count": 1240
+    },
+    "baselines": {
+      "zero_baseline": {
+        "mae": 1.2099352405934913,
+        "rmse": 2.6822457321041204,
+        "r2": -0.24871495153871592
+      },
+      "mean_baseline": {
+        "mean_value": 1.2765017515401473,
+        "mae": 1.5627324263666775,
+        "rmse": 2.401621722907022,
+        "r2": -0.0010952304110218858
+      }
+    },
+    "improvements": {
+      "vs_zero": {
+        "mae_improve": 0.10803261065764991,
+        "rmse_improve": 0.5726374573320694,
+        "r2_improve": 0.47626593161898023
+      },
+      "vs_mean": {
+        "mae_improve": 0.4608297964308361,
+        "rmse_improve": 0.29201344813497077,
+        "r2_improve": 0.2286462104912862
+      }
+    }
+  }
+}
