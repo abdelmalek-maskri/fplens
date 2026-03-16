@@ -36,6 +36,9 @@ ml/data/
 *.npz
 catboost_info/
 
+# ML outputs (generated, reproducible from scripts)
+outputs/
+
 # Logs
 *.log
 
