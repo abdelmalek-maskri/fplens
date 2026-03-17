@@ -3,23 +3,71 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { TEAM_COLORS, POSITION_COLORS } from "../lib/constants";
 import TeamBadge from "../components/badges/TeamBadge";
 import TabBar from "../components/ui/TabBar";
-import SentimentDot from "../components/badges/SentimentDot";
 import { useNews } from "../hooks";
 import { SkeletonStatStrip, SkeletonCard, SkeletonArticle } from "../components/skeletons";
 import ErrorState from "../components/feedback/ErrorState";
 import EmptyState from "../components/feedback/EmptyState";
 
+const PLAYER_TAG_LIMIT = 4;
+
+function sentimentBorderClass(v) {
+  if (v >= 0.3) return "border-l-success-400";
+  if (v >= 0) return "border-l-surface-600";
+  return "border-l-danger-400";
+}
+
+function sentimentTextClass(v) {
+  if (v >= 0.3) return "text-success-400";
+  if (v >= 0) return "text-surface-400";
+  return "text-danger-400";
+}
+
 const SentimentBar = ({ value }) => {
   const pct = ((value + 1) / 2) * 100;
+  const bg = value >= 0.3 ? "bg-success-400" : value >= 0 ? "bg-surface-400" : "bg-danger-400";
   return (
-    <div className="w-16 h-1.5 bg-surface-700 rounded-full overflow-hidden">
-      <div
-        className={`h-full rounded-full ${value >= 0.3 ? "bg-success-400" : value >= 0 ? "bg-surface-400" : "bg-danger-400"}`}
-        style={{ width: `${pct}%` }}
-      />
+    <div className="w-24 h-2 bg-surface-700 rounded-full overflow-hidden">
+      <div className={`h-full rounded-full ${bg}`} style={{ width: `${pct}%` }} />
     </div>
   );
 };
+
+function PlayerTags({ players, navigate }) {
+  const [expanded, setExpanded] = useState(false);
+  const visible = expanded ? players : players.slice(0, PLAYER_TAG_LIMIT);
+  const overflow = players.length - PLAYER_TAG_LIMIT;
+
+  return (
+    <div className="flex items-center gap-1.5 flex-wrap">
+      {visible.map((p) => (
+        <button
+          key={p.element}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            navigate(`/player/${p.element}`);
+          }}
+          className="inline-flex items-center gap-1 text-2xs text-surface-400 hover:text-brand-400 transition-colors"
+        >
+          <TeamBadge team={p.team_name} size="xs" />
+          <span>{p.web_name}</span>
+        </button>
+      ))}
+      {overflow > 0 && !expanded && (
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setExpanded(true);
+          }}
+          className="text-2xs text-surface-500 hover:text-surface-300 transition-colors"
+        >
+          +{overflow} more
+        </button>
+      )}
+    </div>
+  );
+}
 
 export default function NewsSentiment() {
   const navigate = useNavigate();
@@ -36,7 +84,7 @@ export default function NewsSentiment() {
   const [teamFilter, setTeamFilter] = useState("ALL");
   const [searchQuery, setSearchQuery] = useState("");
 
-  const articles = newsData ? newsData.articles : [];
+  const articles = useMemo(() => (newsData ? newsData.articles : []), [newsData]);
 
   const TEAMS = useMemo(
     () => [...new Set(articles.flatMap((a) => a.players.map((p) => p.team_name)))].sort(),
@@ -67,7 +115,8 @@ export default function NewsSentiment() {
 
     return Object.values(playerMap)
       .map((p) => ({ ...p, avgSentiment: p.totalSentiment / p.mentions }))
-      .sort((a, b) => b.mentions - a.mentions);
+      .sort((a, b) => b.mentions - a.mentions)
+      .slice(0, 20);
   }, [articles]);
 
   const filteredArticles = useMemo(() => {
@@ -179,9 +228,13 @@ export default function NewsSentiment() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
-        <div>
+        <div className="lg:sticky lg:top-[44px] lg:self-start">
           <span className="section-label">Trending players</span>
-          <div className="mt-3 space-y-0">
+          <div className="flex items-center justify-between mt-2 mb-1 text-2xs text-surface-500">
+            <span>Player</span>
+            <span className="text-surface-600">Sentiment</span>
+          </div>
+          <div className="mt-3 space-y-0 lg:max-h-[calc(100vh-160px)] lg:overflow-y-auto lg:scrollbar-thin">
             {trendingPlayers.map((p, i) => (
               <div
                 key={p.element}
@@ -197,40 +250,19 @@ export default function NewsSentiment() {
                   <span className="text-sm text-surface-200 group-hover:text-brand-400 transition-colors">
                     {p.web_name}
                   </span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-2xs text-surface-500">{p.mentions} mentions</span>
-                    {p.injuryMentions > 0 && (
-                      <span className="text-2xs text-warning-400">injury</span>
-                    )}
-                  </div>
+                  <span className="text-2xs text-surface-500">{p.mentions} mentions</span>
                 </div>
-                <div className="flex flex-col items-end gap-0.5">
-                  <span
-                    className={`text-xs font-data tabular-nums ${
-                      p.avgSentiment >= 0.3
-                        ? "text-success-400"
-                        : p.avgSentiment >= 0
-                          ? "text-surface-400"
-                          : "text-danger-400"
-                    }`}
-                  >
-                    {p.avgSentiment > 0 ? "+" : ""}
-                    {p.avgSentiment.toFixed(2)}
-                  </span>
-                  <SentimentBar value={p.avgSentiment} />
-                </div>
+                <span className={`text-xs font-data tabular-nums ${sentimentTextClass(p.avgSentiment)}`}>
+                  {p.avgSentiment > 0 ? "+" : ""}
+                  {p.avgSentiment.toFixed(2)}
+                </span>
               </div>
             ))}
           </div>
         </div>
 
         <div>
-          <div className="flex items-center gap-2 mb-3">
-            <span className="section-label">Recent articles</span>
-            <span className="text-2xs text-surface-600">
-              {filteredArticles.length} of {articles.length}
-            </span>
-          </div>
+          <span className="section-label mb-3 block">Recent articles</span>
 
           {filteredArticles.length === 0 ? (
             <EmptyState
@@ -238,61 +270,52 @@ export default function NewsSentiment() {
               message="Try adjusting your filters or search query."
             />
           ) : (
-            <div className="space-y-0">
+            <div className="space-y-2">
               {filteredArticles.map((a) => (
-                <div key={a.id} className="py-3 border-b border-surface-800/60 last:border-0">
-                  <div className="flex items-start gap-3">
-                    <SentimentDot value={a.sentiment} className="shrink-0 mt-1.5" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-surface-200 leading-snug">{a.headline}</p>
-                      <p className="text-xs text-surface-500 mt-1 leading-relaxed">{a.snippet}</p>
-                      <div className="flex items-center gap-3 mt-2 flex-wrap">
-                        <span className="text-2xs text-surface-600">{a.date}</span>
-                        <span className="text-2xs text-surface-600">{a.source}</span>
-                        <span
-                          className={`text-2xs font-data tabular-nums ${
-                            a.sentiment >= 0.5
-                              ? "text-success-400"
-                              : a.sentiment >= 0
-                                ? "text-surface-400"
-                                : "text-danger-400"
-                          }`}
-                        >
-                          {a.sentiment > 0 ? "+" : ""}
-                          {a.sentiment.toFixed(2)}
-                        </span>
+                <a
+                  key={a.id}
+                  href={a.url || undefined}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`block border-l-2 ${sentimentBorderClass(a.sentiment)} rounded-r bg-surface-850/50 hover:bg-surface-800/70 transition-colors group`}
+                  onClick={a.url ? undefined : (e) => e.preventDefault()}
+                >
+                  <div className="px-4 py-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="text-sm text-surface-200 leading-snug group-hover:text-surface-100 transition-colors flex-1">
+                        {a.headline}
+                        {a.url && (
+                          <svg className="inline-block w-3 h-3 ml-1.5 text-surface-600 group-hover:text-brand-400 transition-colors -translate-y-px" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
+                            <path d="M3.5 1.5h7m0 0v7m0-7L2 10" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        )}
+                      </p>
+                      <div className="flex items-center gap-2 shrink-0">
                         {a.injury_flag && (
-                          <span className="text-2xs text-warning-400 flex items-center gap-1">
-                            <svg
-                              className="w-3 h-3"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                              />
+                          <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-warning-400/10 text-warning-400 text-2xs font-medium">
+                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                             Injury
                           </span>
                         )}
-                        {a.players.map((p) => (
-                          <button
-                            key={p.element}
-                            onClick={() => navigate(`/player/${p.element}`)}
-                            className="inline-flex items-center gap-1 text-2xs text-surface-400 hover:text-brand-400 transition-colors"
-                          >
-                            <TeamBadge team={p.team_name} size="xs" />
-                            <span>{p.web_name}</span>
-                          </button>
-                        ))}
+                        <span className={`text-xs font-data tabular-nums font-medium ${sentimentTextClass(a.sentiment)}`}>
+                          {a.sentiment > 0 ? "+" : ""}
+                          {a.sentiment.toFixed(2)}
+                        </span>
                       </div>
                     </div>
+                    <p className="text-xs text-surface-500 mt-1.5 leading-relaxed line-clamp-2">
+                      {a.snippet}
+                    </p>
+                    <div className="flex items-center gap-3 mt-2.5 flex-wrap">
+                      <span className="text-2xs text-surface-600">{a.date}</span>
+                      <span className="text-2xs text-surface-600">{a.source}</span>
+                      <div className="flex-1" />
+                      <PlayerTags players={a.players} navigate={navigate} />
+                    </div>
                   </div>
-                </div>
+                </a>
               ))}
             </div>
           )}
@@ -308,22 +331,13 @@ export default function NewsSentiment() {
                 <th scope="col" className="py-2 pr-4 text-xs text-surface-500 font-medium">
                   Player
                 </th>
-                <th
-                  scope="col"
-                  className="py-2 pr-4 text-xs text-surface-500 font-medium text-center"
-                >
+                <th scope="col" className="py-2 pr-4 text-xs text-surface-500 font-medium text-center">
                   Mentions
                 </th>
-                <th
-                  scope="col"
-                  className="py-2 pr-4 text-xs text-surface-500 font-medium text-center"
-                >
+                <th scope="col" className="py-2 pr-4 text-xs text-surface-500 font-medium text-center">
                   Avg sentiment
                 </th>
-                <th
-                  scope="col"
-                  className="py-2 pr-4 text-xs text-surface-500 font-medium text-center"
-                >
+                <th scope="col" className="py-2 pr-4 text-xs text-surface-500 font-medium text-center">
                   Injury
                 </th>
                 <th scope="col" className="py-2 text-xs text-surface-500 font-medium">
@@ -356,15 +370,7 @@ export default function NewsSentiment() {
                   <td className="py-2 pr-4">
                     <div className="flex items-center justify-center gap-2">
                       <SentimentBar value={p.avgSentiment} />
-                      <span
-                        className={`text-xs font-data tabular-nums ${
-                          p.avgSentiment >= 0.3
-                            ? "text-success-400"
-                            : p.avgSentiment >= 0
-                              ? "text-surface-400"
-                              : "text-danger-400"
-                        }`}
-                      >
+                      <span className={`text-xs font-data tabular-nums ${sentimentTextClass(p.avgSentiment)}`}>
                         {p.avgSentiment > 0 ? "+" : ""}
                         {p.avgSentiment.toFixed(2)}
                       </span>
