@@ -26,7 +26,12 @@ export default function MyTeam() {
 
   const getRecentIds = () => {
     try {
-      return JSON.parse(localStorage.getItem("fpl_id_history") || "[]");
+      return JSON.parse(localStorage.getItem("fpl_id_history") || "[]").map((h) => ({
+        id: h.id,
+        manager: h.manager || h.name || "",
+        teamName: h.teamName || "",
+        time: h.time,
+      }));
     } catch {
       return [];
     }
@@ -122,7 +127,8 @@ export default function MyTeam() {
           </button>
         </form>
         <p className="text-xs text-surface-500 -mt-3">
-          Any valid FPL ID works, try a random number between 1 and 11,500,000 to explore other manager's teams.
+          Any valid FPL ID works, try a random number between 1 and 11,500,000 to explore other
+          managers' teams.
         </p>
         {error && (
           <p className="text-sm text-danger-400">

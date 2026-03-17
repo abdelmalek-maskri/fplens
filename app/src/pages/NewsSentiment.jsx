@@ -252,7 +252,9 @@ export default function NewsSentiment() {
                   </span>
                   <span className="text-2xs text-surface-500">{p.mentions} mentions</span>
                 </div>
-                <span className={`text-xs font-data tabular-nums ${sentimentTextClass(p.avgSentiment)}`}>
+                <span
+                  className={`text-xs font-data tabular-nums ${sentimentTextClass(p.avgSentiment)}`}
+                >
                   {p.avgSentiment > 0 ? "+" : ""}
                   {p.avgSentiment.toFixed(2)}
                 </span>
@@ -285,21 +287,43 @@ export default function NewsSentiment() {
                       <p className="text-sm text-surface-200 leading-snug group-hover:text-surface-100 transition-colors flex-1">
                         {a.headline}
                         {a.url && (
-                          <svg className="inline-block w-3 h-3 ml-1.5 text-surface-600 group-hover:text-brand-400 transition-colors -translate-y-px" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
-                            <path d="M3.5 1.5h7m0 0v7m0-7L2 10" strokeLinecap="round" strokeLinejoin="round" />
+                          <svg
+                            className="inline-block w-3 h-3 ml-1.5 text-surface-600 group-hover:text-brand-400 transition-colors -translate-y-px"
+                            viewBox="0 0 12 12"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                          >
+                            <path
+                              d="M3.5 1.5h7m0 0v7m0-7L2 10"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
                           </svg>
                         )}
                       </p>
                       <div className="flex items-center gap-2 shrink-0">
                         {a.injury_flag && (
                           <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-warning-400/10 text-warning-400 text-2xs font-medium">
-                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            <svg
+                              className="w-3 h-3"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                              />
                             </svg>
                             Injury
                           </span>
                         )}
-                        <span className={`text-xs font-data tabular-nums font-medium ${sentimentTextClass(a.sentiment)}`}>
+                        <span
+                          className={`text-xs font-data tabular-nums font-medium ${sentimentTextClass(a.sentiment)}`}
+                        >
                           {a.sentiment > 0 ? "+" : ""}
                           {a.sentiment.toFixed(2)}
                         </span>
@@ -331,13 +355,22 @@ export default function NewsSentiment() {
                 <th scope="col" className="py-2 pr-4 text-xs text-surface-500 font-medium">
                   Player
                 </th>
-                <th scope="col" className="py-2 pr-4 text-xs text-surface-500 font-medium text-center">
+                <th
+                  scope="col"
+                  className="py-2 pr-4 text-xs text-surface-500 font-medium text-center"
+                >
                   Mentions
                 </th>
-                <th scope="col" className="py-2 pr-4 text-xs text-surface-500 font-medium text-center">
+                <th
+                  scope="col"
+                  className="py-2 pr-4 text-xs text-surface-500 font-medium text-center"
+                >
                   Avg sentiment
                 </th>
-                <th scope="col" className="py-2 pr-4 text-xs text-surface-500 font-medium text-center">
+                <th
+                  scope="col"
+                  className="py-2 pr-4 text-xs text-surface-500 font-medium text-center"
+                >
                   Injury
                 </th>
                 <th scope="col" className="py-2 text-xs text-surface-500 font-medium">
@@ -370,7 +403,9 @@ export default function NewsSentiment() {
                   <td className="py-2 pr-4">
                     <div className="flex items-center justify-center gap-2">
                       <SentimentBar value={p.avgSentiment} />
-                      <span className={`text-xs font-data tabular-nums ${sentimentTextClass(p.avgSentiment)}`}>
+                      <span
+                        className={`text-xs font-data tabular-nums ${sentimentTextClass(p.avgSentiment)}`}
+                      >
                         {p.avgSentiment > 0 ? "+" : ""}
                         {p.avgSentiment.toFixed(2)}
                       </span>

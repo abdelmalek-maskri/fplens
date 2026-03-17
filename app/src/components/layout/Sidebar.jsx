@@ -57,9 +57,7 @@ const Sidebar = forwardRef(function Sidebar({ open, onClose, gwData }, ref) {
               <span className="text-white font-bold text-2xs leading-none">FL</span>
             </div>
             <div>
-              <h1 className="font-semibold text-surface-100 text-sm leading-none">
-                Fantasy Lens
-              </h1>
+              <h1 className="font-semibold text-surface-100 text-sm leading-none">Fantasy Lens</h1>
               <p className="text-2xs text-surface-500 mt-0.5">
                 {currentGw ? `Gameweek ${currentGw}` : "—"}
               </p>
@@ -114,7 +112,9 @@ const Sidebar = forwardRef(function Sidebar({ open, onClose, gwData }, ref) {
           <span className="text-2xs text-surface-400">Live</span>
           {deadline && <span className="text-2xs text-surface-500 ml-auto">Deadline</span>}
         </div>
-        {deadline && <p className="text-2xs text-surface-600 mt-0.5 px-0.5 text-right">{deadline}</p>}
+        {deadline && (
+          <p className="text-2xs text-surface-600 mt-0.5 px-0.5 text-right">{deadline}</p>
+        )}
       </div>
     </aside>
   );
