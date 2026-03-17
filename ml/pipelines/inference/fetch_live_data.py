@@ -603,6 +603,75 @@ def compute_rolling_features(
     return df
 
 
+# --- Understat enrichment ---
+
+US_BASE_COLS = [
+    "us_xg",
+    "us_xa",
+    "us_npxg",
+    "us_xgchain",
+    "us_xgbuildup",
+    "us_shots",
+    "us_key_passes",
+    "us_time",
+]
+US_ROLL_WINDOWS = [3, 5, 10]
+
+
+def enrich_with_understat(df: pd.DataFrame, current_gw: int, season: str = "2025-26") -> pd.DataFrame:
+    """Merge pre-computed Understat features into live player data.
+
+    Loads per-player-per-GW Understat stats and computes lag1 + rolling
+    features to match training. Uses GW < current_gw to prevent leakage.
+    """
+    us_path = Path(f"data/processed/external/understat/understat_gw_{season}.csv")
+    if not us_path.exists():
+        logger.warning("Understat CSV not found at %s, skipping", us_path)
+        return df
+
+    us = pd.read_csv(us_path, low_memory=False)
+    us["GW"] = pd.to_numeric(us["GW"], errors="coerce")
+    us["element"] = pd.to_numeric(us["element"], errors="coerce")
+    for col in US_BASE_COLS:
+        us[col] = pd.to_numeric(us[col], errors="coerce").fillna(0)
+
+    # Only use completed GWs (shift-1 equivalent to prevent leakage)
+    us = us[us["GW"] < current_gw].sort_values(["element", "GW"])
+    if us.empty:
+        logger.warning("No Understat data before GW %d, skipping", current_gw)
+        return df
+
+    # Compute lag1 + rolling features per player
+    grouped = us.groupby("element", sort=False)
+    feat = pd.DataFrame(index=us.index)
+    for col in US_BASE_COLS:
+        feat[f"{col}_lag1"] = grouped[col].transform("last")
+        for w in US_ROLL_WINDOWS:
+            feat[f"{col}_roll{w}"] = grouped[col].transform(lambda x, _w=w: x.tail(_w).mean())
+
+    feat["element"] = us["element"].values
+    # One row per player from their latest GW
+    feat = feat.drop_duplicates(subset="element", keep="last")
+
+    # Merge into live df
+    df = df.copy()
+    df["element"] = pd.to_numeric(df["element"], errors="coerce")
+    existing_us = [c for c in df.columns if c.startswith("us_")]
+    if existing_us:
+        df.drop(columns=existing_us, errors="ignore", inplace=True)
+
+    df = df.merge(feat, on="element", how="left")
+
+    # Fill NaN for players not in Understat (e.g. new signings)
+    us_cols = [c for c in df.columns if c.startswith("us_")]
+    df[us_cols] = df[us_cols].fillna(0)
+
+    matched = (df["us_xg_lag1"] > 0).sum()
+    print(f"  Understat: {matched}/{len(df)} players enriched")
+
+    return df
+
+
 def add_temporal_injury_features(
     df: pd.DataFrame,
     histories: dict[int, list[dict]] | None = None,
@@ -686,12 +755,14 @@ def add_temporal_injury_features(
 # -- Main Fetch Pipeline -------------------------------------------------------
 
 
-def fetch_current_gw_data(include_history: bool = True) -> pd.DataFrame:
+def fetch_current_gw_data(include_history: bool = True, include_understat: bool = True) -> pd.DataFrame:
     """Main function: Fetch all current player data ready for prediction.
 
     Args:
         include_history: If True (default), fetch per-player GW history for
                         accurate rolling features. Makes ~600 API calls
+        include_understat: If True (default), enrich with Understat xG/xA features
+                          from pre-computed CSV
     Returns:
         DataFrame with all players and features for current GW.
     """
@@ -747,6 +818,10 @@ def fetch_current_gw_data(include_history: bool = True) -> pd.DataFrame:
     # Compute rolling/lag/availability features
     print("Computing rolling features...")
     df = compute_rolling_features(df, histories=histories)
+
+    if include_understat:
+        print("Adding Understat features...")
+        df = enrich_with_understat(df, current_gw)
 
     print(f"Final shape: {df.shape}")
 
