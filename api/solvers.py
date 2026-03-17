@@ -31,15 +31,26 @@ OUTPUT_COLS = [
     "predicted_range_high",
 ]
 
+POSITION_LIMITS = {"GK": 2, "DEF": 5, "MID": 5, "FWD": 3}
+MAX_PER_TEAM = 3
+DEFAULT_BUDGET = 100.0
+
+
+def _available_players(df: pd.DataFrame) -> pd.DataFrame:
+    """Filter out injured/unavailable. NaN chance = healthy = 100%."""
+    return df[(df["status"] != "i") & (df["chance_of_playing"].fillna(100) > 0)].copy()
+
+
+def _existing_cols(df: pd.DataFrame) -> list[str]:
+    return [c for c in OUTPUT_COLS if c in df.columns]
+
 
 def solve_best_xi(df: pd.DataFrame) -> dict:
     """Pick optimal starting 11 from all available players.
-    greedy solver: try all 7 valid FPL formations,
-    pick the one with highest total predicted_points.
+    Greedy: try all 7 valid FPL formations, pick highest total predicted_points.
     Always 1 GK. Captain = highest predicted, vice = second highest.
     """
-    # filter out injured and unavailable players (NaN chance = healthy = 100%)
-    available = df[(df["status"] != "i") & (df["chance_of_playing"].fillna(100) > 0)].copy()
+    available = _available_players(df)
 
     # sort each position pool by predicted_points descending
     gks = available[available["position"] == "GK"].sort_values("predicted_points", ascending=False)
@@ -56,14 +67,7 @@ def solve_best_xi(df: pd.DataFrame) -> dict:
         if len(gks) < 1 or len(defs) < n_def or len(mids) < n_mid or len(fwds) < n_fwd:
             continue
 
-        xi = pd.concat(
-            [
-                gks.head(1),
-                defs.head(n_def),
-                mids.head(n_mid),
-                fwds.head(n_fwd),
-            ]
-        )
+        xi = pd.concat([gks.head(1), defs.head(n_def), mids.head(n_mid), fwds.head(n_fwd)])
         total = xi["predicted_points"].sum()
 
         if total > best_total:
@@ -88,103 +92,77 @@ def solve_best_xi(df: pd.DataFrame) -> dict:
         .head(3)
     )
     bench = pd.concat([bench_gk, bench_outfield])
-
-    existing_cols = [c for c in OUTPUT_COLS if c in best_xi.columns]
+    cols = _existing_cols(best_xi)
 
     return {
         "formation": best_formation,
         "total_points": round(best_total, 2),
-        "total_with_captain": round(
-            best_total + best_xi.sort_values("predicted_points", ascending=False).iloc[0]["predicted_points"], 2
-        ),
+        "total_with_captain": round(best_total + sorted_xi.iloc[0]["predicted_points"], 2),
         "captain_id": captain_id,
         "vice_id": vice_id,
-        "starters": best_xi[existing_cols].to_dict(orient="records"),
-        "bench": bench[existing_cols].to_dict(orient="records"),
+        "starters": best_xi[cols].to_dict(orient="records"),
+        "bench": bench[cols].to_dict(orient="records"),
     }
 
 
-# --- FPL squad constraints ---
-POSITION_LIMITS = {"GK": 2, "DEF": 5, "MID": 5, "FWD": 3}  # total = 15
-MAX_PER_TEAM = 3
-DEFAULT_BUDGET = 100.0
-
-
 def solve_best_squad(df: pd.DataFrame, budget: float = DEFAULT_BUDGET) -> dict:
-    """Pick optimal 15-man squad using Integer Linear Programming. maximise total predicted_points subject to:
-      - budget constraint (sum of values <= budget)
-      - max 3 players per team
-      - exactly 2 GK, 5 DEF, 5 MID, 3 FWD
-      - each player binary (picked or not)
-    Then picks best starting XI from the 15 using solve_best_xi logic.
+    """Pick optimal 15-man squad using Integer Linear Programming.
+    Maximise total predicted_points subject to FPL constraints:
+    budget, max 3/team, exactly 2 GK + 5 DEF + 5 MID + 3 FWD.
+    Then picks best starting XI from the 15 using solve_best_xi.
     """
-    # filter out injured and unavailable (NaN chance = healthy = 100%)
-    available = df[(df["status"] != "i") & (df["chance_of_playing"].fillna(100) > 0)].reset_index(drop=True)
-
+    available = _available_players(df).reset_index(drop=True)
     n = len(available)
     if n < 15:
         raise HTTPException(status_code=422, detail="Not enough available players")
 
-    # objective: maximise predicted_points (milp minimises, so negate)
+    # milp minimises, so negate for maximisation
     c = -available["predicted_points"].values
 
-    # --- constraints ---
-    constraint_matrices = []
-    lower_bounds = []
-    upper_bounds = []
+    constraints_A = []
+    lb = []
+    ub = []
 
-    # 1. budget: sum(value * x) <= budget
-    budget_row = available["value"].values.reshape(1, -1)
-    constraint_matrices.append(budget_row)
-    lower_bounds.append(-np.inf)
-    upper_bounds.append(budget)
+    # budget: sum(value * x) <= budget
+    constraints_A.append(available["value"].values.reshape(1, -1))
+    lb.append(-np.inf)
+    ub.append(budget)
 
-    # 2. position constraints: exactly N per position
+    # position constraints: exactly N per position
     for pos, count in POSITION_LIMITS.items():
-        pos_row = (available["position"] == pos).astype(float).values.reshape(1, -1)
-        constraint_matrices.append(pos_row)
-        lower_bounds.append(count)
-        upper_bounds.append(count)
+        row = (available["position"] == pos).astype(float).values.reshape(1, -1)
+        constraints_A.append(row)
+        lb.append(count)
+        ub.append(count)
 
-    # 3. team constraints: at most 3 per team
-    teams = available["team_name"].unique()
-    for team in teams:
-        team_row = (available["team_name"] == team).astype(float).values.reshape(1, -1)
-        constraint_matrices.append(team_row)
-        lower_bounds.append(0)
-        upper_bounds.append(MAX_PER_TEAM)
+    # team constraints: at most 3 per team
+    for team in available["team_name"].unique():
+        row = (available["team_name"] == team).astype(float).values.reshape(1, -1)
+        constraints_A.append(row)
+        lb.append(0)
+        ub.append(MAX_PER_TEAM)
 
-    # stack all constraints
-    A = np.vstack(constraint_matrices)
-    constraints = LinearConstraint(A, lower_bounds, upper_bounds)
-
-    # all variables are binary (0 or 1)
-    integrality = np.ones(n)  # 1 = integer
+    A = np.vstack(constraints_A)
+    constraints = LinearConstraint(A, lb, ub)
+    integrality = np.ones(n)  # 1 = integer variable
     bounds = Bounds(lb=0, ub=1)
 
-    # solve
     result = milp(c, constraints=constraints, integrality=integrality, bounds=bounds)
-
     if not result.success:
         raise HTTPException(status_code=500, detail=f"ILP solver failed: {result.message}")
 
-    # extract selected players
-    selected_mask = result.x > 0.5  # binary, but solver returns floats
-    squad = available[selected_mask].copy()
-
+    # extract selected players (binary, but solver returns floats)
+    squad = available[result.x > 0.5].copy()
     if len(squad) != 15:
         raise HTTPException(status_code=500, detail=f"Solver selected {len(squad)} players instead of 15")
 
     total_value = squad["value"].sum()
     total_points = squad["predicted_points"].sum()
-
-    # pick best XI from the 15-man squad
     xi_result = solve_best_xi(squad)
-
-    existing_cols = [c for c in OUTPUT_COLS if c in squad.columns]
+    cols = _existing_cols(squad)
 
     return {
-        "squad": squad[existing_cols].to_dict(orient="records"),
+        "squad": squad[cols].to_dict(orient="records"),
         "total_value": round(total_value, 1),
         "total_points": round(total_points, 2),
         "budget_remaining": round(budget - total_value, 1),
@@ -198,65 +176,51 @@ def suggest_transfers(
     bank: float = 0.0,
     max_suggestions: int = 5,
 ) -> list[dict]:
-    """suggest transfer-in/out pairs that maximise predicted points gain, and
-    for each squad player, find same-position replacements not already in the
+    """Find transfer-in/out pairs that maximise predicted points gain.
+    For each squad player, find same-position replacements not already in the
     squad with higher predicted_points and affordable within bank + selling value.
-
-    Returns:
-        list of {out: {player}, in: {player}, points_gain, cost_saving} sorted by points_gain desc
     """
-    # filter available players (not injured, NaN chance = healthy = 100%)
-    available = all_predictions[
-        (all_predictions["status"] != "i") & (all_predictions["chance_of_playing"].fillna(100) > 0)
-    ].copy()
-
-    # current squad element IDs
+    available = _available_players(all_predictions)
     squad_ids = {p["element"] for p in user_picks}
 
-    # count how many players per team in current squad (for max 3/team rule)
-    team_counts = {}
+    # count players per team for max 3/team rule
+    team_counts: dict[str, int] = {}
     for p in user_picks:
-        team = p.get("team_name", "")
-        team_counts[team] = team_counts.get(team, 0) + 1
+        t = p.get("team_name", "")
+        team_counts[t] = team_counts.get(t, 0) + 1
 
-    existing_cols = [c for c in OUTPUT_COLS if c in available.columns]
-
+    cols = _existing_cols(available)
     suggestions = []
+
     for pick in user_picks:
         out_pos = pick.get("player_position", "")
-        out_value = pick.get("value", 0)  # current value in £m
+        out_value = pick.get("value", 0)
         out_pts = pick.get("predicted_points", 0)
-
         if not out_pos:
             continue
 
-        # budget available if we sell this player: bank + their value
+        # budget available if we sell this player
         budget_for_replacement = bank + out_value
 
-        # find same-position players not in squad, affordable, not injured
+        # find same-position, affordable, not in squad
         candidates = available[
             (available["position"] == out_pos)
             & (~available["element"].isin(squad_ids))
             & (available["value"] <= budget_for_replacement)
         ].copy()
 
-        # enforce max 3 per team: exclude players from teams already at 3
-        # (selling frees a slot on that team, so only check the incoming team)
+        # enforce max 3/team — selling frees a slot on the outgoing player's team
         teams_at_limit = {t for t, c in team_counts.items() if c >= MAX_PER_TEAM}
-        # selling this player frees their team slot
         out_team = pick.get("team_name", "")
-        teams_at_limit_after_sell = teams_at_limit - {out_team}
-        if teams_at_limit_after_sell:
-            candidates = candidates[~candidates["team_name"].isin(teams_at_limit_after_sell)]
+        blocked_teams = teams_at_limit - {out_team}
+        if blocked_teams:
+            candidates = candidates[~candidates["team_name"].isin(blocked_teams)]
 
         if candidates.empty:
             continue
 
-        # best candidate = highest predicted_points
         best = candidates.sort_values("predicted_points", ascending=False).iloc[0]
         points_gain = best["predicted_points"] - out_pts
-
-        # only suggest if there's a positive gain
         if points_gain <= 0:
             continue
 
@@ -264,13 +228,13 @@ def suggest_transfers(
             "element": pick["element"],
             "web_name": pick.get("web_name", ""),
             "position": out_pos,
-            "team_name": pick.get("team_name", ""),
+            "team_name": out_team,
             "value": out_value,
             "predicted_points": out_pts,
         }
 
         in_data = {}
-        for c in existing_cols:
+        for c in cols:
             if c in best.index:
                 v = best[c]
                 in_data[c] = v.item() if hasattr(v, "item") else v
@@ -284,11 +248,9 @@ def suggest_transfers(
             }
         )
 
-    # sort by points_gain descending, deduplicate by in-player
+    # sort by gain, deduplicate by in-player
     suggestions.sort(key=lambda s: s["points_gain"], reverse=True)
-
-    # remove duplicate in-players (same player suggested for multiple outs)
-    seen_in = set()
+    seen_in: set[int] = set()
     unique = []
     for s in suggestions:
         in_id = s["in"]["element"]

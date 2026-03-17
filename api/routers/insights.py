@@ -1,5 +1,6 @@
-"""Model insights and news endpoints, static training metrics + Guardian articles."""
+"""Model insights and news endpoints: training metrics + Guardian articles."""
 
+import csv
 import json
 import logging
 from pathlib import Path
@@ -10,20 +11,18 @@ router = APIRouter(tags=["Insights"])
 logger = logging.getLogger(__name__)
 
 OUTPUTS = Path("outputs")
+NEWS_CACHE_TTL = 60  # minutes — news doesn't change fast
 
 
 @router.get("/model-insights")
 def get_model_insights():
-
-    # Training metrics, ablation results, SHAP global importance
+    """Training metrics, ablation results, SHAP global importance."""
     ablation_path = OUTPUTS / "experiments/ablation_injury/ablation_summary.json"
     ablation = json.loads(ablation_path.read_text()) if ablation_path.exists() else {}
 
     shap_path = OUTPUTS / "analysis/shap/stacked_ensemble_global_importance.csv"
     shap_features = []
     if shap_path.exists():
-        import csv
-
         with open(shap_path) as f:
             shap_features = list(csv.DictReader(f))
 
@@ -40,16 +39,12 @@ def get_model_insights():
     }
 
 
-NEWS_CACHE_TTL = 60  # minutes
-
-
 @router.get("/news")
 def get_news(request: Request, days: int = Query(default=7, ge=1, le=30)):
-    # Recent Guardian articles with sentiment and player links.
-    # Uses separate 60-min cache since news doesn't change fast.
+    """Recent Guardian articles with sentiment and player links."""
     cache = request.app.state.cache
 
-    def _fetch_news():
+    def _fetch():
         from ml.pipelines.inference.fetch_live_data import get_bootstrap_data
         from ml.pipelines.inference.news import fetch_recent_news
 
@@ -60,4 +55,4 @@ def get_news(request: Request, days: int = Query(default=7, ge=1, le=30)):
             logger.error("News fetch failed: %s", e)
             return {"articles": [], "trending": []}
 
-    return cache.get_or_fetch(f"news_{days}", _fetch_news, ttl_minutes=NEWS_CACHE_TTL)
+    return cache.get_or_fetch(f"news_{days}", _fetch, ttl_minutes=NEWS_CACHE_TTL)
