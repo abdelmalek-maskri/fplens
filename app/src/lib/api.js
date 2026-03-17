@@ -29,8 +29,6 @@ async function apiFetch(path, { method = "GET", headers = {}, timeout = DEFAULT_
   }
 }
 
-// --- API methods ---
-
 export function getPredictions(modelId) {
   const params = modelId ? `?model=${modelId}` : "";
   return apiFetch(`/api/predictions${params}`);

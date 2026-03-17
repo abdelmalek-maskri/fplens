@@ -50,7 +50,6 @@ const Sidebar = forwardRef(function Sidebar({ open, onClose, gwData }, ref) {
       ref={ref}
       className={`fixed left-0 top-0 h-screen w-[200px] bg-surface-900 border-r border-surface-700 flex flex-col z-50 transition-transform duration-150 ${open ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0`}
     >
-      {/* Logo */}
       <div className="px-3 py-3 border-b border-surface-700">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -83,7 +82,6 @@ const Sidebar = forwardRef(function Sidebar({ open, onClose, gwData }, ref) {
         </div>
       </div>
 
-      {/* Navigation — flat, always open */}
       <nav className="flex-1 overflow-y-auto px-2 py-3">
         {navItems.map((group, idx) => (
           <div
@@ -110,7 +108,6 @@ const Sidebar = forwardRef(function Sidebar({ open, onClose, gwData }, ref) {
         ))}
       </nav>
 
-      {/* Footer */}
       <div className="px-3 pb-2.5 pt-2 border-t border-surface-700">
         <div className="flex items-center gap-1.5 px-0.5">
           <span className="status-live" />

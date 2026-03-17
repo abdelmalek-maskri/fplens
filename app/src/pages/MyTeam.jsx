@@ -2,61 +2,14 @@ import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { POSITION_COLORS, FDR_MAP } from "../lib/constants";
 import { PitchView } from "../components/pitch";
-import StatusBadge from "../components/StatusBadge";
-import TeamBadge from "../components/TeamBadge";
-import FdrBadge from "../components/FdrBadge";
-import ErrorState from "../components/ErrorState";
+import StatusBadge from "../components/badges/StatusBadge";
+import TeamBadge from "../components/badges/TeamBadge";
+import FdrBadge from "../components/badges/FdrBadge";
+import ErrorState from "../components/feedback/ErrorState";
+import AlertRow from "../components/feedback/AlertRow";
 import { useTeam } from "../hooks";
+import FplIdHelp from "./my-team/FplIdHelp";
 
-// ============================================================
-// FPL ID HELP — collapsible details
-// ============================================================
-const FplIdHelp = () => (
-  <details className="text-surface-400">
-    <summary className="cursor-pointer text-sm text-surface-400 hover:text-surface-200 transition-colors">
-      How to find your FPL ID
-    </summary>
-    <div className="mt-3 space-y-0 text-sm text-surface-400">
-      <div className="border-l-2 border-surface-700 pl-3 py-2.5">
-        <p className="text-surface-200 font-medium mb-2">Website</p>
-        <ol className="list-decimal list-inside space-y-1">
-          <li>
-            Log in at <span className="font-mono text-surface-300">fantasy.premierleague.com</span>
-          </li>
-          <li>
-            Click <span className="text-surface-200">Points</span> or{" "}
-            <span className="text-surface-200">My Team</span>
-          </li>
-          <li>
-            Copy the number after <span className="font-mono text-brand-400">/entry/</span> in the
-            URL
-          </li>
-        </ol>
-        <div className="mt-2.5 bg-surface-800 rounded px-3 py-2 font-mono text-xs text-surface-500 inline-block">
-          fantasy.premierleague.com/entry/
-          <span className="text-brand-400 font-semibold">1234567</span>/event/20
-        </div>
-      </div>
-      <div className="border-l-2 border-surface-700 pl-3 py-2.5">
-        <p className="text-surface-200 font-medium mb-2">Mobile App</p>
-        <ol className="list-decimal list-inside space-y-1">
-          <li>
-            Open the FPL app → <span className="text-surface-200">Points</span> tab
-          </li>
-          <li>
-            Tap <span className="text-surface-200">⋯</span> (top-right) →{" "}
-            <span className="text-surface-200">Share Team Link</span>
-          </li>
-          <li>The number in the shared link is your ID</li>
-        </ol>
-      </div>
-    </div>
-  </details>
-);
-
-// ============================================================
-// MY TEAM PAGE
-// ============================================================
 export default function MyTeam() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -71,7 +24,6 @@ export default function MyTeam() {
   const submittedId = searchParams.get("fpl_id") || localStorage.getItem("fpl_id") || null;
   const [fplId, setFplId] = useState(submittedId || "");
 
-  // Recent FPL IDs history
   const getRecentIds = () => {
     try {
       return JSON.parse(localStorage.getItem("fpl_id_history") || "[]");
@@ -116,7 +68,6 @@ export default function MyTeam() {
   const transferSuggestions = teamData?.transferSuggestions ?? [];
   const managerName = team?.manager_name || teamData?.manager_name;
 
-  // Save to history after render when team loads successfully
   useEffect(() => {
     if (team && submittedId) {
       const already = recentIds.find((h) => h.id === submittedId);
@@ -135,7 +86,6 @@ export default function MyTeam() {
     navigate(`/player/${elementId}`);
   };
 
-  // ---- FPL ID input screen ----
   if (!team) {
     return (
       <div className="max-w-sm mx-auto mt-16 space-y-5">
@@ -176,7 +126,6 @@ export default function MyTeam() {
           </p>
         )}
 
-        {/* Recent IDs */}
         {recentIds.length > 0 && (
           <div className="space-y-1.5">
             <span className="text-[10px] uppercase tracking-wider text-surface-500 font-medium">
@@ -217,11 +166,9 @@ export default function MyTeam() {
     );
   }
 
-  // ---- Team loaded ----
   const starters = team.picks.filter((p) => p.multiplier >= 1);
   const bench = team.picks.filter((p) => p.multiplier === 0);
 
-  // Captain recommendations based on predicted points
   const sortedByPredicted = [...starters].sort((a, b) => b.predicted_points - a.predicted_points);
   const recommendedCaptain = sortedByPredicted[0];
   const recommendedVice = sortedByPredicted[1];
@@ -231,7 +178,6 @@ export default function MyTeam() {
 
   const totalPredicted = starters.reduce((sum, p) => sum + p.predicted_points * p.multiplier, 0);
 
-  // Alerts: injuries, doubtful, tough fixtures, bench outscoring starters
   const injuredStarters = starters.filter((p) => p.status === "i");
   const doubtfulStarters = starters.filter((p) => p.status === "d");
   const toughFixtureStarters = starters.filter(
@@ -256,7 +202,6 @@ export default function MyTeam() {
 
   return (
     <div className="space-y-6 stagger">
-      {/* Controls */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button onClick={() => navigate("/optimal-xi")} className="btn-ghost text-sm">
@@ -277,7 +222,6 @@ export default function MyTeam() {
         </button>
       </div>
 
-      {/* Captain Recommendation */}
       <div className="flex items-start gap-4 py-4 border-b border-surface-800">
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
@@ -328,7 +272,6 @@ export default function MyTeam() {
         </div>
       </div>
 
-      {/* Team Overview — horizontal stat strip */}
       <div className="flex items-center gap-5 flex-wrap py-3 border-b border-surface-800">
         <div>
           <span className="text-lg font-bold text-surface-100 font-data tabular-nums">
@@ -365,7 +308,6 @@ export default function MyTeam() {
           </span>
         </div>
 
-        {/* View toggle */}
         <div className="ml-auto flex items-center border border-surface-700 rounded overflow-hidden">
           <button
             onClick={() => setViewMode("pitch")}
@@ -382,86 +324,63 @@ export default function MyTeam() {
         </div>
       </div>
 
-      {/* Alerts — left-border list */}
       {hasAlerts && (
         <div className="space-y-0.5">
-          {injuredStarters.map((p) => (
-            <div
-              key={`inj-${p.element}`}
-              className="flex items-center gap-2 py-1 pl-3 border-l-2 border-danger-500"
-            >
-              <span className="text-sm text-surface-300">
-                <span
-                  className="font-medium text-surface-100 cursor-pointer hover:text-brand-400 transition-colors"
-                  onClick={() => handlePlayerClick(p.element)}
-                >
-                  {p.web_name}
-                </span>{" "}
+          <AlertRow
+            players={injuredStarters}
+            borderColor="border-danger-500"
+            onPlayerClick={handlePlayerClick}
+            renderDetail={(p) => (
+              <>
+                {" "}
                 <span className="text-surface-500">{p.team_name}</span>
                 {" — "}
                 {p.news || "Injured"}
-              </span>
-            </div>
-          ))}
-          {doubtfulStarters.map((p) => (
-            <div
-              key={`dbt-${p.element}`}
-              className="flex items-center gap-2 py-1 pl-3 border-l-2 border-warning-500"
-            >
-              <span className="text-sm text-surface-300">
-                <span
-                  className="font-medium text-surface-100 cursor-pointer hover:text-brand-400 transition-colors"
-                  onClick={() => handlePlayerClick(p.element)}
-                >
-                  {p.web_name}
-                </span>{" "}
+              </>
+            )}
+          />
+          <AlertRow
+            players={doubtfulStarters}
+            borderColor="border-warning-500"
+            onPlayerClick={handlePlayerClick}
+            renderDetail={(p) => (
+              <>
+                {" "}
                 <span className="text-surface-500">{p.team_name}</span>
                 {" — "}
                 {p.news || "Doubtful"}
-              </span>
-            </div>
-          ))}
-          {toughFixtureStarters.map((p) => (
-            <div
-              key={`fdr-${p.element}`}
-              className="flex items-center gap-2 py-1 pl-3 border-l-2 border-surface-600"
-            >
-              <span className="text-sm text-surface-300">
-                <span
-                  className="font-medium text-surface-100 cursor-pointer hover:text-brand-400 transition-colors"
-                  onClick={() => handlePlayerClick(p.element)}
-                >
-                  {p.web_name}
-                </span>
+              </>
+            )}
+          />
+          <AlertRow
+            players={toughFixtureStarters}
+            borderColor="border-surface-600"
+            onPlayerClick={handlePlayerClick}
+            renderDetail={(p) => (
+              <>
                 {" — tough fixture vs "}
                 <span className="text-surface-200">{p.opponent_name}</span>
                 {` (FDR ${FDR_MAP[p.opponent_name]})`}
-              </span>
-            </div>
-          ))}
-          {benchOutscoring.map((p) => (
-            <div
-              key={`bench-${p.element}`}
-              className="flex items-center gap-2 py-1 pl-3 border-l-2 border-brand-500"
-            >
-              <span className="text-sm text-surface-300">
-                <span
-                  className="font-medium text-surface-100 cursor-pointer hover:text-brand-400 transition-colors"
-                  onClick={() => handlePlayerClick(p.element)}
-                >
-                  {p.web_name}
-                </span>{" "}
+              </>
+            )}
+          />
+          <AlertRow
+            players={benchOutscoring}
+            borderColor="border-brand-500"
+            onPlayerClick={handlePlayerClick}
+            renderDetail={(p) => (
+              <>
+                {" "}
                 <span className="text-surface-500">(bench)</span>
                 {" — predicted "}
                 <span className="text-brand-400 font-data">{p.predicted_points.toFixed(1)}</span>
                 {" pts, outscoring a starter"}
-              </span>
-            </div>
-          ))}
+              </>
+            )}
+          />
         </div>
       )}
 
-      {/* Pitch or Table View */}
       {viewMode === "pitch" ? (
         <PitchView
           starters={starters}
@@ -496,7 +415,6 @@ export default function MyTeam() {
               </tr>
             </thead>
             <tbody>
-              {/* Starters sorted by position then predicted */}
               {[...starters]
                 .sort((a, b) => {
                   const posOrder = { GK: 0, DEF: 1, MID: 2, FWD: 3 };
@@ -559,7 +477,6 @@ export default function MyTeam() {
                     </td>
                   </tr>
                 ))}
-              {/* Bench divider */}
               <tr>
                 <td colSpan={7} className="py-2 px-3">
                   <div className="flex items-center gap-2">
@@ -571,7 +488,6 @@ export default function MyTeam() {
                   </div>
                 </td>
               </tr>
-              {/* Bench players */}
               {bench.map((p, idx) => (
                 <tr key={p.element} className="border-t border-surface-800/60 opacity-60">
                   <td className="py-2.5 px-3 text-xs text-surface-600 font-data">{idx + 1}</td>
@@ -613,7 +529,6 @@ export default function MyTeam() {
         </div>
       )}
 
-      {/* Transfer Suggestions */}
       <div>
         <div className="flex items-center justify-between mb-3">
           <span className="section-label">Suggested Transfers</span>
@@ -625,30 +540,25 @@ export default function MyTeam() {
           </button>
         </div>
         <div className="space-y-3">
-          {transferSuggestions.map((transfer, idx) => (
+          {transferSuggestions.map((t, idx) => (
             <div
               key={idx}
               className="flex items-center gap-4 p-3 rounded-md bg-surface-800/50 border border-surface-700"
             >
-              {/* Out */}
               <div className="flex-1">
                 <p className="text-xs text-danger-400 font-medium uppercase mb-1">Sell</p>
                 <p
                   className="font-medium text-surface-100 hover:text-brand-400 transition-colors cursor-pointer"
-                  onClick={() => handlePlayerClick(transfer.out.element)}
+                  onClick={() => handlePlayerClick(t.out.element)}
                 >
-                  {transfer.out.web_name}
+                  {t.out.web_name}
                 </p>
                 <p className="text-xs text-surface-500">
-                  {transfer.out.position} · {transfer.out.team_name} ·{" "}
-                  {transfer.out.predicted_points.toFixed(1)} pts
+                  {t.out.position} · {t.out.team_name} · {t.out.predicted_points.toFixed(1)} pts
                 </p>
-                {transfer.out.status !== "a" && (
-                  <StatusBadge status={transfer.out.status} chance={0} compact />
-                )}
+                {t.out.status !== "a" && <StatusBadge status={t.out.status} chance={0} compact />}
               </div>
 
-              {/* Arrow */}
               <div className="flex flex-col items-center gap-1">
                 <svg
                   className="w-5 h-5 text-brand-400"
@@ -664,25 +574,20 @@ export default function MyTeam() {
                   />
                 </svg>
                 <span className="text-xs font-semibold text-success-400">
-                  +{transfer.points_gain.toFixed(1)} pts
+                  +{t.points_gain.toFixed(1)} pts
                 </span>
               </div>
 
-              {/* In */}
               <div className="flex-1">
                 <p className="text-xs text-success-400 font-medium uppercase mb-1">Buy</p>
-                <p className="font-medium text-surface-100">{transfer.in.web_name}</p>
+                <p className="font-medium text-surface-100">{t.in.web_name}</p>
                 <p className="text-xs text-surface-500">
-                  {transfer.in.position} · {transfer.in.team_name} ·{" "}
-                  {transfer.in.predicted_points.toFixed(1)} pts
+                  {t.in.position} · {t.in.team_name} · {t.in.predicted_points.toFixed(1)} pts
                 </p>
                 <p className="text-xs text-surface-500 mt-1">
-                  £{transfer.in.value}m
-                  {transfer.cost_saving > 0 && (
-                    <span className="text-success-400">
-                      {" "}
-                      (save £{transfer.cost_saving.toFixed(1)}m)
-                    </span>
+                  £{t.in.value}m
+                  {t.cost_saving > 0 && (
+                    <span className="text-success-400"> (save £{t.cost_saving.toFixed(1)}m)</span>
                   )}
                 </p>
               </div>

@@ -1,5 +1,5 @@
 import { PitchView } from "../components/pitch";
-import ErrorState from "../components/ErrorState";
+import ErrorState from "../components/feedback/ErrorState";
 import { SkeletonStatStrip, SkeletonPitch } from "../components/skeletons";
 import { useSeasonPlanner } from "../hooks";
 
@@ -21,7 +21,6 @@ export default function SeasonPlanner() {
 
   return (
     <div className="space-y-6 stagger">
-      {/* Stats strip */}
       <div className="flex items-center gap-5 flex-wrap py-3 border-b border-surface-800">
         <div>
           <span className="text-lg font-bold text-brand-400 font-data tabular-nums">
@@ -52,7 +51,6 @@ export default function SeasonPlanner() {
         </div>
       </div>
 
-      {/* Pitch view */}
       <PitchView
         starters={recommended.starters}
         bench={recommended.bench}

@@ -19,11 +19,8 @@ import {
   TABS,
 } from "../lib/insightsConfig";
 
-// The ModelInsights page has tight coupling to the mock data shape across
-// 5 tabs and 30+ fields. The API provides real ablation + SHAP data but
-// in a different structure. We fetch from API to validate it's live, then
-// overlay real values where the shapes match cleanly.
-
+// API returns ablation + SHAP in a different shape than what the 5-tab UI
+// expects, so we merge real values into the mock baseline where shapes align.
 const MOCK_DATA = {
   modelVariants,
   baselines,
@@ -54,10 +51,8 @@ export function useModelInsights() {
       .then((apiData) => {
         if (cancelled) return;
 
-        // Start with mock data as the safe baseline
         const merged = { ...MOCK_DATA };
 
-        // Overlay real ablation metrics where available
         const ab = apiData.ablation || {};
         if (ab.config_A && ab.config_D) {
           merged.ablationConfigs = merged.ablationConfigs.map((cfg) => {
@@ -76,7 +71,6 @@ export function useModelInsights() {
           });
         }
 
-        // Overlay real SHAP features
         if (apiData.shap_features && apiData.shap_features.length > 0) {
           merged.shapFeatures = apiData.shap_features.map((f) => ({
             feature: f.feature,
@@ -90,7 +84,6 @@ export function useModelInsights() {
         setIsLoading(false);
       })
       .catch(() => {
-        // API failed — fall back to full mock data
         if (!cancelled) {
           setData(MOCK_DATA);
           setIsLoading(false);

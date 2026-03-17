@@ -1,14 +1,12 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { FDR_COLORS, POSITION_COLORS, POSITION_BG } from "../lib/constants";
-import TeamBadge from "../components/TeamBadge";
-import StatusBadge from "../components/StatusBadge";
-import ErrorState from "../components/ErrorState";
+import TeamBadge from "../components/badges/TeamBadge";
+import StatusBadge from "../components/badges/StatusBadge";
+import ErrorState from "../components/feedback/ErrorState";
 import { SkeletonStatStrip, SkeletonCard } from "../components/skeletons";
+import SentimentDot from "../components/badges/SentimentDot";
 import { usePlayer } from "../hooks";
 
-// ============================================================
-// FORM BAR CHART — last 10 GW points
-// ============================================================
 const FormChart = ({ pts, labels }) => {
   return (
     <div className="flex gap-2">
@@ -41,17 +39,6 @@ const FormChart = ({ pts, labels }) => {
   );
 };
 
-// ============================================================
-// SENTIMENT DOT
-// ============================================================
-const SentimentDot = ({ value }) => {
-  const color = value >= 0.5 ? "bg-success-400" : value >= 0 ? "bg-surface-400" : "bg-danger-400";
-  return <div className={`w-2 h-2 rounded-full ${color}`} />;
-};
-
-// ============================================================
-// PLAYER DETAIL PAGE
-// ============================================================
 export default function PlayerDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -82,7 +69,6 @@ export default function PlayerDetail() {
 
   return (
     <div className="space-y-6 stagger">
-      {/* Back button */}
       <button
         onClick={() => navigate(-1)}
         className="flex items-center gap-1 text-xs text-surface-500 hover:text-surface-300 transition-colors"
@@ -93,7 +79,6 @@ export default function PlayerDetail() {
         Back
       </button>
 
-      {/* Player header */}
       <div className="flex items-start gap-4">
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-1">
@@ -128,7 +113,6 @@ export default function PlayerDetail() {
         </div>
       </div>
 
-      {/* Stat strip */}
       <div className="flex items-center gap-5 flex-wrap py-3 border-y border-surface-800">
         <div>
           <span className="text-lg font-bold text-surface-100 font-data tabular-nums">
@@ -167,9 +151,7 @@ export default function PlayerDetail() {
         </div>
       </div>
 
-      {/* Two-column layout: Form + Fixtures */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Form chart */}
         <div>
           <span className="section-label">Recent form</span>
           <div className="mt-3">
@@ -177,7 +159,6 @@ export default function PlayerDetail() {
           </div>
         </div>
 
-        {/* Fixture run */}
         <div>
           <span className="section-label">Upcoming fixtures</span>
           <div className="mt-3 space-y-1.5">
@@ -199,7 +180,6 @@ export default function PlayerDetail() {
         </div>
       </div>
 
-      {/* Season stats */}
       <div>
         <span className="section-label">Season stats</span>
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4 mt-3">
@@ -226,7 +206,6 @@ export default function PlayerDetail() {
         </div>
       </div>
 
-      {/* Prediction Factors — plain language from SHAP */}
       {player.shap &&
         player.shap.length > 0 &&
         (() => {
@@ -302,33 +281,32 @@ export default function PlayerDetail() {
           );
         })()}
 
-      {/* News mentions */}
       {player.news_mentions && player.news_mentions.length > 0 && (
         <div>
           <span className="section-label">News mentions</span>
           <div className="mt-3 space-y-2">
-            {player.news_mentions.map((article, i) => (
+            {player.news_mentions.map((a, i) => (
               <div
                 key={i}
                 className="flex items-start gap-3 py-2 border-b border-surface-800/60 last:border-0"
               >
-                <SentimentDot value={article.sentiment} />
+                <SentimentDot value={a.sentiment} />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm text-surface-200">{article.headline}</p>
+                  <p className="text-sm text-surface-200">{a.headline}</p>
                   <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-2xs text-surface-500">{article.source}</span>
-                    <span className="text-2xs text-surface-600">{article.date}</span>
+                    <span className="text-2xs text-surface-500">{a.source}</span>
+                    <span className="text-2xs text-surface-600">{a.date}</span>
                     <span
                       className={`text-2xs font-data tabular-nums ${
-                        article.sentiment >= 0.5
+                        a.sentiment >= 0.5
                           ? "text-success-400"
-                          : article.sentiment >= 0
+                          : a.sentiment >= 0
                             ? "text-surface-400"
                             : "text-danger-400"
                       }`}
                     >
-                      {article.sentiment > 0 ? "+" : ""}
-                      {article.sentiment.toFixed(2)}
+                      {a.sentiment > 0 ? "+" : ""}
+                      {a.sentiment.toFixed(2)}
                     </span>
                   </div>
                 </div>
