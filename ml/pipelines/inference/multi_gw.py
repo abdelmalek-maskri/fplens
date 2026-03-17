@@ -68,6 +68,15 @@ def _add_future_fixture_features(df: pd.DataFrame, fixtures_data: dict) -> pd.Da
     # Build reverse map: full name -> short name
     full_to_short = {v: k for k, v in team_full.items()}
 
+    # Build short name -> FPL team ID map for numeric opponent encoding
+    try:
+        from ml.pipelines.inference.fetch_live_data import get_bootstrap_data
+
+        bootstrap = get_bootstrap_data()
+        short_to_id = {t["short_name"]: t["id"] for t in bootstrap["teams"]}
+    except Exception:
+        short_to_id = {}
+
     for horizon_offset in [1, 2]:  # gw2 = offset 1, gw3 = offset 2
         gw_label = horizon_offset + 1  # gw2, gw3
         opp_col = f"opponent_gw{gw_label}"
@@ -85,7 +94,8 @@ def _add_future_fixture_features(df: pd.DataFrame, fixtures_data: dict) -> pd.Da
 
             if horizon_offset < len(gws):
                 fix = gws[horizon_offset]
-                opp_vals.append(fix.get("opponent", ""))
+                opp_short = fix.get("opponent", "")
+                opp_vals.append(short_to_id.get(opp_short, 0))
                 home_vals.append(1 if fix.get("home") else 0)
                 atk = fix.get("atkFdr", 3)
                 dfn = fix.get("defFdr", 3)
@@ -93,7 +103,7 @@ def _add_future_fixture_features(df: pd.DataFrame, fixtures_data: dict) -> pd.Da
                 fdr_atk_vals.append(atk)
                 fdr_def_vals.append(dfn)
             else:
-                opp_vals.append("")
+                opp_vals.append(0)
                 home_vals.append(0)
                 fdr_vals.append(3)
                 fdr_atk_vals.append(3)
