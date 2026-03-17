@@ -2,11 +2,10 @@
 """
 Multi-horizon prediction pipeline (FF-9c).
 
-Generates per-player predictions for GW+1 through GW+N using:
+Generates per-player predictions for GW+1 through GW+3 using:
   - GW+1: Config D stacked ensemble (production model)
   - GW+2: CatBoost Tweedie vp1.8
   - GW+3: CatBoost Tweedie vp1.2
-  - GW+4+: GW+3 predictions reused with FDR adjustment (projected, not validated)
 
 Usage:
     from ml.pipelines.inference.multi_gw import predict_multi_gw, load_horizon_models
