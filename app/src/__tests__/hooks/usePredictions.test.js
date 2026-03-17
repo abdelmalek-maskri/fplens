@@ -1,0 +1,77 @@
+import { describe, it, expect, vi } from "vitest";
+import { renderHook, waitFor } from "@testing-library/react";
+
+const MOCK_PLAYER = {
+  element: 2,
+  web_name: "Haaland",
+  name: "Erling Haaland",
+  team_name: "MCI",
+  position: "FWD",
+  value: 15.3,
+  predicted_points: 7.2,
+  form: 8.8,
+};
+
+vi.mock("../../lib/api", () => ({
+  getPredictions: vi.fn(() => Promise.resolve([MOCK_PLAYER])),
+  getModels: vi.fn(() => Promise.resolve([{ id: "config_d", name: "Config D", mae: 1.016 }])),
+}));
+
+import { usePredictions } from "../../hooks/usePredictions";
+
+describe("usePredictions", () => {
+  it("starts in loading state", () => {
+    const { result } = renderHook(() => usePredictions());
+    expect(result.current.isLoading).toBe(true);
+    expect(result.current.data).toBeNull();
+    expect(result.current.error).toBeNull();
+  });
+
+  it("resolves with prediction data", async () => {
+    const { result } = renderHook(() => usePredictions());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(result.current.error).toBeNull();
+    expect(result.current.data).not.toBeNull();
+    expect(result.current.data).toHaveProperty("predictions");
+  });
+
+  it("predictions array is non-empty", async () => {
+    const { result } = renderHook(() => usePredictions());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(result.current.data.predictions.length).toBeGreaterThan(0);
+  });
+
+  it("each prediction has required fields", async () => {
+    const { result } = renderHook(() => usePredictions());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    const player = result.current.data.predictions[0];
+    expect(player).toHaveProperty("web_name");
+    expect(player).toHaveProperty("predicted_points");
+    expect(player).toHaveProperty("position");
+    expect(player).toHaveProperty("team_name");
+  });
+
+  it("loads available models", async () => {
+    const { result } = renderHook(() => usePredictions());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(result.current.models.length).toBeGreaterThan(0);
+    expect(result.current.models[0]).toHaveProperty("id");
+    expect(result.current.models[0]).toHaveProperty("mae");
+  });
+});

@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { FDR_COLORS, FDR_MAP, TEAM_COLORS, POSITION_COLORS, POSITION_BG } from "./constants";
+import {
+  FDR_COLORS,
+  FDR_MAP,
+  TEAM_COLORS,
+  POSITION_COLORS,
+  POSITION_BG,
+} from "../../lib/constants";
 
 describe("FDR_COLORS", () => {
   it("covers all 5 FDR levels", () => {

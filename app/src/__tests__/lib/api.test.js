@@ -10,7 +10,7 @@ import {
   getMultiGW,
   refresh,
   health,
-} from "./api";
+} from "../../lib/api";
 
 // Mock global fetch
 const mockFetch = vi.fn();

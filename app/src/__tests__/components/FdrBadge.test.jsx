@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
-import FdrBadge from "./FdrBadge";
+import FdrBadge from "../../components/badges/FdrBadge";
 
 const fdrMap = { ARS: 5, SOU: 1, MCI: 4 };
 

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
-import TeamBadge from "./TeamBadge";
+import TeamBadge from "../../components/badges/TeamBadge";
 
 describe("TeamBadge", () => {
   it("renders the team abbreviation", () => {

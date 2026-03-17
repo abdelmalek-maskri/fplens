@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
-import EmptyState from "./EmptyState";
-import ErrorState from "./ErrorState";
+import EmptyState from "../../components/feedback/EmptyState";
+import ErrorState from "../../components/feedback/ErrorState";
 
 describe("EmptyState", () => {
   it("renders the title", () => {
