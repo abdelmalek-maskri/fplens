@@ -1,4 +1,4 @@
-"""Fantasy Foresight API, serves ML predictions from trained model."""
+"""Fantasy Foresight API — serves ML predictions from trained models."""
 
 import contextlib
 import os
@@ -14,7 +14,7 @@ from api.routers import fixtures, insights, predictions, team
 from ml.pipelines.inference.multi_gw import load_horizon_models
 from ml.pipelines.inference.predict import DEFAULT_MODEL
 
-# Model class imports needed for joblib unpickling
+# joblib needs these classes in scope to unpickle custom model objects
 with contextlib.suppress(Exception):
     from ml.pipelines.train.train_stacked_ensemble import StackedEnsemble  # noqa: F401
 with contextlib.suppress(Exception):
@@ -26,41 +26,35 @@ with contextlib.suppress(Exception):
 
 MODEL_PATH = Path(os.environ.get("MODEL_PATH", str(DEFAULT_MODEL)))
 
+# All GW+1 models available for user selection via /api/models
+MODEL_REGISTRY = {
+    "config_d": (
+        "Config D: Stacked + Injury + News (Best)",
+        "outputs/experiments/ablation_injury/config_D/model.joblib",
+        1.016,
+    ),
+    "config_a": ("Config A: FPL + Understat only", "outputs/experiments/ablation_injury/config_A/model.joblib", 1.026),
+    "config_b": ("Config B: + Injury features", "outputs/experiments/ablation_injury/config_B/model.joblib", 1.016),
+    "config_c": ("Config C: + News features", "outputs/experiments/ablation_injury/config_C/model.joblib", 1.023),
+    "stacked_ensemble": ("Stacked Ensemble (109 features)", "outputs/models/stacked_ensemble.joblib", 1.051),
+    "catboost_tweedie": (
+        "CatBoost Tweedie vp1.5",
+        "outputs/experiments/multi_horizon/gw1/catboost_tweedie_vp1.5/model.joblib",
+        1.032,
+    ),
+    "lgbm_baseline": ("LightGBM Baseline", "outputs/experiments/multi_horizon/gw1/lgbm_baseline/model.joblib", 1.054),
+    "baseline": ("Single LightGBM (production)", "outputs/models/baseline.joblib", 1.060),
+}
+
+REFRESH_SECRET = os.environ.get("REFRESH_SECRET", "dev-secret")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Load model and initialise cache on startup
+    """Load all models and initialise cache on startup."""
     if not MODEL_PATH.exists():
-        raise FileNotFoundError(
-            f"Model file not found: {MODEL_PATH}\nSet MODEL_PATH env var or ensure the file exists."
-        )
-    # Load all available GW+1 models for user selection
-    MODEL_REGISTRY = {
-        "config_d": (
-            "Config D: Stacked + Injury + News (Best)",
-            "outputs/experiments/ablation_injury/config_D/model.joblib",
-            1.016,
-        ),
-        "config_a": (
-            "Config A: FPL + Understat only",
-            "outputs/experiments/ablation_injury/config_A/model.joblib",
-            1.026,
-        ),
-        "config_b": ("Config B: + Injury features", "outputs/experiments/ablation_injury/config_B/model.joblib", 1.016),
-        "config_c": ("Config C: + News features", "outputs/experiments/ablation_injury/config_C/model.joblib", 1.023),
-        "stacked_ensemble": ("Stacked Ensemble (109 features)", "outputs/models/stacked_ensemble.joblib", 1.051),
-        "catboost_tweedie": (
-            "CatBoost Tweedie vp1.5",
-            "outputs/experiments/multi_horizon/gw1/catboost_tweedie_vp1.5/model.joblib",
-            1.032,
-        ),
-        "lgbm_baseline": (
-            "LightGBM Baseline",
-            "outputs/experiments/multi_horizon/gw1/lgbm_baseline/model.joblib",
-            1.054,
-        ),
-        "baseline": ("Single LightGBM (production)", "outputs/models/baseline.joblib", 1.060),
-    }
+        raise FileNotFoundError(f"Model file not found: {MODEL_PATH}")
+
     app.state.models = {}
     app.state.model_info = []
     for model_id, (name, path, mae) in MODEL_REGISTRY.items():
@@ -73,7 +67,7 @@ async def lifespan(app: FastAPI):
             except Exception as e:
                 print(f"  WARNING: Failed to load {name}: {e}")
 
-    # Default model
+    # Default model: prefer config_d, fallback to MODEL_PATH
     if "config_d" in app.state.models:
         app.state.model = app.state.models["config_d"]
         print(f"Loaded {len(app.state.models)} models, default: config_d")
@@ -88,11 +82,7 @@ async def lifespan(app: FastAPI):
     print("Shutting down...")
 
 
-app = FastAPI(
-    title="FPLens API",
-    version="2.0",
-    lifespan=lifespan,
-)
+app = FastAPI(title="FPLens API", version="2.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -110,6 +100,7 @@ app.include_router(insights.router, prefix="/api")
 
 @app.get("/api/health")
 def health():
+    """Basic liveness check with model and cache status."""
     return {
         "status": "ok",
         "model_loaded": hasattr(app.state, "model"),
@@ -132,15 +123,9 @@ def status():
     return cache.get_or_fetch("status", fetch)
 
 
-# When I deploy, set REFRESH_SECRET in .env to something strong:
-#   REFRESH_SECRET=some-long-random-string
-# Then call it with:
-#   curl -X POST http://localhost:8000/api/refresh -H "X-Refresh-Secret: some-long-random-string"
-REFRESH_SECRET = os.environ.get("REFRESH_SECRET", "dev-secret")
-
-
 @app.post("/api/refresh")
 def refresh_cache(x_refresh_secret: str = Header(None)):
+    """Invalidate all cached data. Requires REFRESH_SECRET header."""
     if x_refresh_secret != REFRESH_SECRET:
         raise HTTPException(status_code=403, detail="Invalid refresh secret")
     app.state.cache.invalidate()

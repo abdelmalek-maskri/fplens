@@ -1,7 +1,7 @@
 """Prediction endpoints: all players, best XI, best squad, multi-GW."""
 
 import pandas as pd
-from fastapi import APIRouter, Query, Request
+from fastapi import APIRouter, HTTPException, Query, Request
 
 from api.solvers import solve_best_squad, solve_best_xi
 from ml.pipelines.inference.multi_gw import predict_multi_gw
@@ -11,20 +11,17 @@ router = APIRouter(tags=["Predictions"])
 
 
 def _get_inference_result(request: Request, model_id: str | None = None) -> dict:
-    """Shared helper: run inference (cached per model, 15 min TTL)."""
+    """Run inference, cached per model with 15 min TTL."""
     cache = request.app.state.cache
     models = getattr(request.app.state, "models", {})
-    if model_id and model_id not in models:
-        from fastapi import HTTPException
 
+    if model_id and model_id not in models:
         raise HTTPException(status_code=400, detail=f"Unknown model: {model_id}. Available: {list(models.keys())}")
+
     model = models.get(model_id, request.app.state.model) if model_id else request.app.state.model
     cache_key = f"predictions_{model_id or 'default'}"
 
-    def fetch():
-        return run_predictions(model=model, save_output=False)
-
-    return cache.get_or_fetch(cache_key, fetch)
+    return cache.get_or_fetch(cache_key, lambda: run_predictions(model=model, save_output=False))
 
 
 def _get_predictions(request: Request, model_id: str | None = None) -> pd.DataFrame:
@@ -36,9 +33,8 @@ def get_predictions(
     request: Request,
     model: str = Query(default=None, description="Model ID (config_d, stacked_ensemble, etc.)"),
 ):
-    predictions_df = _get_predictions(request, model)
-    result = predictions_df.to_dict(orient="records")
-    return result
+    """All player predictions for the current GW."""
+    return _get_predictions(request, model).to_dict(orient="records")
 
 
 @router.get("/models")
@@ -49,9 +45,8 @@ def get_models(request: Request):
 
 @router.get("/best-xi")
 def get_best_xi(request: Request):
-    # Global best starting 11 from all available players
-    predictions_df = _get_predictions(request)
-    return solve_best_xi(predictions_df)
+    """Global best starting 11 from all available players."""
+    return solve_best_xi(_get_predictions(request))
 
 
 @router.get("/best-squad")
@@ -59,9 +54,8 @@ def get_best_squad(
     request: Request,
     budget: float = Query(default=100.0, ge=50.0, le=120.0),
 ):
-    # ILP-optimised 15-man squad within budget constraints
-    predictions_df = _get_predictions(request)
-    return solve_best_squad(predictions_df, budget=budget)
+    """ILP-optimised 15-man squad within budget constraints."""
+    return solve_best_squad(_get_predictions(request), budget=budget)
 
 
 @router.get("/predictions/multi-gw")
@@ -69,21 +63,20 @@ def get_multi_gw(
     request: Request,
     horizon: int = Query(default=3, ge=1, le=3),
 ):
-    # All players with multi-GW predictions (GW+1/2/3, each backed by a trained model)
+    """All players with multi-GW predictions (GW+1/2/3, each backed by a trained model)."""
     cache = request.app.state.cache
     horizon_models = getattr(request.app.state, "horizon_models", {})
 
     def fetch():
         from ml.pipelines.inference.fetch_live_data import fetch_fixtures
 
-        inference_result = _get_inference_result(request)
-        gw1_preds = inference_result["predictions"]
-        feature_matrix = inference_result["feature_matrix"]
+        inference = _get_inference_result(request)
+        gw1_preds = inference["predictions"]
+        feature_matrix = inference["feature_matrix"]
 
-        # Build live_df from feature_matrix + element IDs.
-        # feature_matrix is in original order; gw1_preds is sorted by predicted_points.
+        # feature_matrix is in original API order; gw1_preds is sorted by predicted_points.
         # Join by element ID to avoid row mismatch.
-        element_ids = inference_result.get("element_ids", [])
+        element_ids = inference.get("element_ids", [])
         live_df = feature_matrix.reset_index(drop=True).copy()
         if "element" not in live_df.columns and element_ids:
             live_df["element"] = element_ids
