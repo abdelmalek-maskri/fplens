@@ -2,7 +2,6 @@ import { useParams, useNavigate } from "react-router-dom";
 import { FDR_COLORS, POSITION_COLORS, POSITION_BG } from "../lib/constants";
 import TeamBadge from "../components/TeamBadge";
 import StatusBadge from "../components/StatusBadge";
-import ShapBreakdown from "../components/ShapBreakdown";
 import ErrorState from "../components/ErrorState";
 import { SkeletonStatStrip, SkeletonCard } from "../components/skeletons";
 import { usePlayer } from "../hooks";
@@ -11,26 +10,30 @@ import { usePlayer } from "../hooks";
 // FORM BAR CHART — last 10 GW points
 // ============================================================
 const FormChart = ({ pts, labels }) => {
-  const max = Math.max(...pts, 1);
   return (
-    <div className="flex items-end gap-1 h-24">
+    <div className="flex gap-2">
       {pts.map((p, i) => (
-        <div key={i} className="flex-1 flex flex-col items-center gap-1">
-          <span className="text-2xs text-surface-400 font-data tabular-nums">{p}</span>
-          <div
-            className={`w-full rounded-t transition-all ${
+        <div
+          key={i}
+          className={`flex-1 flex flex-col items-center py-2 rounded ${
+            p >= 8 ? "bg-brand-500/15" : p >= 5 ? "bg-surface-800/50" : "bg-transparent"
+          }`}
+        >
+          <span
+            className={`text-sm font-data tabular-nums font-bold ${
               p >= 8
-                ? "bg-brand-400"
+                ? "text-brand-400"
                 : p >= 5
-                  ? "bg-brand-500/60"
+                  ? "text-surface-100"
                   : p >= 3
-                    ? "bg-surface-500"
-                    : "bg-surface-700"
+                    ? "text-surface-400"
+                    : "text-surface-600"
             }`}
-            style={{ height: `${(p / max) * 100}%`, minHeight: p > 0 ? "4px" : "1px" }}
-          />
-          <span className="text-2xs text-surface-600 truncate w-full text-center">
-            {labels[i]?.replace("GW", "")}
+          >
+            {p}
+          </span>
+          <span className="text-[9px] text-surface-600 mt-0.5">
+            GW{labels[i]?.replace("GW", "")}
           </span>
         </div>
       ))}
@@ -223,15 +226,81 @@ export default function PlayerDetail() {
         </div>
       </div>
 
-      {/* SHAP Breakdown */}
-      {player.shap && player.shap.length > 0 && (
-        <div>
-          <span className="section-label">Prediction breakdown</span>
-          <div className="mt-3 card">
-            <ShapBreakdown shapData={player.shap} />
-          </div>
-        </div>
-      )}
+      {/* Prediction Factors — plain language from SHAP */}
+      {player.shap &&
+        player.shap.length > 0 &&
+        (() => {
+          const positives = player.shap.filter((s) => s.impact > 0);
+          const negatives = player.shap.filter((s) => s.impact < 0);
+
+          const translate = (s) => {
+            const val = s.value;
+            if (s.feature === "minutes_lag1")
+              return val >= 80
+                ? "Played full match last GW"
+                : val > 0
+                  ? `Played ${val} mins last GW`
+                  : "Did not play last GW";
+            if (s.feature === "was_home") return val > 0.5 ? "Playing at home" : "Playing away";
+            if (s.feature === "form") return `Form rating: ${val}`;
+            if (s.feature === "value") return `Price: £${val}m`;
+            if (s.feature.includes("season_avg"))
+              return `Season avg: ${typeof val === "number" ? val.toFixed(1) : val} pts`;
+            if (s.feature.includes("ict"))
+              return `ICT Index: ${typeof val === "number" ? val.toFixed(1) : val}`;
+            if (s.feature.includes("roll3")) return `Last 3 games average`;
+            if (s.feature.includes("roll5")) return `Last 5 games average`;
+            if (s.feature.includes("opponent") || s.feature.includes("strength"))
+              return `Fixture difficulty`;
+            if (s.feature.includes("injury") || s.feature.includes("gws_since"))
+              return val > 0 ? `${Math.round(val)} GWs since injury` : "Recent injury";
+            if (s.feature === "team") return "Team strength";
+            if (s.feature.includes("bonus")) return "Bonus points record";
+            if (s.feature === "position") return "Position";
+            return s.display || s.feature.replace(/_/g, " ");
+          };
+
+          return (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {positives.length > 0 && (
+                <div>
+                  <span className="text-xs font-medium text-success-400 uppercase tracking-wide">
+                    In favour
+                  </span>
+                  <div className="mt-2 space-y-1">
+                    {positives.map((s) => (
+                      <div
+                        key={s.feature}
+                        className="flex items-center gap-2 text-sm text-surface-300"
+                      >
+                        <span className="w-1 h-1 rounded-full bg-success-400 shrink-0" />
+                        {translate(s)}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {negatives.length > 0 && (
+                <div>
+                  <span className="text-xs font-medium text-danger-400 uppercase tracking-wide">
+                    Against
+                  </span>
+                  <div className="mt-2 space-y-1">
+                    {negatives.map((s) => (
+                      <div
+                        key={s.feature}
+                        className="flex items-center gap-2 text-sm text-surface-300"
+                      >
+                        <span className="w-1 h-1 rounded-full bg-danger-400 shrink-0" />
+                        {translate(s)}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
       {/* News mentions */}
       {player.news_mentions && player.news_mentions.length > 0 && (

@@ -1,4 +1,4 @@
-import { useState, useMemo, Fragment } from "react";
+import { useState, useMemo, useEffect, Fragment } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { POSITION_COLORS, FDR_MAP } from "../lib/constants";
 import MiniSparkline from "../components/MiniSparkline";
@@ -7,7 +7,6 @@ import FdrBadge from "../components/FdrBadge";
 import SortHeader from "../components/SortHeader";
 import TeamBadge from "../components/TeamBadge";
 
-import ShapBreakdown from "../components/ShapBreakdown";
 import TabBar from "../components/TabBar";
 import ErrorState from "../components/ErrorState";
 import EmptyState from "../components/EmptyState";
@@ -53,16 +52,15 @@ export default function Dashboard() {
   const [sortBy, setSortBy] = useState("predicted_points");
   const [sortDesc, setSortDesc] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedModel, setSelectedModel] = useState("lgbm_c");
+  const [selectedModel, setSelectedModel] = useState(null);
   const [expandedPlayer, setExpandedPlayer] = useState(null);
 
-  const { data, isLoading, error } = usePredictions(selectedModel);
+  const { data, models, isLoading, error } = usePredictions(selectedModel);
+  useEffect(() => {
+    if (!selectedModel && models.length > 0) setSelectedModel(models[0].id);
+  }, [models, selectedModel]);
   const mockPredictions = data?.predictions ?? [];
-  const mockLocalShap = data?.localShap ?? {};
-  const defaultShap = data?.defaultShap;
-  const MODEL_OPTIONS = data?.modelOptions ?? [];
-
-  const activeModel = MODEL_OPTIONS.find((m) => m.id === selectedModel);
+  const activeModel = models.find((m) => m.id === selectedModel) || models[0];
 
   const filteredPredictions = useMemo(() => {
     let result = [...mockPredictions];
@@ -110,20 +108,24 @@ export default function Dashboard() {
           {mockPredictions.filter((p) => p.status === "d" || p.status === "i").length} flagged
         </span>
         <div className="flex items-center gap-3">
-          <select
-            value={selectedModel}
-            onChange={(e) => setSelectedModel(e.target.value)}
-            className="bg-surface-800 border border-surface-700 rounded px-2 py-1 text-xs text-surface-300 focus:outline-none cursor-pointer"
-          >
-            {MODEL_OPTIONS.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.name}
-              </option>
-            ))}
-          </select>
-          <span className="text-2xs font-data tabular-nums text-brand-400">
-            MAE {activeModel.mae}
-          </span>
+          {models.length > 0 && (
+            <select
+              value={selectedModel || models[0]?.id || ""}
+              onChange={(e) => setSelectedModel(e.target.value)}
+              className="bg-surface-800 border border-surface-700 rounded px-2 py-1 text-xs text-surface-300 focus:outline-none cursor-pointer"
+            >
+              {models.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}
+                </option>
+              ))}
+            </select>
+          )}
+          {activeModel && (
+            <span className="text-2xs font-data tabular-nums text-brand-400">
+              MAE {activeModel.mae}
+            </span>
+          )}
         </div>
       </div>
 
@@ -323,9 +325,64 @@ export default function Dashboard() {
                   </td>
                 </tr>
                 {expandedPlayer === player.element && (
-                  <tr key={`${player.element}-shap`}>
+                  <tr key={`${player.element}-detail`}>
                     <td colSpan={9}>
-                      <ShapBreakdown shapData={mockLocalShap[player.element] || defaultShap} />
+                      <div className="px-4 py-3 bg-surface-800/20 flex items-center gap-6 flex-wrap text-xs">
+                        <div>
+                          <span className="text-surface-500">xG</span>
+                          <span className="ml-1.5 text-surface-200 font-data">
+                            {player.xG || 0}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-surface-500">xA</span>
+                          <span className="ml-1.5 text-surface-200 font-data">
+                            {player.xA || 0}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-surface-500">Goals</span>
+                          <span className="ml-1.5 text-surface-200 font-data">
+                            {player.goals || 0}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-surface-500">Assists</span>
+                          <span className="ml-1.5 text-surface-200 font-data">
+                            {player.assists || 0}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-surface-500">Bonus</span>
+                          <span className="ml-1.5 text-surface-200 font-data">
+                            {player.bonus || 0}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-surface-500">Minutes</span>
+                          <span className="ml-1.5 text-surface-200 font-data">
+                            {player.minutes || 0}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-surface-500">ICT</span>
+                          <span className="ml-1.5 text-surface-200 font-data">
+                            {player.ict_index || 0}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-surface-500">Uncertainty</span>
+                          <span className="ml-1.5 text-surface-200 font-data">
+                            ±{player.uncertainty?.toFixed(1) || 0}
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => navigate(`/player/${player.element}`)}
+                          className="ml-auto text-brand-400 hover:text-brand-300 transition-colors text-xs"
+                        >
+                          Full profile →
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 )}

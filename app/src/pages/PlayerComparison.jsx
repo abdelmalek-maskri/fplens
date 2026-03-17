@@ -121,9 +121,6 @@ function PlayerSelector({ selected, onChange, label, excludeId, allPlayers }) {
 function ComparisonBar({ label, valueA, valueB, format, higherIsBetter = true, suffix = "" }) {
   const a = typeof valueA === "number" ? valueA : 0;
   const b = typeof valueB === "number" ? valueB : 0;
-  const max = Math.max(a, b, 0.01);
-  const pctA = (a / max) * 100;
-  const pctB = (b / max) * 100;
 
   const aWins = higherIsBetter ? a > b : a < b;
   const bWins = higherIsBetter ? b > a : b < a;
@@ -137,48 +134,24 @@ function ComparisonBar({ label, valueA, valueB, format, higherIsBetter = true, s
   };
 
   return (
-    <div className="py-2.5 border-b border-surface-800/50 last:border-0">
-      <div className="flex items-center justify-between mb-1.5">
-        <span
-          className={`text-sm font-semibold tabular-nums ${
-            aWins ? "text-brand-400" : tie ? "text-surface-200" : "text-surface-400"
-          }`}
-        >
-          {formatVal(valueA)}
-          {suffix}
-        </span>
-        <span className="section-label">{label}</span>
-        <span
-          className={`text-sm font-semibold tabular-nums ${
-            bWins ? "text-brand-400" : tie ? "text-surface-200" : "text-surface-400"
-          }`}
-        >
-          {formatVal(valueB)}
-          {suffix}
-        </span>
-      </div>
-      <div className="flex items-center gap-1">
-        {/* Left bar (Player A) — grows from right to left */}
-        <div className="flex-1 flex justify-end">
-          <div
-            className={`h-2 rounded-l transition-all duration-500 ${
-              aWins ? "bg-brand-500" : "bg-surface-700"
-            }`}
-            style={{ width: `${pctA}%` }}
-          />
-        </div>
-        {/* Divider */}
-        <div className="w-px h-4 bg-surface-600" />
-        {/* Right bar (Player B) — grows from left to right */}
-        <div className="flex-1">
-          <div
-            className={`h-2 rounded-r transition-all duration-500 ${
-              bWins ? "bg-brand-500" : "bg-surface-700"
-            }`}
-            style={{ width: `${pctB}%` }}
-          />
-        </div>
-      </div>
+    <div className="flex items-center py-2 border-b border-surface-800/30 last:border-0">
+      <span
+        className={`w-20 text-right font-data tabular-nums text-sm ${
+          aWins ? "text-brand-400 font-bold" : tie ? "text-surface-200" : "text-surface-500"
+        }`}
+      >
+        {formatVal(valueA)}
+        {suffix}
+      </span>
+      <span className="flex-1 text-center text-xs text-surface-400 px-3">{label}</span>
+      <span
+        className={`w-20 text-left font-data tabular-nums text-sm ${
+          bWins ? "text-brand-400 font-bold" : tie ? "text-surface-200" : "text-surface-500"
+        }`}
+      >
+        {formatVal(valueB)}
+        {suffix}
+      </span>
     </div>
   );
 }
@@ -402,16 +375,13 @@ export default function PlayerComparison() {
             <div className="flex items-center justify-between border-b border-surface-800 mb-4">
               <TabBar
                 tabs={[
-                  { id: "bars", label: "Bars" },
+                  { id: "bars", label: "Stats" },
                   { id: "radar", label: "Radar" },
                 ]}
                 active={viewMode}
                 onChange={setViewMode}
                 id="compare-view"
               />
-              <h3 className="text-xs font-bold text-surface-400 uppercase tracking-wide">
-                Head to Head
-              </h3>
             </div>
 
             {viewMode === "bars" ? (
@@ -488,112 +458,64 @@ export default function PlayerComparison() {
             )}
           </div>
 
-          {/* Season Stats Comparison Table */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {/* xG Over/Underperformance */}
-            <div>
-              {[a, b].map((p) => {
-                const diff = p.goals - p.xG;
-                const overPerforming = diff > 0;
-                return (
-                  <div
-                    key={p.id}
-                    className="flex items-center justify-between py-2 border-b border-surface-800/50 last:border-0"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-surface-300">{p.web_name}</span>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-xs text-surface-500 mr-2">
-                        {p.goals}G vs {p.xG}xG
-                      </span>
-                      <span
-                        className={`text-sm font-bold ${
-                          overPerforming ? "text-success-400" : "text-danger-400"
-                        }`}
-                      >
-                        {overPerforming ? "+" : ""}
-                        {diff.toFixed(1)}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-              <p className="text-xs text-surface-500 mt-2">
-                Negative = regression candidate. Positive = finishing quality or variance.
-              </p>
-            </div>
+          {/* Verdict */}
+          {(() => {
+            const winner = a.predicted_points > b.predicted_points ? a : b;
+            const loser = winner === a ? b : a;
 
-            {/* Value Analysis */}
-            <div>
-              {[a, b].map((p) => {
-                const ptsPerMil = (p.predicted_points / p.value).toFixed(2);
-                const totalPtsPerMil = (p.total_points / p.value).toFixed(1);
-                return (
-                  <div key={p.id} className="py-2 border-b border-surface-800/50 last:border-0">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-surface-300">{p.web_name}</span>
-                      <span className="text-sm font-bold text-surface-100">{ptsPerMil} pts/£m</span>
-                    </div>
-                    <div className="flex items-center justify-between mt-1">
-                      <span className="text-xs text-surface-500">Season total</span>
-                      <span className="text-xs text-surface-400">
-                        {totalPtsPerMil} total pts/£m
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-              <p className="text-xs text-surface-500 mt-2">
-                Higher pts/£m = better value for budget-constrained squads.
-              </p>
-            </div>
-          </div>
+            // Build reasons
+            const reasons = [];
+            if (winner.predicted_points > loser.predicted_points)
+              reasons.push(
+                `Higher predicted: ${winner.predicted_points.toFixed(1)} vs ${loser.predicted_points.toFixed(1)} pts`
+              );
+            if (winner.form > loser.form)
+              reasons.push(`Better form: ${winner.form} vs ${loser.form}`);
+            if (winner.total_points > loser.total_points)
+              reasons.push(`More season points: ${winner.total_points} vs ${loser.total_points}`);
+            if (winner.value < loser.value)
+              reasons.push(`Cheaper: £${winner.value}m vs £${loser.value}m`);
+            if (winner.total_points / winner.value > loser.total_points / loser.value)
+              reasons.push(
+                `Better value: ${(winner.total_points / winner.value).toFixed(1)} vs ${(loser.total_points / loser.value).toFixed(1)} pts/£m`
+              );
 
-          {/* Uncertainty Comparison */}
-          <div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              {[a, b].map((p) => {
-                const low = Math.max(0, p.predicted_points - p.uncertainty);
-                const high = p.predicted_points + p.uncertainty;
-                const maxVal = 12;
-                const leftPct = (low / maxVal) * 100;
-                const widthPct = ((high - low) / maxVal) * 100;
-                const pointPct = (p.predicted_points / maxVal) * 100;
+            // Build caveats for the loser
+            const caveats = [];
+            if (loser.form > winner.form)
+              caveats.push(`Better recent form (${loser.form} vs ${winner.form})`);
+            if (loser.value < winner.value)
+              caveats.push(`Cheaper (£${loser.value}m vs £${winner.value}m)`);
+            if (loser.goals - loser.xG > winner.goals - winner.xG)
+              caveats.push("Outperforming xG more");
 
-                return (
-                  <div key={p.id}>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm text-surface-300">{p.web_name}</span>
-                      <span className="text-xs text-surface-500">
-                        ±{p.uncertainty.toFixed(1)} pts
-                      </span>
-                    </div>
-                    <div className="relative h-3 bg-surface-800 rounded-full">
-                      <div
-                        className="absolute h-full bg-brand-500/30 rounded-full"
-                        style={{ left: `${leftPct}%`, width: `${widthPct}%` }}
-                      />
-                      <div
-                        className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-brand-400"
-                        style={{ left: `${pointPct}%` }}
-                      />
-                    </div>
-                    <div className="flex justify-between mt-1 text-xs text-surface-500">
-                      <span>{low.toFixed(1)}</span>
-                      <span className="font-semibold text-surface-300">
-                        {p.predicted_points.toFixed(1)}
-                      </span>
-                      <span>{high.toFixed(1)}</span>
-                    </div>
+            return (
+              <div className="border-t border-surface-800 pt-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-brand-400" />
+                  <span className="text-sm text-surface-100">
+                    <span className="font-semibold">{winner.web_name}</span> is the stronger pick
+                  </span>
+                </div>
+                {reasons.length > 0 && (
+                  <div className="pl-4 space-y-1">
+                    {reasons.slice(0, 3).map((r, i) => (
+                      <p key={i} className="text-xs text-surface-400">
+                        · {r}
+                      </p>
+                    ))}
                   </div>
-                );
-              })}
-            </div>
-            <p className="text-xs text-surface-500 mt-3">
-              Wider range = less certain. Factor in fixture and availability.
-            </p>
-          </div>
+                )}
+                {caveats.length > 0 && (
+                  <div className="pl-4">
+                    <p className="text-xs text-surface-500">
+                      {loser.web_name} edge: {caveats.join(", ").toLowerCase()}
+                    </p>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </>
       ) : (
         <EmptyState

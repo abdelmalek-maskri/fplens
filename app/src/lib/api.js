@@ -31,8 +31,13 @@ async function apiFetch(path, { method = "GET", headers = {}, timeout = DEFAULT_
 
 // --- API methods ---
 
-export function getPredictions() {
-  return apiFetch("/api/predictions");
+export function getPredictions(modelId) {
+  const params = modelId ? `?model=${modelId}` : "";
+  return apiFetch(`/api/predictions${params}`);
+}
+
+export function getModels() {
+  return apiFetch("/api/models");
 }
 
 export function getBestXI() {
@@ -63,7 +68,7 @@ export function getNews(days = 7) {
   return apiFetch(`/api/news?days=${days}`);
 }
 
-export function getMultiGW(horizon = 6) {
+export function getMultiGW(horizon = 3) {
   return apiFetch(`/api/predictions/multi-gw?horizon=${horizon}`);
 }
 

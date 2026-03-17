@@ -141,9 +141,9 @@ describe("GET endpoints", () => {
     );
   });
 
-  it("getMultiGW defaults to horizon=6", async () => {
+  it("getMultiGW defaults to horizon=3", async () => {
     await getMultiGW();
-    expect(mockFetch.mock.calls[0][0]).toContain("horizon=6");
+    expect(mockFetch.mock.calls[0][0]).toContain("horizon=3");
   });
 });
 
