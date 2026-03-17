@@ -61,14 +61,14 @@ export function useModelInsights() {
         const ab = apiData.ablation || {};
         if (ab.config_A && ab.config_D) {
           merged.ablationConfigs = merged.ablationConfigs.map((cfg) => {
-            const real = ab[`config_${cfg.key}`];
+            const real = ab[`config_${cfg.config}`];
             if (real) {
               return {
                 ...cfg,
                 mae: real.mae ?? cfg.mae,
                 rmse: real.rmse ?? cfg.rmse,
                 r2: real.r2 ?? cfg.r2,
-                n_features: real.n_features ?? cfg.n_features,
+                features: real.n_features ?? cfg.features,
                 spearman_rho: real.spearman_rho ?? cfg.spearman_rho,
               };
             }
