@@ -1,4 +1,4 @@
-"""TTL-based cache for FPL API responses and prediction results."""
+"""Thread-safe TTL cache for FPL API responses and prediction results."""
 
 import threading
 from collections.abc import Callable
@@ -7,7 +7,7 @@ from typing import Any
 
 
 class FPLDataCache:
-    # Thread-safe in-memory cache with per-key TTL expiry and dedup
+    """In-memory cache with per-key TTL expiry and dedup locking."""
 
     def __init__(self, ttl_minutes: int = 15):
         self.ttl = timedelta(minutes=ttl_minutes)
@@ -23,17 +23,18 @@ class FPLDataCache:
             return self._key_locks[key]
 
     def get_or_fetch(self, key: str, fetch_fn: Callable, ttl_minutes: int | None = None) -> Any:
-        # check cache under global lock first (fast path)
         ttl = timedelta(minutes=ttl_minutes) if ttl_minutes is not None else self.ttl
+
+        # Fast path: check under global lock
         with self._lock:
             now = datetime.now()
             if key in self._cache and (now - self._timestamps[key]) < ttl:
                 return self._cache[key]
 
-        # per-key lock prevents duplicate fetches for the same key
+        # Per-key lock prevents duplicate fetches for the same key
         key_lock = self._get_key_lock(key)
         with key_lock:
-            # re-check: another thread may have populated while we waited
+            # Re-check: another thread may have populated while we waited
             with self._lock:
                 now = datetime.now()
                 if key in self._cache and (now - self._timestamps[key]) < ttl:
@@ -47,7 +48,6 @@ class FPLDataCache:
             return data
 
     def invalidate(self, key: str | None = None):
-        # clear one key or entire cache, including per-key locks.
         with self._lock:
             if key:
                 self._cache.pop(key, None)
