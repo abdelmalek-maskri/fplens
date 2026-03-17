@@ -8,7 +8,11 @@ export function useTeam(fplId) {
   const cancelledRef = useRef(false);
 
   useEffect(() => {
-    if (!fplId) return;
+    if (!fplId) {
+      setData(null);
+      setError(null);
+      return;
+    }
 
     cancelledRef.current = false;
     setData(null);

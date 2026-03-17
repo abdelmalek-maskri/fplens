@@ -49,6 +49,10 @@ def get_model_features(model) -> list[str]:
     if hasattr(model, "feature_name_"):
         return model.feature_name_
 
+    # CatBoost
+    if hasattr(model, "feature_names_"):
+        return list(model.feature_names_)
+
     # Scikit-learn estimators (RF, Ridge) after fit
     if hasattr(model, "feature_names_in_"):
         return list(model.feature_names_in_)
@@ -106,10 +110,10 @@ def prepare_features(
     # Align features
     X = align_features(df, model_features)
 
-    # Convert categorical columns
+    # Convert categorical columns (CatBoost needs string categories, not numeric)
     cat_cols = [c for c in CAT_COLS if c in X.columns]
     for c in cat_cols:
-        X[c] = X[c].astype("category")
+        X[c] = X[c].astype(str).replace("nan", "missing").astype("category")
 
     # Fill NaN in numeric columns
     numeric_cols = X.select_dtypes(include=[np.number]).columns

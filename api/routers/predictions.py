@@ -10,28 +10,37 @@ from ml.pipelines.inference.predict import run as run_predictions
 router = APIRouter(tags=["Predictions"])
 
 
-def _get_inference_result(request: Request) -> dict:
-    """Shared helper: run inference (cached for 15 min).
-    Returns {"predictions": DataFrame, "feature_matrix": DataFrame, "element_ids": list}.
-    """
+def _get_inference_result(request: Request, model_id: str | None = None) -> dict:
+    """Shared helper: run inference (cached per model, 15 min TTL)."""
     cache = request.app.state.cache
-    model = request.app.state.model
+    models = getattr(request.app.state, "models", {})
+    model = models.get(model_id, request.app.state.model) if model_id else request.app.state.model
+    cache_key = f"predictions_{model_id or 'default'}"
 
     def fetch():
         return run_predictions(model=model, save_output=False)
 
-    return cache.get_or_fetch("predictions", fetch)
+    return cache.get_or_fetch(cache_key, fetch)
 
 
-def _get_predictions(request: Request) -> pd.DataFrame:
-    return _get_inference_result(request)["predictions"]
+def _get_predictions(request: Request, model_id: str | None = None) -> pd.DataFrame:
+    return _get_inference_result(request, model_id)["predictions"]
 
 
 @router.get("/predictions")
-def get_predictions(request: Request):
-    # All players with predicted points, uncertainty, and stats
-    predictions_df = _get_predictions(request)
-    return predictions_df.to_dict(orient="records")
+def get_predictions(
+    request: Request,
+    model: str = Query(default=None, description="Model ID (config_d, stacked_ensemble, etc.)"),
+):
+    predictions_df = _get_predictions(request, model)
+    result = predictions_df.to_dict(orient="records")
+    return result
+
+
+@router.get("/models")
+def get_models(request: Request):
+    """List available models for the frontend selector."""
+    return getattr(request.app.state, "model_info", [])
 
 
 @router.get("/best-xi")

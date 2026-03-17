@@ -53,16 +53,14 @@ export default function Dashboard() {
   const [sortBy, setSortBy] = useState("predicted_points");
   const [sortDesc, setSortDesc] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedModel, setSelectedModel] = useState("lgbm_c");
+  const [selectedModel, setSelectedModel] = useState(null);
   const [expandedPlayer, setExpandedPlayer] = useState(null);
 
-  const { data, isLoading, error } = usePredictions(selectedModel);
+  const { data, models, isLoading, error } = usePredictions(selectedModel);
   const mockPredictions = data?.predictions ?? [];
   const mockLocalShap = data?.localShap ?? {};
   const defaultShap = data?.defaultShap;
-  const MODEL_OPTIONS = data?.modelOptions ?? [];
-
-  const activeModel = MODEL_OPTIONS.find((m) => m.id === selectedModel);
+  const activeModel = models.find((m) => m.id === selectedModel) || models[0];
 
   const filteredPredictions = useMemo(() => {
     let result = [...mockPredictions];
@@ -110,20 +108,24 @@ export default function Dashboard() {
           {mockPredictions.filter((p) => p.status === "d" || p.status === "i").length} flagged
         </span>
         <div className="flex items-center gap-3">
-          <select
-            value={selectedModel}
-            onChange={(e) => setSelectedModel(e.target.value)}
-            className="bg-surface-800 border border-surface-700 rounded px-2 py-1 text-xs text-surface-300 focus:outline-none cursor-pointer"
-          >
-            {MODEL_OPTIONS.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.name}
-              </option>
-            ))}
-          </select>
-          <span className="text-2xs font-data tabular-nums text-brand-400">
-            MAE {activeModel.mae}
-          </span>
+          {models.length > 0 && (
+            <select
+              value={selectedModel || models[0]?.id || ""}
+              onChange={(e) => setSelectedModel(e.target.value)}
+              className="bg-surface-800 border border-surface-700 rounded px-2 py-1 text-xs text-surface-300 focus:outline-none cursor-pointer"
+            >
+              {models.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}
+                </option>
+              ))}
+            </select>
+          )}
+          {activeModel && (
+            <span className="text-2xs font-data tabular-nums text-brand-400">
+              MAE {activeModel.mae}
+            </span>
+          )}
         </div>
       </div>
 

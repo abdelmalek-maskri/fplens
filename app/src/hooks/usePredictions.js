@@ -1,25 +1,33 @@
 import { useState, useEffect } from "react";
-import { getPredictions } from "../lib/api";
-import { MODEL_OPTIONS, DEFAULT_SHAP } from "../lib/constants";
+import { getPredictions, getModels } from "../lib/api";
+import { DEFAULT_SHAP } from "../lib/constants";
 
-export function usePredictions() {
+export function usePredictions(modelId) {
   const [data, setData] = useState(null);
+  const [models, setModels] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Load available models once
   useEffect(() => {
-    getPredictions()
+    getModels().then(setModels).catch(() => {});
+  }, []);
+
+  // Load predictions (re-fetch when modelId changes)
+  useEffect(() => {
+    setIsLoading(true);
+    setError(null);
+    getPredictions(modelId)
       .then((predictions) => {
         setData({
           predictions,
-          localShap: {}, // populated when per-player SHAP API is wired
+          localShap: {},
           defaultShap: DEFAULT_SHAP,
-          modelOptions: MODEL_OPTIONS,
         });
       })
       .catch(setError)
       .finally(() => setIsLoading(false));
-  }, []);
+  }, [modelId]);
 
-  return { data, isLoading, error };
+  return { data, models, isLoading, error };
 }
