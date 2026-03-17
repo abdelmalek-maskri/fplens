@@ -10,6 +10,7 @@ Produces per-horizon outputs in:
     outputs/comparison/gw{h}/error_analysis.json
 Plus cross-horizon summary:
     outputs/comparison/cross_horizon_summary.csv
+    outputs/comparison/cross_horizon_summary.json
 
 Run all horizons:
     python -m ml.evaluation.deep_comparison
