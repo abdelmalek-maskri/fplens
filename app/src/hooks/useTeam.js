@@ -11,6 +11,7 @@ export function useTeam(fplId) {
     if (!fplId) {
       setData(null);
       setError(null);
+      setIsLoading(false);
       return;
     }
 
