@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { POSITION_COLORS, FDR_MAP } from "../lib/constants";
 import { PitchView } from "../components/pitch";
@@ -114,15 +114,17 @@ export default function MyTeam() {
 
   const team = teamData?.team ?? null;
   const transferSuggestions = teamData?.transferSuggestions ?? [];
-
-  // Save to history when team loads successfully
   const managerName = team?.manager_name || teamData?.manager_name;
-  if (team && submittedId) {
-    const already = recentIds.find((h) => h.id === submittedId);
-    if (!already || (managerName && already.name !== managerName)) {
-      saveToHistory(submittedId, managerName);
+
+  // Save to history after render when team loads successfully
+  useEffect(() => {
+    if (team && submittedId) {
+      const already = recentIds.find((h) => h.id === submittedId);
+      if (!already || (managerName && already.name !== managerName)) {
+        saveToHistory(submittedId, managerName);
+      }
     }
-  }
+  }, [team, submittedId, managerName]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleLoadTeam = (e) => {
     e.preventDefault();
