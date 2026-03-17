@@ -821,7 +821,7 @@ def fetch_current_gw_data(include_history: bool = True, include_understat: bool 
 
     if include_understat:
         print("Adding Understat features...")
-        df = enrich_with_understat(df, current_gw)
+        df = enrich_with_understat(df, current_gw, season=season)
 
     print(f"Final shape: {df.shape}")
 
