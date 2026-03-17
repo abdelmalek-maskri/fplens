@@ -46,7 +46,7 @@ const MOCK_DATA = {
 export function useModelInsights() {
   const [data, setData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
