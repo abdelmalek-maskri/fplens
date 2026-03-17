@@ -1,14 +1,18 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { getBestXI } from "../lib/api";
 
 export function useBestXI() {
   const [data, setData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const cancelledRef = useRef(false);
 
   useEffect(() => {
+    cancelledRef.current = false;
+
     getBestXI()
       .then((res) => {
+        if (cancelledRef.current) return;
         setData({
           starters: res.starters || [],
           bench: res.bench || [],
@@ -19,8 +23,16 @@ export function useBestXI() {
           totalWithCaptain: res.total_with_captain,
         });
       })
-      .catch(setError)
-      .finally(() => setIsLoading(false));
+      .catch((err) => {
+        if (!cancelledRef.current) setError(err);
+      })
+      .finally(() => {
+        if (!cancelledRef.current) setIsLoading(false);
+      });
+
+    return () => {
+      cancelledRef.current = true;
+    };
   }, []);
 
   return { data, isLoading, error };

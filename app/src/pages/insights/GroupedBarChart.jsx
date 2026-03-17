@@ -2,7 +2,7 @@ export default function GroupedBarChart({ labels, series, yMin = 0, yMax, yStep 
   const n = labels.length;
   const numSeries = series.length;
 
-  const barW = numSeries <= 2 ? 18 : 18;
+  const barW = 18;
   const barGap = 2;
   const groupGap = numSeries <= 2 ? 14 : 16;
   const groupW = numSeries * barW + (numSeries - 1) * barGap;
