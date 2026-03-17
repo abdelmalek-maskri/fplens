@@ -223,40 +223,43 @@ def predict_multi_gw(
         List of dicts, one per player, matching the frontend's expected format.
     """
     horizon = min(horizon, 3)  # Only GW+1/2/3 have trained models
-    n_players = len(gw1_predictions)
-    gw1_preds = gw1_predictions["predicted_points"].values
 
-    # GW+2 predictions (direct model)
-    gw2_preds = np.full(n_players, 0.0)
+    # feature_matrix is in original API order; gw1_predictions is sorted by
+    # predicted_points. Build element_id-indexed maps for GW+2/3 so predictions
+    # align correctly regardless of row order.
+    fm_elements = feature_matrix["element"].values if "element" in feature_matrix.columns else []
+
+    # GW+2 predictions keyed by element
+    gw2_map: dict[int, float] = {}
     if horizon >= 2 and 2 in horizon_models:
-        gw2_preds = _prepare_and_predict(horizon_models[2], feature_matrix, fixtures_data)
-        # Align to same player order as gw1_predictions
-        if len(gw2_preds) == n_players:
-            pass  # Already aligned (same feature_matrix rows)
-        else:
-            gw2_preds = np.full(n_players, np.mean(gw2_preds))
+        raw = _prepare_and_predict(horizon_models[2], feature_matrix, fixtures_data)
+        for idx, pred in enumerate(raw):
+            if idx < len(fm_elements):
+                gw2_map[int(fm_elements[idx])] = float(pred)
 
-    # GW+3 predictions (direct model)
-    gw3_preds = np.full(n_players, 0.0)
+    # GW+3 predictions keyed by element
+    gw3_map: dict[int, float] = {}
     if horizon >= 3 and 3 in horizon_models:
-        gw3_preds = _prepare_and_predict(horizon_models[3], feature_matrix, fixtures_data)
-        if len(gw3_preds) != n_players:
-            gw3_preds = np.full(n_players, np.mean(gw3_preds))
+        raw = _prepare_and_predict(horizon_models[3], feature_matrix, fixtures_data)
+        for idx, pred in enumerate(raw):
+            if idx < len(fm_elements):
+                gw3_map[int(fm_elements[idx])] = float(pred)
 
-    preds_per_gw = [gw1_preds, gw2_preds, gw3_preds]
-
-    # Build per-player output
+    # Build per-player output (iterating gw1_predictions which is sorted)
     results = []
-    for i, row in gw1_predictions.iterrows():
+    for _, row in gw1_predictions.iterrows():
         team_name = row.get("team_name", "")
         element_id = int(row.get("element", 0))
 
         fdr_list = _get_team_fdr_list(team_name, horizon, fixtures_data)
         opponents = _get_team_opponents(team_name, horizon, fixtures_data)
 
-        predicted = []
-        for gw_idx in range(min(horizon, len(preds_per_gw))):
-            predicted.append(round(float(preds_per_gw[gw_idx][i]), 2))
+        gw_preds = [
+            round(float(row.get("predicted_points", 0)), 2),
+            round(gw2_map.get(element_id, 0.0), 2),
+            round(gw3_map.get(element_id, 0.0), 2),
+        ]
+        predicted = gw_preds[:horizon]
 
         predicted_total = round(sum(predicted), 2)
         fdr_avg = round(np.mean(fdr_list[:horizon]), 2) if fdr_list else 3.0
