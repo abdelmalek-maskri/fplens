@@ -7,7 +7,6 @@ import FdrBadge from "../components/FdrBadge";
 import SortHeader from "../components/SortHeader";
 import TeamBadge from "../components/TeamBadge";
 
-import ShapBreakdown from "../components/ShapBreakdown";
 import TabBar from "../components/TabBar";
 import ErrorState from "../components/ErrorState";
 import EmptyState from "../components/EmptyState";
@@ -58,8 +57,6 @@ export default function Dashboard() {
 
   const { data, models, isLoading, error } = usePredictions(selectedModel);
   const mockPredictions = data?.predictions ?? [];
-  const mockLocalShap = data?.localShap ?? {};
-  const defaultShap = data?.defaultShap;
   const activeModel = models.find((m) => m.id === selectedModel) || models[0];
 
   const filteredPredictions = useMemo(() => {
@@ -325,9 +322,50 @@ export default function Dashboard() {
                   </td>
                 </tr>
                 {expandedPlayer === player.element && (
-                  <tr key={`${player.element}-shap`}>
+                  <tr key={`${player.element}-detail`}>
                     <td colSpan={9}>
-                      <ShapBreakdown shapData={mockLocalShap[player.element] || defaultShap} />
+                      <div className="px-4 py-3 bg-surface-800/20 flex items-center gap-6 flex-wrap text-xs">
+                        <div>
+                          <span className="text-surface-500">xG</span>
+                          <span className="ml-1.5 text-surface-200 font-data">{player.xG || 0}</span>
+                        </div>
+                        <div>
+                          <span className="text-surface-500">xA</span>
+                          <span className="ml-1.5 text-surface-200 font-data">{player.xA || 0}</span>
+                        </div>
+                        <div>
+                          <span className="text-surface-500">Goals</span>
+                          <span className="ml-1.5 text-surface-200 font-data">{player.goals || 0}</span>
+                        </div>
+                        <div>
+                          <span className="text-surface-500">Assists</span>
+                          <span className="ml-1.5 text-surface-200 font-data">{player.assists || 0}</span>
+                        </div>
+                        <div>
+                          <span className="text-surface-500">Bonus</span>
+                          <span className="ml-1.5 text-surface-200 font-data">{player.bonus || 0}</span>
+                        </div>
+                        <div>
+                          <span className="text-surface-500">Minutes</span>
+                          <span className="ml-1.5 text-surface-200 font-data">{player.minutes || 0}</span>
+                        </div>
+                        <div>
+                          <span className="text-surface-500">ICT</span>
+                          <span className="ml-1.5 text-surface-200 font-data">{player.ict_index || 0}</span>
+                        </div>
+                        <div>
+                          <span className="text-surface-500">Uncertainty</span>
+                          <span className="ml-1.5 text-surface-200 font-data">
+                            ±{player.uncertainty?.toFixed(1) || 0}
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => navigate(`/player/${player.element}`)}
+                          className="ml-auto text-brand-400 hover:text-brand-300 transition-colors text-xs"
+                        >
+                          Full profile →
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 )}

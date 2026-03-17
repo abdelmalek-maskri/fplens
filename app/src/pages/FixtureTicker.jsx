@@ -203,54 +203,62 @@ export default function FixtureTicker() {
       {/* Quick Analysis */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div>
-          <span className="section-label">Easiest to attack (next {gameweeks.length} GWs)</span>
-          <div className="mt-3 space-y-2">
+          <span className="section-label">Best for attackers & midfielders</span>
+          <p className="text-[10px] text-surface-500 mt-0.5 mb-3">
+            Teams facing the weakest defences — target their FWD/MID
+          </p>
+          <div className="space-y-2">
             {[...teamData]
               .sort((a, b) => a.avgAtk - b.avgAtk)
               .slice(0, 5)
               .map((t, i) => (
                 <div
                   key={t.team}
-                  className="flex items-center justify-between text-sm"
+                  className="flex items-center gap-2 text-sm"
                   style={{
                     borderLeftColor: TEAM_COLORS[t.team],
                     borderLeftWidth: 2,
                     paddingLeft: 8,
                   }}
                 >
-                  <span className="text-surface-300">
+                  <span className="text-surface-300 flex-1">
                     {i + 1}. {TEAM_FULL[t.team]}
                   </span>
-                  <span className="font-data tabular-nums text-success-400">
-                    {t.avgAtk.toFixed(1)}
+                  <span className={`text-xs font-data tabular-nums px-1.5 py-0.5 rounded ${
+                    t.avgAtk <= 2.5 ? "text-success-400 bg-success-500/10" : "text-surface-400"
+                  }`}>
+                    {t.avgAtk.toFixed(1)} avg FDR
                   </span>
                 </div>
               ))}
           </div>
         </div>
         <div>
-          <span className="section-label">
-            Easiest to keep clean sheets (next {gameweeks.length} GWs)
-          </span>
-          <div className="mt-3 space-y-2">
+          <span className="section-label">Best for defenders & goalkeepers</span>
+          <p className="text-[10px] text-surface-500 mt-0.5 mb-3">
+            Teams facing the weakest attacks — target their DEF/GK for clean sheets
+          </p>
+          <div className="space-y-2">
             {[...teamData]
               .sort((a, b) => a.avgDef - b.avgDef)
               .slice(0, 5)
               .map((t, i) => (
                 <div
                   key={t.team}
-                  className="flex items-center justify-between text-sm"
+                  className="flex items-center gap-2 text-sm"
                   style={{
                     borderLeftColor: TEAM_COLORS[t.team],
                     borderLeftWidth: 2,
                     paddingLeft: 8,
                   }}
                 >
-                  <span className="text-surface-300">
+                  <span className="text-surface-300 flex-1">
                     {i + 1}. {TEAM_FULL[t.team]}
                   </span>
-                  <span className="font-data tabular-nums text-success-400">
-                    {t.avgDef.toFixed(1)}
+                  <span className={`text-xs font-data tabular-nums px-1.5 py-0.5 rounded ${
+                    t.avgDef <= 2.5 ? "text-success-400 bg-success-500/10" : "text-surface-400"
+                  }`}>
+                    {t.avgDef.toFixed(1)} avg FDR
                   </span>
                 </div>
               ))}

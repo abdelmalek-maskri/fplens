@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { FDR_COLORS, POSITION_COLORS } from "../lib/constants";
 import MiniSparkline from "../components/MiniSparkline";
 import TeamBadge from "../components/TeamBadge";
-import UncertaintyBar from "../components/UncertaintyBar";
 import { useWatchlist } from "../hooks";
 import { SkeletonCard } from "../components/skeletons";
 import ErrorState from "../components/ErrorState";
@@ -123,10 +122,11 @@ function WatchedPlayerRow({ p, onNavigate, onRemove }) {
         <div className="text-center">
           <p className="text-2xs text-surface-500">Predicted</p>
           <p className="text-sm font-bold text-brand-400">{p.predicted_points ?? p.predicted}</p>
-          <UncertaintyBar
-            predicted={p.predicted_points ?? p.predicted}
-            uncertainty={p.uncertainty}
-          />
+          {p.uncertainty > 0 && (
+            <p className="text-[10px] text-surface-500 font-data tabular-nums">
+              {Math.max(0, (p.predicted_points ?? p.predicted) - p.uncertainty).toFixed(1)}–{((p.predicted_points ?? p.predicted) + p.uncertainty).toFixed(1)}
+            </p>
+          )}
         </div>
 
         {/* Ownership */}
