@@ -32,7 +32,7 @@ export default function GroupedBarChart({ labels, series, yMin = 0, yMax, yStep 
         viewBox={`0 0 ${svgW} ${svgH}`}
         className="w-full"
         style={{ maxWidth: Math.max(svgW * 1.1, 480), minWidth: 360 }}
-        role="img"
+        aria-hidden="true"
       >
         {ticks.map((t) => (
           <g key={t}>

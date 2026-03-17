@@ -45,7 +45,11 @@ function WatchedPlayerRow({ p, onNavigate, onRemove }) {
 
         <div className="text-center">
           <p className="text-2xs text-surface-500">Own%</p>
-          <p className="text-sm text-surface-300">{p.selected_by_percent ?? p.ownership ?? "—"}%</p>
+          <p className="text-sm text-surface-300">
+            {(p.selected_by_percent ?? p.ownership != null)
+              ? `${p.selected_by_percent ?? p.ownership}%`
+              : "—"}
+          </p>
         </div>
 
         {fdrNext3.length > 0 && (

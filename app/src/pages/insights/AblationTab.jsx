@@ -73,7 +73,7 @@ export default function AblationTab({ ablationConfigs, ablationSignificance, int
                     </div>
                     <p className="text-xs text-surface-500 mt-0.5">{config.description}</p>
                   </td>
-                  <td className="py-2.5 px-3 text-xs text-surface-400">{config.description}</td>
+                  <td className="py-2.5 px-3 text-xs text-surface-400">{config.features}</td>
                   <td className="py-2.5 px-3 font-data tabular-nums">
                     <span
                       className={`font-bold ${config.best ? "text-info-400" : "text-surface-100"}`}
