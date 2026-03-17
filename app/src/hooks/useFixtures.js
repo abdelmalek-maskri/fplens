@@ -15,14 +15,14 @@ export function useFixtures(numGws = 6) {
     setError(null);
 
     getFixtures(numGws)
-      .then((result) => {
+      .then((res) => {
         if (cancelledRef.current) return;
         setData({
-          teams: result.teams || [],
-          teamFull: result.team_full || {},
-          fixtures: result.fixtures || {},
-          fdrBg: result.fdr_bg || FDR_BG,
-          fdrText: result.fdr_text || FDR_TEXT,
+          teams: res.teams || [],
+          teamFull: res.team_full || {},
+          fixtures: res.fixtures || {},
+          fdrBg: res.fdr_bg || FDR_BG,
+          fdrText: res.fdr_text || FDR_TEXT,
         });
       })
       .catch((err) => {

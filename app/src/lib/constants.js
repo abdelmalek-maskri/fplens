@@ -1,8 +1,3 @@
-// ============================================================
-// SHARED DESIGN CONSTANTS
-// Single source of truth for colors and mappings used across pages
-// ============================================================
-
 export const FDR_COLORS = {
   1: { bg: "bg-success-600", text: "text-white", label: "Very Easy" },
   2: { bg: "bg-success-500/70", text: "text-white", label: "Easy" },
@@ -11,7 +6,6 @@ export const FDR_COLORS = {
   5: { bg: "bg-danger-700", text: "text-white", label: "Very Hard" },
 };
 
-// Flat FDR lookups for Fixture Ticker (fdr level → CSS class)
 export const FDR_BG = Object.fromEntries(Object.entries(FDR_COLORS).map(([k, v]) => [k, v.bg]));
 export const FDR_TEXT = Object.fromEntries(Object.entries(FDR_COLORS).map(([k, v]) => [k, v.text]));
 
@@ -75,9 +69,6 @@ export const POSITION_BG = {
   FWD: "bg-danger-500/20",
 };
 
-// ============================================================
-// PLAYER STATUS
-// ============================================================
 export const STATUS_CONFIG = {
   a: { label: "Available", cls: "text-success-400" },
   d: { label: "Doubtful", cls: "text-warning-400" },
@@ -85,36 +76,9 @@ export const STATUS_CONFIG = {
   u: { label: "Unavailable", cls: "text-surface-400" },
 };
 
-// ============================================================
-// FPL SQUAD RULES
-// ============================================================
 export const FPL_BUDGET = 100;
 export const POS_LIMITS = { GK: 2, DEF: 5, MID: 5, FWD: 3 };
 export const MAX_PER_TEAM = 3;
-
-// ============================================================
-// MODEL DISPLAY
-// ============================================================
-export const MODEL_OPTIONS = [
-  {
-    id: "lgbm_c",
-    name: "LightGBM Config C",
-    mae: 1.043,
-    description: "Best overall — 141 features, tuned",
-  },
-  {
-    id: "lgbm_a",
-    name: "LightGBM Config A",
-    mae: 1.06,
-    description: "Baseline — FPL + Understat only",
-  },
-  {
-    id: "lgbm_b",
-    name: "LightGBM Config B",
-    mae: 1.051,
-    description: "With injury features",
-  },
-];
 
 export const DEFAULT_SHAP = [
   { feature: "minutes_lag1", value: 90, impact: +0.8 },

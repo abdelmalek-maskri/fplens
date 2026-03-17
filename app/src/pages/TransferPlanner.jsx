@@ -1,13 +1,10 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import TeamBadge from "../components/TeamBadge";
+import TeamBadge from "../components/badges/TeamBadge";
 import { useTransfers } from "../hooks";
 import { SkeletonTable } from "../components/skeletons";
-import ErrorState from "../components/ErrorState";
+import ErrorState from "../components/feedback/ErrorState";
 
-// ============================================================
-// SUGGESTED TRANSFERS — model-driven recommendations
-// ============================================================
 function computeSuggestions(squad, targets, horizon, maxTransfers = 1) {
   const suggestions = [];
   const candidates = squad
@@ -53,9 +50,6 @@ function computeSuggestions(squad, targets, horizon, maxTransfers = 1) {
   return suggestions.slice(0, maxTransfers);
 }
 
-// ============================================================
-// MAIN COMPONENT
-// ============================================================
 export default function TransferPlanner() {
   const navigate = useNavigate();
   const { data: transferData, isLoading, error } = useTransfers();
@@ -119,10 +113,8 @@ export default function TransferPlanner() {
 
   return (
     <div className="space-y-5">
-      {/* Controls bar */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-5">
-          {/* Horizon */}
           <div className="flex items-center gap-2">
             <span className="text-xs text-surface-500">Plan ahead</span>
             <div className="flex items-center border border-surface-700/50 rounded overflow-hidden">
@@ -146,7 +138,6 @@ export default function TransferPlanner() {
             </div>
           </div>
 
-          {/* FTs */}
           <div className="flex items-center gap-2">
             <span className="text-xs text-surface-500">Free transfers</span>
             <select
@@ -161,7 +152,6 @@ export default function TransferPlanner() {
           </div>
         </div>
 
-        {/* Stats */}
         <div className="flex items-center gap-4 text-xs">
           {transfers.length > 0 && (
             <>
@@ -187,7 +177,6 @@ export default function TransferPlanner() {
         </div>
       </div>
 
-      {/* No team state */}
       {noTeam && (
         <div className="py-12 text-center">
           <p className="text-surface-400 text-sm">
@@ -203,7 +192,6 @@ export default function TransferPlanner() {
         </div>
       )}
 
-      {/* Suggestions panel */}
       {suggestions.length > 0 && !noTeam && (
         <div className="border border-surface-700/50 rounded-md overflow-hidden">
           <div className="flex items-center justify-between px-4 py-2.5 bg-surface-800/50">
@@ -219,7 +207,6 @@ export default function TransferPlanner() {
                   key={s.out.element}
                   className={`flex items-center gap-4 px-4 py-3 ${alreadyApplied ? "opacity-40" : ""}`}
                 >
-                  {/* Out */}
                   <div className="flex-1 min-w-0">
                     <span className="text-[10px] uppercase text-danger-400 font-medium">Sell</span>
                     <div className="flex items-center gap-2 mt-0.5">
@@ -235,7 +222,6 @@ export default function TransferPlanner() {
                     <span className="text-[10px] text-surface-600 mt-0.5">{s.reason}</span>
                   </div>
 
-                  {/* Delta */}
                   <div className="text-center shrink-0">
                     <span className="text-xs text-surface-600">→</span>
                     <div className="text-xs font-semibold text-success-400 font-data">
@@ -243,7 +229,6 @@ export default function TransferPlanner() {
                     </div>
                   </div>
 
-                  {/* In */}
                   <div className="flex-1 min-w-0">
                     <span className="text-[10px] uppercase text-success-400 font-medium">Buy</span>
                     <div className="flex items-center gap-2 mt-0.5">
@@ -255,7 +240,6 @@ export default function TransferPlanner() {
                     </div>
                   </div>
 
-                  {/* Apply */}
                   <button
                     onClick={() => applySuggestion(s)}
                     disabled={alreadyApplied}
@@ -270,7 +254,6 @@ export default function TransferPlanner() {
         </div>
       )}
 
-      {/* Applied transfers summary */}
       {transfers.length > 0 && (
         <div className="space-y-2">
           <span className="text-[10px] uppercase tracking-wider text-surface-500 font-medium">

@@ -1,11 +1,3 @@
-/**
- * Grass SVG background + pitch markings.
- * Accepts an `id` prop to namespace SVG pattern/filter IDs
- * so multiple pitches on the same page won't collide.
- *
- * @param {string} id       - Unique prefix for SVG IDs (default: "pitch")
- * @param {React.ReactNode} children - Player formation rows rendered on top
- */
 export default function PitchLayout({ id = "pitch", children }) {
   const patternId = `grass-${id}`;
   const filterId = `grassNoise-${id}`;
@@ -34,21 +26,17 @@ export default function PitchLayout({ id = "pitch", children }) {
         />
       </svg>
 
-      {/* Pitch markings */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute inset-[16px] border-2 border-white/20 rounded-[3px]" />
         <div className="absolute left-[16px] right-[16px] top-1/2 h-[2px] bg-white/20" />
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[100px] h-[100px] rounded-full border-2 border-white/20" />
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-white/25" />
-        {/* Top penalty area */}
         <div className="absolute top-[16px] left-1/2 -translate-x-1/2 w-[220px] h-[65px] border-b-2 border-l-2 border-r-2 border-white/15 rounded-b-[2px]" />
         <div className="absolute top-[16px] left-1/2 -translate-x-1/2 w-[100px] h-[28px] border-b-2 border-l-2 border-r-2 border-white/12 rounded-b-[2px]" />
         <div className="absolute top-[68px] left-1/2 -translate-x-1/2 w-[70px] h-[35px] border-b-2 border-white/10 rounded-b-full" />
-        {/* Bottom penalty area */}
         <div className="absolute bottom-[16px] left-1/2 -translate-x-1/2 w-[220px] h-[65px] border-t-2 border-l-2 border-r-2 border-white/15 rounded-t-[2px]" />
         <div className="absolute bottom-[16px] left-1/2 -translate-x-1/2 w-[100px] h-[28px] border-t-2 border-l-2 border-r-2 border-white/12 rounded-t-[2px]" />
         <div className="absolute bottom-[68px] left-1/2 -translate-x-1/2 w-[70px] h-[35px] border-t-2 border-white/10 rounded-t-full" />
-        {/* Corner arcs */}
         <div className="absolute top-[16px] left-[16px] w-5 h-5 border-r-2 border-b-2 border-white/10 rounded-br-full" />
         <div className="absolute top-[16px] right-[16px] w-5 h-5 border-l-2 border-b-2 border-white/10 rounded-bl-full" />
         <div className="absolute bottom-[16px] left-[16px] w-5 h-5 border-r-2 border-t-2 border-white/10 rounded-tr-full" />

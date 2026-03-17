@@ -1,9 +1,3 @@
-// ============================================================
-// Model Insights — static display config and fallback values.
-// Real ablation + SHAP data is fetched from /api/model-insights.
-// These constants provide UI config (colors, tabs) and fallbacks.
-// ============================================================
-
 export const modelVariants = [
   {
     id: "baseline",

@@ -1,17 +1,12 @@
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { POSITION_COLORS, FDR_MAP } from "../lib/constants";
 import { PitchView } from "../components/pitch";
-import TeamBadge from "../components/TeamBadge";
-import FdrBadge from "../components/FdrBadge";
-import ErrorState from "../components/ErrorState";
+import TeamBadge from "../components/badges/TeamBadge";
+import FdrBadge from "../components/badges/FdrBadge";
+import ErrorState from "../components/feedback/ErrorState";
 import { SkeletonStatStrip, SkeletonPitch } from "../components/skeletons";
 import { useBestXI } from "../hooks";
 
-// ============================================================
-// OPTIMAL XI PAGE
-// Backend solver picks the best starting 11 from all ~800
-// Premier League players for the upcoming GW.
-// ============================================================
 export default function OptimalXI() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -41,7 +36,6 @@ export default function OptimalXI() {
 
   return (
     <div className="space-y-6 stagger">
-      {/* Stats strip */}
       <div className="flex items-center gap-5 flex-wrap py-3 border-b border-surface-800">
         <div>
           <span className="text-lg font-bold text-brand-400 font-data tabular-nums">
@@ -65,7 +59,6 @@ export default function OptimalXI() {
           </div>
         )}
 
-        {/* View toggle */}
         <div className="ml-auto flex items-center border border-surface-700 rounded overflow-hidden">
           <button
             onClick={() => setViewMode("pitch")}
@@ -92,7 +85,6 @@ export default function OptimalXI() {
           benchLabel="Bench order"
         />
       ) : (
-        /* ---- Table View ---- */
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
@@ -116,7 +108,6 @@ export default function OptimalXI() {
               </tr>
             </thead>
             <tbody>
-              {/* Starters */}
               {[...starters]
                 .sort((a, b) => {
                   const posOrder = { GK: 0, DEF: 1, MID: 2, FWD: 3 };
@@ -180,7 +171,6 @@ export default function OptimalXI() {
                     </td>
                   </tr>
                 ))}
-              {/* Bench divider */}
               <tr>
                 <td colSpan={6} className="py-2 px-3">
                   <div className="flex items-center gap-2">
@@ -192,7 +182,6 @@ export default function OptimalXI() {
                   </div>
                 </td>
               </tr>
-              {/* Bench players */}
               {bench.map((p, idx) => (
                 <tr key={p.element} className="border-t border-surface-800/60 opacity-60">
                   <td className="py-2.5 px-3 text-xs text-surface-600 font-data">{idx + 1}</td>
