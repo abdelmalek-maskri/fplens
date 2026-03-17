@@ -50,7 +50,6 @@ export function useSeasonPlanner(budget = 100) {
             ...p,
             team: p.team_name,
             predicted_1gw: p.predicted_points,
-            predicted_6gw: p.predicted_points * 6,
             ownership: p.selected_by_percent || 0,
           }));
         }

@@ -561,7 +561,11 @@ function ShapTab({ shapFeatures, exampleShap }) {
         </div>
         <div className="space-y-2.5">
           {shapFeatures.map((f, idx) => {
-            const pct = (f.importance / maxImportance) * 100;
+            const maxPct = shapFeatures[0].importance_pct
+              ? parseFloat(shapFeatures[0].importance_pct)
+              : maxImportance;
+            const thisPct = f.importance_pct ? parseFloat(f.importance_pct) : f.importance;
+            const pct = (thisPct / maxPct) * 100;
             const color = barColors[f.category] || "#6B7280";
             return (
               <div key={f.feature} className="flex items-center gap-3">
@@ -585,7 +589,9 @@ function ShapTab({ shapFeatures, exampleShap }) {
                     }}
                   >
                     <span className="text-xs font-bold text-white pl-2 font-data">
-                      {f.importance.toFixed(1)}%
+                      {f.importance_pct
+                        ? `${parseFloat(f.importance_pct).toFixed(1)}%`
+                        : `${(f.importance * 100).toFixed(1)}%`}
                     </span>
                   </div>
                 </div>

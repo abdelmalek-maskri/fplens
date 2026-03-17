@@ -5,7 +5,6 @@ export { useFixtures } from "./useFixtures";
 export { useNews } from "./useNews";
 export { useWatchlist } from "./useWatchlist";
 export { useTransfers } from "./useTransfers";
-export { useChips } from "./useChips";
 export { useModelInsights } from "./useModelInsights";
 export { usePlayer } from "./usePlayer";
 export { usePlayerPool } from "./usePlayerPool";

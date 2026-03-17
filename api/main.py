@@ -1,5 +1,6 @@
 """Fantasy Foresight API, serves ML predictions from trained model."""
 
+import contextlib
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -10,7 +11,18 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from api.cache import FPLDataCache
 from api.routers import fixtures, insights, predictions, team
+from ml.pipelines.inference.multi_gw import load_horizon_models
 from ml.pipelines.inference.predict import DEFAULT_MODEL
+
+# Model class imports needed for joblib unpickling
+with contextlib.suppress(Exception):
+    from ml.pipelines.train.train_stacked_ensemble import StackedEnsemble  # noqa: F401
+with contextlib.suppress(Exception):
+    from ml.pipelines.train.train_stacked_with_injury import StackedEnsembleInjury  # noqa: F401
+with contextlib.suppress(Exception):
+    from ml.pipelines.train.train_twohead_model import TwoHeadModel  # noqa: F401
+with contextlib.suppress(Exception):
+    from ml.pipelines.train.train_position_specific import PositionSpecificLGBMModel  # noqa: F401
 
 MODEL_PATH = Path(os.environ.get("MODEL_PATH", str(DEFAULT_MODEL)))
 
@@ -22,10 +34,56 @@ async def lifespan(app: FastAPI):
         raise FileNotFoundError(
             f"Model file not found: {MODEL_PATH}\nSet MODEL_PATH env var or ensure the file exists."
         )
-    print(f"Loading ML model from {MODEL_PATH}...")
-    app.state.model = joblib.load(MODEL_PATH)
+    # Load all available GW+1 models for user selection
+    MODEL_REGISTRY = {
+        "config_d": (
+            "Config D: Stacked + Injury + News (Best)",
+            "outputs/experiments/ablation_injury/config_D/model.joblib",
+            1.016,
+        ),
+        "config_a": (
+            "Config A: FPL + Understat only",
+            "outputs/experiments/ablation_injury/config_A/model.joblib",
+            1.026,
+        ),
+        "config_b": ("Config B: + Injury features", "outputs/experiments/ablation_injury/config_B/model.joblib", 1.016),
+        "config_c": ("Config C: + News features", "outputs/experiments/ablation_injury/config_C/model.joblib", 1.023),
+        "stacked_ensemble": ("Stacked Ensemble (109 features)", "outputs/models/stacked_ensemble.joblib", 1.051),
+        "catboost_tweedie": (
+            "CatBoost Tweedie vp1.5",
+            "outputs/experiments/multi_horizon/gw1/catboost_tweedie_vp1.5/model.joblib",
+            1.032,
+        ),
+        "lgbm_baseline": (
+            "LightGBM Baseline",
+            "outputs/experiments/multi_horizon/gw1/lgbm_baseline/model.joblib",
+            1.054,
+        ),
+        "baseline": ("Single LightGBM (production)", "outputs/models/baseline.joblib", 1.060),
+    }
+    app.state.models = {}
+    app.state.model_info = []
+    for model_id, (name, path, mae) in MODEL_REGISTRY.items():
+        p = Path(path)
+        if p.exists():
+            try:
+                print(f"  Loading {name} from {path}...")
+                app.state.models[model_id] = joblib.load(p)
+                app.state.model_info.append({"id": model_id, "name": name, "mae": mae})
+            except Exception as e:
+                print(f"  WARNING: Failed to load {name}: {e}")
+
+    # Default model
+    if "config_d" in app.state.models:
+        app.state.model = app.state.models["config_d"]
+        print(f"Loaded {len(app.state.models)} models, default: config_d")
+    else:
+        app.state.model = joblib.load(MODEL_PATH)
+        print(f"Loaded {len(app.state.models)} models, default: {MODEL_PATH}")
+
+    print("Loading horizon models (GW+2, GW+3)...")
+    app.state.horizon_models = load_horizon_models()
     app.state.cache = FPLDataCache(ttl_minutes=15)
-    print(f"Model loaded: {type(app.state.model).__name__}")
     yield
     print("Shutting down...")
 

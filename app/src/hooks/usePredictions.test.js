@@ -14,6 +14,7 @@ const MOCK_PLAYER = {
 
 vi.mock("../lib/api", () => ({
   getPredictions: vi.fn(() => Promise.resolve([MOCK_PLAYER])),
+  getModels: vi.fn(() => Promise.resolve([{ id: "config_d", name: "Config D", mae: 1.016 }])),
 }));
 
 import { usePredictions } from "./usePredictions";
@@ -36,8 +37,6 @@ describe("usePredictions", () => {
     expect(result.current.error).toBeNull();
     expect(result.current.data).not.toBeNull();
     expect(result.current.data).toHaveProperty("predictions");
-    expect(result.current.data).toHaveProperty("localShap");
-    expect(result.current.data).toHaveProperty("modelOptions");
   });
 
   it("predictions array is non-empty", async () => {
@@ -62,5 +61,17 @@ describe("usePredictions", () => {
     expect(player).toHaveProperty("predicted_points");
     expect(player).toHaveProperty("position");
     expect(player).toHaveProperty("team_name");
+  });
+
+  it("loads available models", async () => {
+    const { result } = renderHook(() => usePredictions());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(result.current.models.length).toBeGreaterThan(0);
+    expect(result.current.models[0]).toHaveProperty("id");
+    expect(result.current.models[0]).toHaveProperty("mae");
   });
 });

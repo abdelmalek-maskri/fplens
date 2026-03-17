@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { POSITION_COLORS, FDR_MAP } from "../lib/constants";
 import { PitchView } from "../components/pitch";
@@ -68,14 +68,44 @@ export default function MyTeam() {
       return p;
     });
   };
-  const submittedId = searchParams.get("fpl_id") || null;
+  const submittedId = searchParams.get("fpl_id") || localStorage.getItem("fpl_id") || null;
   const [fplId, setFplId] = useState(submittedId || "");
+
+  // Recent FPL IDs history
+  const getRecentIds = () => {
+    try {
+      return JSON.parse(localStorage.getItem("fpl_id_history") || "[]");
+    } catch {
+      return [];
+    }
+  };
+  const [recentIds, setRecentIds] = useState(getRecentIds);
+
+  const saveToHistory = (id, managerName) => {
+    const history = getRecentIds().filter((h) => h.id !== id);
+    history.unshift({ id, name: managerName || `Team ${id}`, time: Date.now() });
+    const trimmed = history.slice(0, 5); // keep last 5
+    localStorage.setItem("fpl_id_history", JSON.stringify(trimmed));
+    setRecentIds(trimmed);
+  };
+
+  const removeFromHistory = (id) => {
+    const history = getRecentIds().filter((h) => h.id !== id);
+    localStorage.setItem("fpl_id_history", JSON.stringify(history));
+    setRecentIds(history);
+    if (id === submittedId) setSubmittedId(null);
+  };
 
   const setSubmittedId = (id) => {
     setSearchParams((prev) => {
       const p = new URLSearchParams(prev);
-      if (id) p.set("fpl_id", id);
-      else p.delete("fpl_id");
+      if (id) {
+        p.set("fpl_id", id);
+        localStorage.setItem("fpl_id", id);
+      } else {
+        p.delete("fpl_id");
+        localStorage.removeItem("fpl_id");
+      }
       return p;
     });
   };
@@ -84,6 +114,17 @@ export default function MyTeam() {
 
   const team = teamData?.team ?? null;
   const transferSuggestions = teamData?.transferSuggestions ?? [];
+  const managerName = team?.manager_name || teamData?.manager_name;
+
+  // Save to history after render when team loads successfully
+  useEffect(() => {
+    if (team && submittedId) {
+      const already = recentIds.find((h) => h.id === submittedId);
+      if (!already || (managerName && already.name !== managerName)) {
+        saveToHistory(submittedId, managerName);
+      }
+    }
+  }, [team, submittedId, managerName]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleLoadTeam = (e) => {
     e.preventDefault();
@@ -134,6 +175,43 @@ export default function MyTeam() {
             {error.message || "Failed to load team. Check your FPL ID."}
           </p>
         )}
+
+        {/* Recent IDs */}
+        {recentIds.length > 0 && (
+          <div className="space-y-1.5">
+            <span className="text-[10px] uppercase tracking-wider text-surface-500 font-medium">
+              Recent
+            </span>
+            {recentIds.map((h) => (
+              <div key={h.id} className="flex items-center gap-2 group">
+                <button
+                  onClick={() => {
+                    setFplId(h.id);
+                    setSubmittedId(h.id);
+                  }}
+                  className="flex-1 text-left px-3 py-1.5 rounded border border-surface-700/50 text-sm hover:border-brand-500/30 hover:bg-brand-500/5 transition-colors"
+                >
+                  <span className="text-surface-200 font-data">{h.id}</span>
+                  <span className="text-surface-500 ml-2">{h.name}</span>
+                </button>
+                <button
+                  onClick={() => removeFromHistory(h.id)}
+                  className="text-surface-700 hover:text-danger-400 transition-colors opacity-0 group-hover:opacity-100 p-1"
+                >
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
         <FplIdHelp />
       </div>
     );
@@ -188,9 +266,66 @@ export default function MyTeam() {
             Plan Transfers
           </button>
         </div>
-        <button onClick={() => setSubmittedId(null)} className="btn-ghost text-sm">
+        <button
+          onClick={() => {
+            setSubmittedId(null);
+            setFplId("");
+          }}
+          className="btn-ghost text-sm"
+        >
           Change Team
         </button>
+      </div>
+
+      {/* Captain Recommendation */}
+      <div className="flex items-start gap-4 py-4 border-b border-surface-800">
+        <div className="flex-1">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-xs font-medium text-brand-400 uppercase tracking-wide">
+              Recommended Captain
+            </span>
+            {captainMismatch && (
+              <span className="badge bg-brand-500/20 text-brand-400">Change suggested</span>
+            )}
+          </div>
+          <div className="flex items-center gap-3">
+            <p
+              className="font-semibold text-surface-100 hover:text-brand-400 transition-colors cursor-pointer"
+              onClick={() => handlePlayerClick(recommendedCaptain.element)}
+            >
+              {recommendedCaptain.web_name}
+            </p>
+            <span className="text-xs text-surface-500">
+              {recommendedCaptain.position} · {recommendedCaptain.team_name} vs{" "}
+              {recommendedCaptain.opponent_name}
+            </span>
+            <span className="text-sm font-bold text-surface-100 font-data tabular-nums ml-auto">
+              {recommendedCaptain.predicted_points.toFixed(1)} pts
+              <span className="text-xs text-surface-500 font-normal ml-1">
+                ×2 = {(recommendedCaptain.predicted_points * 2).toFixed(1)}
+              </span>
+            </span>
+          </div>
+        </div>
+        <div className="w-px h-10 bg-surface-700 hidden sm:block" />
+        <div className="flex-1 hidden sm:block">
+          <span className="section-label">Vice Captain</span>
+          <div className="flex items-center gap-3 mt-1">
+            <p
+              className="font-semibold text-surface-100 hover:text-brand-400 transition-colors cursor-pointer"
+              onClick={() => handlePlayerClick(recommendedVice.element)}
+            >
+              {recommendedVice.web_name}
+            </p>
+            <span className="text-xs text-surface-500">
+              {recommendedVice.position} · {recommendedVice.team_name} vs{" "}
+              {recommendedVice.opponent_name}
+            </span>
+            <span className="text-sm font-bold text-surface-100 font-data tabular-nums ml-auto">
+              {recommendedVice.predicted_points.toFixed(1)} pts
+            </span>
+          </div>
+        </div>
       </div>
 
       {/* Team Overview — horizontal stat strip */}
@@ -477,57 +612,6 @@ export default function MyTeam() {
           </table>
         </div>
       )}
-
-      {/* Captain Recommendation */}
-      <div className="flex items-start gap-4 py-4 border-t border-surface-800">
-        <div className="flex-1">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-medium text-brand-400 uppercase tracking-wide">
-              Recommended Captain
-            </span>
-            {captainMismatch && (
-              <span className="badge bg-brand-500/20 text-brand-400">Change suggested</span>
-            )}
-          </div>
-          <div className="flex items-center gap-3">
-            <p
-              className="font-semibold text-surface-100 hover:text-brand-400 transition-colors cursor-pointer"
-              onClick={() => handlePlayerClick(recommendedCaptain.element)}
-            >
-              {recommendedCaptain.web_name}
-            </p>
-            <span className="text-xs text-surface-500">
-              {recommendedCaptain.position} · {recommendedCaptain.team_name} vs{" "}
-              {recommendedCaptain.opponent_name}
-            </span>
-            <span className="text-sm font-bold text-surface-100 font-data tabular-nums ml-auto">
-              {recommendedCaptain.predicted_points.toFixed(1)} pts
-              <span className="text-xs text-surface-500 font-normal ml-1">
-                ×2 = {(recommendedCaptain.predicted_points * 2).toFixed(1)}
-              </span>
-            </span>
-          </div>
-        </div>
-        <div className="w-px h-10 bg-surface-700 hidden sm:block" />
-        <div className="flex-1 hidden sm:block">
-          <span className="section-label">Vice Captain</span>
-          <div className="flex items-center gap-3 mt-1">
-            <p
-              className="font-semibold text-surface-100 hover:text-brand-400 transition-colors cursor-pointer"
-              onClick={() => handlePlayerClick(recommendedVice.element)}
-            >
-              {recommendedVice.web_name}
-            </p>
-            <span className="text-xs text-surface-500">
-              {recommendedVice.position} · {recommendedVice.team_name} vs{" "}
-              {recommendedVice.opponent_name}
-            </span>
-            <span className="text-sm font-bold text-surface-100 font-data tabular-nums ml-auto">
-              {recommendedVice.predicted_points.toFixed(1)} pts
-            </span>
-          </div>
-        </div>
-      </div>
 
       {/* Transfer Suggestions */}
       <div>
