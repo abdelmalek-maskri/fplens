@@ -110,10 +110,10 @@ def prepare_features(
     # Align features
     X = align_features(df, model_features)
 
-    # Convert categorical columns (CatBoost needs string categories, not numeric)
+    # Convert categorical columns
     cat_cols = [c for c in CAT_COLS if c in X.columns]
     for c in cat_cols:
-        X[c] = X[c].astype(str).replace("nan", "missing").astype("category")
+        X[c] = X[c].fillna(0).astype("category")
 
     # Fill NaN in numeric columns
     numeric_cols = X.select_dtypes(include=[np.number]).columns
@@ -132,6 +132,12 @@ def predict(
 
     # Generate predictions and create enriched output dataframe.
     print("Generating predictions...")
+
+    # CatBoost needs string categories, not numeric codes
+    if type(model).__name__ == "CatBoostRegressor":
+        for c in CAT_COLS:
+            if c in X.columns:
+                X[c] = X[c].astype(str).replace("nan", "missing").astype("category")
 
     # Predict — stacked ensembles return (pred, base_preds_dict)
     raw = model.predict(X)
