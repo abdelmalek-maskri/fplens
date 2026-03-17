@@ -1,41 +1,26 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { getBestXI } from "../lib/api";
 
 export function useBestXI() {
   const [data, setData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const cancelledRef = useRef(false);
 
   useEffect(() => {
-    cancelledRef.current = false;
-    setData(null);
-    setIsLoading(true);
-    setError(null);
-
     getBestXI()
-      .then((result) => {
-        if (cancelledRef.current) return;
+      .then((res) => {
         setData({
-          starters: result.starters || [],
-          bench: result.bench || [],
-          captainId: result.captain_id,
-          viceId: result.vice_id,
-          formation: result.formation,
-          totalPoints: result.total_points,
-          totalWithCaptain: result.total_with_captain,
+          starters: res.starters || [],
+          bench: res.bench || [],
+          captainId: res.captain_id,
+          viceId: res.vice_id,
+          formation: res.formation,
+          totalPoints: res.total_points,
+          totalWithCaptain: res.total_with_captain,
         });
       })
-      .catch((err) => {
-        if (!cancelledRef.current) setError(err);
-      })
-      .finally(() => {
-        if (!cancelledRef.current) setIsLoading(false);
-      });
-
-    return () => {
-      cancelledRef.current = true;
-    };
+      .catch(setError)
+      .finally(() => setIsLoading(false));
   }, []);
 
   return { data, isLoading, error };

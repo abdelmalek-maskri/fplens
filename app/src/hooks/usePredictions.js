@@ -8,14 +8,12 @@ export function usePredictions(modelId) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Load available models once
   useEffect(() => {
     getModels()
       .then(setModels)
       .catch(() => {});
   }, []);
 
-  // Load predictions (re-fetch when modelId changes)
   useEffect(() => {
     setIsLoading(true);
     setError(null);

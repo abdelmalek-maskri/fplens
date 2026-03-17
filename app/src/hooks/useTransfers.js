@@ -47,7 +47,6 @@ export function useTransfers(horizon = 3) {
 
     const gwLabels = Array.from({ length: horizon }, (_, i) => `GW+${i + 1}`);
 
-    // Build a lookup from element_id -> multi-GW predictions
     const mgwByElement = {};
     for (const p of multiGW) {
       mgwByElement[p.element] = p;
@@ -71,7 +70,6 @@ export function useTransfers(horizon = 3) {
         pts_last5: [],
       }));
 
-    // Build myTeam from FPL team picks + multi-GW predictions
     let myTeam = [];
     if (myTeamRaw && myTeamRaw.picks) {
       myTeam = myTeamRaw.picks.map((pick) => {

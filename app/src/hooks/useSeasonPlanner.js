@@ -18,24 +18,23 @@ export function useSeasonPlanner(budget = 100) {
       .then(([squadSettled, predictionsSettled]) => {
         if (cancelledRef.current) return;
 
-        const squadResult = squadSettled.status === "fulfilled" ? squadSettled.value : null;
-        const predictions =
-          predictionsSettled.status === "fulfilled" ? predictionsSettled.value : null;
+        const squad = squadSettled.status === "fulfilled" ? squadSettled.value : null;
+        const preds = predictionsSettled.status === "fulfilled" ? predictionsSettled.value : null;
 
-        if (!squadResult && !predictions) {
+        if (!squad && !preds) {
           setError(new Error("Failed to load season planner data."));
           return;
         }
 
-        const result = { budget, posLimits: POS_LIMITS, maxPerTeam: MAX_PER_TEAM };
+        const res = { budget, posLimits: POS_LIMITS, maxPerTeam: MAX_PER_TEAM };
 
-        if (squadResult) {
-          const xi = squadResult.best_xi || {};
-          result.recommended = {
-            squad: squadResult.squad || [],
-            totalValue: squadResult.total_value,
-            totalPoints: squadResult.total_points,
-            budgetRemaining: squadResult.budget_remaining,
+        if (squad) {
+          const xi = squad.best_xi || {};
+          res.recommended = {
+            squad: squad.squad || [],
+            totalValue: squad.total_value,
+            totalPoints: squad.total_points,
+            budgetRemaining: squad.budget_remaining,
             starters: xi.starters || [],
             bench: xi.bench || [],
             captainId: xi.captain_id,
@@ -45,8 +44,8 @@ export function useSeasonPlanner(budget = 100) {
           };
         }
 
-        if (predictions) {
-          result.playerPool = predictions.map((p) => ({
+        if (preds) {
+          res.playerPool = preds.map((p) => ({
             ...p,
             team: p.team_name,
             predicted_1gw: p.predicted_points,
@@ -54,7 +53,7 @@ export function useSeasonPlanner(budget = 100) {
           }));
         }
 
-        setData(result);
+        setData(res);
       })
       .finally(() => {
         if (!cancelledRef.current) setIsLoading(false);

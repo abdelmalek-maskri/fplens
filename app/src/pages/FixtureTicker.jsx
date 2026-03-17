@@ -1,13 +1,10 @@
 import { useSearchParams } from "react-router-dom";
 import { TEAM_COLORS } from "../lib/constants";
-import TabBar from "../components/TabBar";
-import ErrorState from "../components/ErrorState";
+import TabBar from "../components/ui/TabBar";
+import ErrorState from "../components/feedback/ErrorState";
 import { SkeletonTable } from "../components/skeletons";
 import { useFixtures } from "../hooks";
 
-// ============================================================
-// FIXTURE TICKER PAGE
-// ============================================================
 export default function FixtureTicker() {
   const [searchParams, setSearchParams] = useSearchParams();
   const fdrMode = searchParams.get("mode") || "attack";
@@ -37,12 +34,11 @@ export default function FixtureTicker() {
     fdrText: FDR_TEXT,
   } = fixtureData;
 
-  // Derive gameweeks from actual fixture data so blank GWs don't break alignment
+  // Derive from actual data so blank GWs don't break alignment
   const gameweeks = [...new Set(Object.values(FIXTURES).flatMap((fs) => fs.map((f) => f.gw)))].sort(
     (a, b) => a - b
   );
 
-  // Compute avg FDR for sorting + build per-GW lookup for aligned rendering
   const teamData = TEAMS.map((team) => {
     const fixtures = FIXTURES[team] || [];
     const fixtureByGw = Object.fromEntries(fixtures.map((f) => [f.gw, f]));
@@ -66,7 +62,6 @@ export default function FixtureTicker() {
 
   return (
     <div className="space-y-6 stagger">
-      {/* Controls */}
       <div className="flex items-center justify-between">
         <TabBar
           tabs={[
@@ -92,7 +87,6 @@ export default function FixtureTicker() {
         />
       </div>
 
-      {/* Legend */}
       <div className="flex items-center gap-4 text-xs text-surface-500">
         <span>Difficulty:</span>
         {[1, 2, 3, 4, 5].map((fdr) => (
@@ -118,7 +112,6 @@ export default function FixtureTicker() {
         </span>
       </div>
 
-      {/* Fixture Grid */}
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead className="bg-surface-800/30">
@@ -200,7 +193,6 @@ export default function FixtureTicker() {
         </table>
       </div>
 
-      {/* Quick Analysis */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div>
           <span className="section-label">Best for attackers & midfielders</span>

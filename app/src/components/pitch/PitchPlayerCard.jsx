@@ -1,19 +1,9 @@
-import Jersey from "../Jersey";
+import Jersey from "../ui/Jersey";
 
-/**
- * Player card for the pitch view.
- * Used by both OptimalXI and MyTeam pages.
- *
- * @param {object}   player    - Player object with web_name, team_name, position, status, etc.
- * @param {function} onClick   - Optional click handler, receives player.element
- * @param {boolean}  isCaptain - Explicit captain flag (falls back to player.is_captain)
- * @param {boolean}  isVice    - Explicit vice flag (falls back to player.is_vice)
- */
 export default function PitchPlayerCard({ player, onClick, isCaptain, isVice }) {
   const captain = isCaptain ?? player.is_captain;
   const vice = isVice ?? player.is_vice;
 
-  // Dim injured (50%) and doubtful (70%) players
   const opacityClass =
     player.status === "i" ? "opacity-50" : player.status === "d" ? "opacity-70" : "";
 

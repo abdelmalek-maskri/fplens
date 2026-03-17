@@ -1,18 +1,7 @@
-import Jersey from "../Jersey";
+import Jersey from "../ui/Jersey";
 import PitchPlayerCard from "./PitchPlayerCard";
 import PitchLayout from "./PitchLayout";
 
-/**
- * Full pitch visualization with formation rows and bench.
- *
- * @param {Array}    starters      - Starting 11 players
- * @param {Array}    bench         - Bench players (ordered)
- * @param {function} onPlayerClick - Optional, receives player.element
- * @param {number}   captainId     - Explicit captain element ID (falls back to player.is_captain)
- * @param {number}   viceId        - Explicit vice element ID (falls back to player.is_vice)
- * @param {string}   id            - SVG namespace ID (default: "pitch")
- * @param {string}   benchLabel    - Label above bench row (default: "Substitutes")
- */
 export default function PitchView({
   starters,
   bench,
@@ -51,7 +40,6 @@ export default function PitchView({
         </div>
       </PitchLayout>
 
-      {/* Bench */}
       <div className="bg-surface-800/60 px-4 py-4 border-t border-surface-700">
         <p className="section-label mb-4">{benchLabel}</p>
         <div className="flex justify-around">
