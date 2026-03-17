@@ -14,6 +14,10 @@ def _get_inference_result(request: Request, model_id: str | None = None) -> dict
     """Shared helper: run inference (cached per model, 15 min TTL)."""
     cache = request.app.state.cache
     models = getattr(request.app.state, "models", {})
+    if model_id and model_id not in models:
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=400, detail=f"Unknown model: {model_id}. Available: {list(models.keys())}")
     model = models.get(model_id, request.app.state.model) if model_id else request.app.state.model
     cache_key = f"predictions_{model_id or 'default'}"
 
