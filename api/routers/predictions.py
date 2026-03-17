@@ -80,12 +80,16 @@ def get_multi_gw(
         gw1_preds = inference_result["predictions"]
         feature_matrix = inference_result["feature_matrix"]
 
-        # Rebuild live_df: feature_matrix already has model features (including
-        # position, team etc). Only add columns not already present.
+        # Build live_df from feature_matrix + element IDs.
+        # feature_matrix is in original order; gw1_preds is sorted by predicted_points.
+        # Join by element ID to avoid row mismatch.
+        element_ids = inference_result.get("element_ids", [])
         live_df = feature_matrix.reset_index(drop=True).copy()
-        for col in ["element", "team_name"]:
-            if col not in live_df.columns and col in gw1_preds.columns:
-                live_df[col] = gw1_preds[col].reset_index(drop=True)
+        if "element" not in live_df.columns and element_ids:
+            live_df["element"] = element_ids
+        if "team_name" not in live_df.columns and "element" in live_df.columns:
+            team_map = dict(zip(gw1_preds["element"], gw1_preds["team_name"]))
+            live_df["team_name"] = live_df["element"].map(team_map)
 
         fixtures_data = fetch_fixtures(num_gws=horizon)
         return predict_multi_gw(gw1_preds, live_df, horizon_models, fixtures_data, horizon)
