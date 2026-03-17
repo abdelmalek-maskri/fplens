@@ -36,7 +36,7 @@ export default function Header({ onMenuToggle, gwData }) {
       ? currentGw
         ? `Gameweek ${currentGw}`
         : "Dashboard"
-      : PAGE_TITLES[pathname] || "Fantasy Foresight";
+      : PAGE_TITLES[pathname] || "Fantasy Lens";
   const deadlineLabel = formatDeadlineShort(gwData?.deadline);
 
   const handleRefresh = useCallback(() => {

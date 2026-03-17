@@ -54,14 +54,14 @@ const Sidebar = forwardRef(function Sidebar({ open, onClose, gwData }, ref) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 rounded bg-brand-600 flex items-center justify-center">
-              <span className="text-white font-bold text-2xs leading-none">FF</span>
+              <span className="text-white font-bold text-2xs leading-none">FL</span>
             </div>
             <div>
               <h1 className="font-semibold text-surface-100 text-sm leading-none">
-                Fantasy Foresight
+                Fantasy Lens
               </h1>
               <p className="text-2xs text-surface-500 mt-0.5">
-                {currentGw ? `GW ${currentGw}` : "—"}
+                {currentGw ? `Gameweek ${currentGw}` : "—"}
               </p>
             </div>
           </div>
@@ -112,8 +112,9 @@ const Sidebar = forwardRef(function Sidebar({ open, onClose, gwData }, ref) {
         <div className="flex items-center gap-1.5 px-0.5">
           <span className="status-live" />
           <span className="text-2xs text-surface-400">Live</span>
+          {deadline && <span className="text-2xs text-surface-500 ml-auto">Deadline</span>}
         </div>
-        {deadline && <p className="text-2xs text-surface-600 mt-1.5 px-0.5">{deadline}</p>}
+        {deadline && <p className="text-2xs text-surface-600 mt-0.5 px-0.5 text-right">{deadline}</p>}
       </div>
     </aside>
   );
