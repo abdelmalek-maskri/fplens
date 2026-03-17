@@ -1,4 +1,4 @@
-import { useState, useMemo, Fragment } from "react";
+import { useState, useMemo, useEffect, Fragment } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { POSITION_COLORS, FDR_MAP } from "../lib/constants";
 import MiniSparkline from "../components/MiniSparkline";
@@ -56,6 +56,9 @@ export default function Dashboard() {
   const [expandedPlayer, setExpandedPlayer] = useState(null);
 
   const { data, models, isLoading, error } = usePredictions(selectedModel);
+  useEffect(() => {
+    if (!selectedModel && models.length > 0) setSelectedModel(models[0].id);
+  }, [models, selectedModel]);
   const mockPredictions = data?.predictions ?? [];
   const activeModel = models.find((m) => m.id === selectedModel) || models[0];
 
