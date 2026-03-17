@@ -635,23 +635,33 @@ def enrich_with_understat(df: pd.DataFrame, current_gw: int, season: str = "2025
     for col in US_BASE_COLS:
         us[col] = pd.to_numeric(us[col], errors="coerce").fillna(0)
 
-    # Only use completed GWs (shift-1 equivalent to prevent leakage)
     us = us[us["GW"] < current_gw].sort_values(["element", "GW"])
     if us.empty:
         logger.warning("No Understat data before GW %d, skipping", current_gw)
         return df
 
-    # Compute lag1 + rolling features per player
-    grouped = us.groupby("element", sort=False)
-    feat = pd.DataFrame(index=us.index)
-    for col in US_BASE_COLS:
-        feat[f"{col}_lag1"] = grouped[col].transform("last")
-        for w in US_ROLL_WINDOWS:
-            feat[f"{col}_roll{w}"] = grouped[col].transform(lambda x, _w=w: x.tail(_w).mean())
+    # Reconstruct full GW series per player (including missing GWs as NaN)
+    # so shift+rolling matches the training pipeline exactly
+    all_gws = range(1, current_gw)
+    elements = us["element"].unique()
+    idx = pd.MultiIndex.from_product([elements, all_gws], names=["element", "GW"])
+    full = pd.DataFrame(index=idx).reset_index()
+    full = full.merge(us[["element", "GW"] + US_BASE_COLS], on=["element", "GW"], how="left")
+    full = full.sort_values(["element", "GW"])
 
-    feat["element"] = us["element"].values
-    # One row per player from their latest GW
-    feat = feat.drop_duplicates(subset="element", keep="last")
+    # Match training: shift(1) for lag, shift(1).rolling(w, min_periods=1).mean() for roll
+    g = full.groupby("element", sort=False)
+    for col in US_BASE_COLS:
+        full[f"{col}_lag1"] = g[col].shift(1)
+        for w in US_ROLL_WINDOWS:
+            full[f"{col}_roll{w}"] = g[col].transform(
+                lambda x, _w=w: x.shift(1).rolling(window=_w, min_periods=1).mean()
+            )
+
+    # Take the row for current_gw - 1 (latest completed GW) per player
+    latest = full[full["GW"] == current_gw - 1].copy()
+    feat_cols = [c for c in latest.columns if c.endswith(("_lag1", "_roll3", "_roll5", "_roll10"))]
+    feat = latest[["element"] + feat_cols]
 
     # Merge into live df
     df = df.copy()
