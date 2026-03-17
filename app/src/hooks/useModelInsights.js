@@ -69,7 +69,7 @@ export function useModelInsights() {
                 rmse: real.rmse ?? cfg.rmse,
                 r2: real.r2 ?? cfg.r2,
                 features: real.n_features ?? cfg.features,
-                spearman_rho: real.spearman_rho ?? cfg.spearman_rho,
+                rho: real.spearman_rho ?? cfg.rho,
               };
             }
             return cfg;
