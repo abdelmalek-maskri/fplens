@@ -80,7 +80,8 @@ export function useTransfers(horizon = 3) {
           element: pick.element,
           web_name: pick.web_name || mgw.web_name || "Unknown",
           team: pick.team_name || mgw.team_name || "",
-          position: toPos(mgw.position) || toPos(pick.player_position) || toPos(pick.element_type) || "MID",
+          position:
+            toPos(mgw.position) || toPos(pick.player_position) || toPos(pick.element_type) || "MID",
           value: pick.value || mgw.value || 0,
           selling_price: pick.selling_price || pick.value || 0,
           status: pick.status || mgw.status || "a",
