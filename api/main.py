@@ -1,5 +1,6 @@
 """Fantasy Foresight API, serves ML predictions from trained model."""
 
+import contextlib
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -7,8 +8,6 @@ from pathlib import Path
 import joblib
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-
-import contextlib
 
 from api.cache import FPLDataCache
 from api.routers import fixtures, insights, predictions, team
@@ -37,13 +36,29 @@ async def lifespan(app: FastAPI):
         )
     # Load all available GW+1 models for user selection
     MODEL_REGISTRY = {
-        "config_d": ("Config D: Stacked + Injury + News (Best)", "outputs/experiments/ablation_injury/config_D/model.joblib", 1.016),
-        "config_a": ("Config A: FPL + Understat only", "outputs/experiments/ablation_injury/config_A/model.joblib", 1.026),
+        "config_d": (
+            "Config D: Stacked + Injury + News (Best)",
+            "outputs/experiments/ablation_injury/config_D/model.joblib",
+            1.016,
+        ),
+        "config_a": (
+            "Config A: FPL + Understat only",
+            "outputs/experiments/ablation_injury/config_A/model.joblib",
+            1.026,
+        ),
         "config_b": ("Config B: + Injury features", "outputs/experiments/ablation_injury/config_B/model.joblib", 1.016),
         "config_c": ("Config C: + News features", "outputs/experiments/ablation_injury/config_C/model.joblib", 1.023),
         "stacked_ensemble": ("Stacked Ensemble (109 features)", "outputs/models/stacked_ensemble.joblib", 1.051),
-        "catboost_tweedie": ("CatBoost Tweedie vp1.5", "outputs/experiments/multi_horizon/gw1/catboost_tweedie_vp1.5/model.joblib", 1.032),
-        "lgbm_baseline": ("LightGBM Baseline", "outputs/experiments/multi_horizon/gw1/lgbm_baseline/model.joblib", 1.054),
+        "catboost_tweedie": (
+            "CatBoost Tweedie vp1.5",
+            "outputs/experiments/multi_horizon/gw1/catboost_tweedie_vp1.5/model.joblib",
+            1.032,
+        ),
+        "lgbm_baseline": (
+            "LightGBM Baseline",
+            "outputs/experiments/multi_horizon/gw1/lgbm_baseline/model.joblib",
+            1.054,
+        ),
         "baseline": ("Single LightGBM (production)", "outputs/models/baseline.joblib", 1.060),
     }
     app.state.models = {}
@@ -59,8 +74,12 @@ async def lifespan(app: FastAPI):
                 print(f"  WARNING: Failed to load {name}: {e}")
 
     # Default model
-    app.state.model = app.state.models.get("config_d", joblib.load(MODEL_PATH))
-    print(f"Loaded {len(app.state.models)} models, default: Config D")
+    if "config_d" in app.state.models:
+        app.state.model = app.state.models["config_d"]
+        print(f"Loaded {len(app.state.models)} models, default: config_d")
+    else:
+        app.state.model = joblib.load(MODEL_PATH)
+        print(f"Loaded {len(app.state.models)} models, default: {MODEL_PATH}")
 
     print("Loading horizon models (GW+2, GW+3)...")
     app.state.horizon_models = load_horizon_models()
