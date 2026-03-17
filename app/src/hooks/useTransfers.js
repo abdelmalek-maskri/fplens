@@ -16,6 +16,7 @@ export function useTransfers(horizon = 3) {
   useEffect(() => {
     let cancelled = false;
     setIsLoading(true);
+    setError(null);
 
     const fplId = localStorage.getItem("fpl_id");
     const promises = [getMultiGW(horizon)];
