@@ -327,31 +327,45 @@ export default function Dashboard() {
                       <div className="px-4 py-3 bg-surface-800/20 flex items-center gap-6 flex-wrap text-xs">
                         <div>
                           <span className="text-surface-500">xG</span>
-                          <span className="ml-1.5 text-surface-200 font-data">{player.xG || 0}</span>
+                          <span className="ml-1.5 text-surface-200 font-data">
+                            {player.xG || 0}
+                          </span>
                         </div>
                         <div>
                           <span className="text-surface-500">xA</span>
-                          <span className="ml-1.5 text-surface-200 font-data">{player.xA || 0}</span>
+                          <span className="ml-1.5 text-surface-200 font-data">
+                            {player.xA || 0}
+                          </span>
                         </div>
                         <div>
                           <span className="text-surface-500">Goals</span>
-                          <span className="ml-1.5 text-surface-200 font-data">{player.goals || 0}</span>
+                          <span className="ml-1.5 text-surface-200 font-data">
+                            {player.goals || 0}
+                          </span>
                         </div>
                         <div>
                           <span className="text-surface-500">Assists</span>
-                          <span className="ml-1.5 text-surface-200 font-data">{player.assists || 0}</span>
+                          <span className="ml-1.5 text-surface-200 font-data">
+                            {player.assists || 0}
+                          </span>
                         </div>
                         <div>
                           <span className="text-surface-500">Bonus</span>
-                          <span className="ml-1.5 text-surface-200 font-data">{player.bonus || 0}</span>
+                          <span className="ml-1.5 text-surface-200 font-data">
+                            {player.bonus || 0}
+                          </span>
                         </div>
                         <div>
                           <span className="text-surface-500">Minutes</span>
-                          <span className="ml-1.5 text-surface-200 font-data">{player.minutes || 0}</span>
+                          <span className="ml-1.5 text-surface-200 font-data">
+                            {player.minutes || 0}
+                          </span>
                         </div>
                         <div>
                           <span className="text-surface-500">ICT</span>
-                          <span className="ml-1.5 text-surface-200 font-data">{player.ict_index || 0}</span>
+                          <span className="ml-1.5 text-surface-200 font-data">
+                            {player.ict_index || 0}
+                          </span>
                         </div>
                         <div>
                           <span className="text-surface-500">Uncertainty</span>

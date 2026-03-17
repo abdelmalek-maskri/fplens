@@ -224,9 +224,11 @@ export default function FixtureTicker() {
                   <span className="text-surface-300 flex-1">
                     {i + 1}. {TEAM_FULL[t.team]}
                   </span>
-                  <span className={`text-xs font-data tabular-nums px-1.5 py-0.5 rounded ${
-                    t.avgAtk <= 2.5 ? "text-success-400 bg-success-500/10" : "text-surface-400"
-                  }`}>
+                  <span
+                    className={`text-xs font-data tabular-nums px-1.5 py-0.5 rounded ${
+                      t.avgAtk <= 2.5 ? "text-success-400 bg-success-500/10" : "text-surface-400"
+                    }`}
+                  >
                     {t.avgAtk.toFixed(1)} avg FDR
                   </span>
                 </div>
@@ -255,9 +257,11 @@ export default function FixtureTicker() {
                   <span className="text-surface-300 flex-1">
                     {i + 1}. {TEAM_FULL[t.team]}
                   </span>
-                  <span className={`text-xs font-data tabular-nums px-1.5 py-0.5 rounded ${
-                    t.avgDef <= 2.5 ? "text-success-400 bg-success-500/10" : "text-surface-400"
-                  }`}>
+                  <span
+                    className={`text-xs font-data tabular-nums px-1.5 py-0.5 rounded ${
+                      t.avgDef <= 2.5 ? "text-success-400 bg-success-500/10" : "text-surface-400"
+                    }`}
+                  >
                     {t.avgDef.toFixed(1)} avg FDR
                   </span>
                 </div>

@@ -92,8 +92,7 @@ export default function TransferPlanner() {
 
   const teamTotal = useMemo(() => {
     return currentTeam.reduce(
-      (sum, p) =>
-        sum + (p.predicted?.slice(0, horizon).reduce((s, v) => s + v, 0) || 0),
+      (sum, p) => sum + (p.predicted?.slice(0, horizon).reduce((s, v) => s + v, 0) || 0),
       0
     );
   }, [currentTeam, horizon]);
@@ -166,15 +165,9 @@ export default function TransferPlanner() {
         <div className="flex items-center gap-4 text-xs">
           {transfers.length > 0 && (
             <>
-              <span className="text-surface-400">
-                {transfers.length} made
-              </span>
-              {hitCost > 0 && (
-                <span className="text-danger-400 font-medium">-{hitCost} hit</span>
-              )}
-              <span className="text-surface-400">
-                £{budget.toFixed(1)}m ITB
-              </span>
+              <span className="text-surface-400">{transfers.length} made</span>
+              {hitCost > 0 && <span className="text-danger-400 font-medium">-{hitCost} hit</span>}
+              <span className="text-surface-400">£{budget.toFixed(1)}m ITB</span>
               <span className="font-data font-bold text-brand-400">
                 {(teamTotal - hitCost).toFixed(1)} pts
               </span>
@@ -237,9 +230,7 @@ export default function TransferPlanner() {
                       >
                         {s.out.web_name}
                       </span>
-                      <span className="text-xs text-surface-500">
-                        {s.out.sum.toFixed(1)} pts
-                      </span>
+                      <span className="text-xs text-surface-500">{s.out.sum.toFixed(1)} pts</span>
                     </div>
                     <span className="text-[10px] text-surface-600 mt-0.5">{s.reason}</span>
                   </div>
@@ -307,7 +298,8 @@ export default function TransferPlanner() {
                     delta > 0 ? "text-success-400" : "text-danger-400"
                   }`}
                 >
-                  {delta > 0 ? "+" : ""}{delta.toFixed(1)} pts
+                  {delta > 0 ? "+" : ""}
+                  {delta.toFixed(1)} pts
                 </span>
                 <button
                   onClick={() => removeTransfer(t.out)}
@@ -320,7 +312,8 @@ export default function TransferPlanner() {
           })}
           {hitCost > 0 && (
             <div className="text-xs text-danger-400 px-3">
-              -{hitCost} pts hit · Net gain: {(
+              -{hitCost} pts hit · Net gain:{" "}
+              {(
                 transfers.reduce((s, t) => {
                   const out = myTeam.find((p) => p.element === t.out);
                   const inP = targets.find((p) => p.element === t.in);
@@ -328,7 +321,8 @@ export default function TransferPlanner() {
                   const inSum = inP?.predicted?.slice(0, horizon).reduce((a, b) => a + b, 0) || 0;
                   return s + (inSum - outSum);
                 }, 0) - hitCost
-              ).toFixed(1)} pts
+              ).toFixed(1)}{" "}
+              pts
             </div>
           )}
         </div>

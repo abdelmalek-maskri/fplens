@@ -50,7 +50,8 @@ function formatValue(feature, value) {
   if (feature === "was_home") return value > 0.5 ? "Yes" : "No";
   if (feature === "played_lag1") return value > 0.5 ? "Yes" : "No";
   if (feature === "value") return `£${value}m`;
-  if (feature.includes("opponent") || feature.includes("strength")) return String(Math.round(value));
+  if (feature.includes("opponent") || feature.includes("strength"))
+    return String(Math.round(value));
   if (typeof value === "number") return value % 1 === 0 ? String(value) : value.toFixed(1);
   return String(value);
 }
@@ -84,10 +85,7 @@ export default function ShapBreakdown({ shapData }) {
                 {/* Negative side */}
                 <div className="w-1/2 flex justify-end">
                   {!isPositive && (
-                    <div
-                      className="h-3 bg-danger-500/30 rounded-l"
-                      style={{ width: `${pct}%` }}
-                    />
+                    <div className="h-3 bg-danger-500/30 rounded-l" style={{ width: `${pct}%` }} />
                   )}
                 </div>
                 {/* Center line */}
@@ -95,10 +93,7 @@ export default function ShapBreakdown({ shapData }) {
                 {/* Positive side */}
                 <div className="w-1/2">
                   {isPositive && (
-                    <div
-                      className="h-3 bg-success-500/30 rounded-r"
-                      style={{ width: `${pct}%` }}
-                    />
+                    <div className="h-3 bg-success-500/30 rounded-r" style={{ width: `${pct}%` }} />
                   )}
                 </div>
               </div>

@@ -124,7 +124,8 @@ function WatchedPlayerRow({ p, onNavigate, onRemove }) {
           <p className="text-sm font-bold text-brand-400">{p.predicted_points ?? p.predicted}</p>
           {p.uncertainty > 0 && (
             <p className="text-[10px] text-surface-500 font-data tabular-nums">
-              {Math.max(0, (p.predicted_points ?? p.predicted) - p.uncertainty).toFixed(1)}–{((p.predicted_points ?? p.predicted) + p.uncertainty).toFixed(1)}
+              {Math.max(0, (p.predicted_points ?? p.predicted) - p.uncertainty).toFixed(1)}–
+              {((p.predicted_points ?? p.predicted) + p.uncertainty).toFixed(1)}
             </p>
           )}
         </div>

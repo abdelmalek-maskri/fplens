@@ -10,7 +10,9 @@ export function usePredictions(modelId) {
 
   // Load available models once
   useEffect(() => {
-    getModels().then(setModels).catch(() => {});
+    getModels()
+      .then(setModels)
+      .catch(() => {});
   }, []);
 
   // Load predictions (re-fetch when modelId changes)

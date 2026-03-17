@@ -181,10 +181,7 @@ export default function MyTeam() {
               Recent
             </span>
             {recentIds.map((h) => (
-              <div
-                key={h.id}
-                className="flex items-center gap-2 group"
-              >
+              <div key={h.id} className="flex items-center gap-2 group">
                 <button
                   onClick={() => {
                     setFplId(h.id);
@@ -200,7 +197,12 @@ export default function MyTeam() {
                   className="text-surface-700 hover:text-danger-400 transition-colors opacity-0 group-hover:opacity-100 p-1"
                 >
                   <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
                   </svg>
                 </button>
               </div>

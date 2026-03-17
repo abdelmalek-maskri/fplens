@@ -140,7 +140,8 @@ function ComparisonBar({ label, valueA, valueB, format, higherIsBetter = true, s
           aWins ? "text-brand-400 font-bold" : tie ? "text-surface-200" : "text-surface-500"
         }`}
       >
-        {formatVal(valueA)}{suffix}
+        {formatVal(valueA)}
+        {suffix}
       </span>
       <span className="flex-1 text-center text-xs text-surface-400 px-3">{label}</span>
       <span
@@ -148,7 +149,8 @@ function ComparisonBar({ label, valueA, valueB, format, higherIsBetter = true, s
           bWins ? "text-brand-400 font-bold" : tie ? "text-surface-200" : "text-surface-500"
         }`}
       >
-        {formatVal(valueB)}{suffix}
+        {formatVal(valueB)}
+        {suffix}
       </span>
     </div>
   );
@@ -464,15 +466,19 @@ export default function PlayerComparison() {
             // Build reasons
             const reasons = [];
             if (winner.predicted_points > loser.predicted_points)
-              reasons.push(`Higher predicted: ${winner.predicted_points.toFixed(1)} vs ${loser.predicted_points.toFixed(1)} pts`);
+              reasons.push(
+                `Higher predicted: ${winner.predicted_points.toFixed(1)} vs ${loser.predicted_points.toFixed(1)} pts`
+              );
             if (winner.form > loser.form)
               reasons.push(`Better form: ${winner.form} vs ${loser.form}`);
             if (winner.total_points > loser.total_points)
               reasons.push(`More season points: ${winner.total_points} vs ${loser.total_points}`);
             if (winner.value < loser.value)
               reasons.push(`Cheaper: £${winner.value}m vs £${loser.value}m`);
-            if ((winner.total_points / winner.value) > (loser.total_points / loser.value))
-              reasons.push(`Better value: ${(winner.total_points / winner.value).toFixed(1)} vs ${(loser.total_points / loser.value).toFixed(1)} pts/£m`);
+            if (winner.total_points / winner.value > loser.total_points / loser.value)
+              reasons.push(
+                `Better value: ${(winner.total_points / winner.value).toFixed(1)} vs ${(loser.total_points / loser.value).toFixed(1)} pts/£m`
+              );
 
             // Build caveats for the loser
             const caveats = [];
@@ -494,7 +500,9 @@ export default function PlayerComparison() {
                 {reasons.length > 0 && (
                   <div className="pl-4 space-y-1">
                     {reasons.slice(0, 3).map((r, i) => (
-                      <p key={i} className="text-xs text-surface-400">· {r}</p>
+                      <p key={i} className="text-xs text-surface-400">
+                        · {r}
+                      </p>
                     ))}
                   </div>
                 )}
