@@ -21,22 +21,27 @@ export default function MyTeam() {
       return p;
     });
   };
-  const submittedId = searchParams.get("fpl_id") || localStorage.getItem("fpl_id") || null;
-  const [fplId, setFplId] = useState(submittedId || "");
+  const submittedId = searchParams.get("fpl_id") || null;
+  const [fplId, setFplId] = useState(submittedId || localStorage.getItem("fpl_id") || "");
 
   const getRecentIds = () => {
     try {
-      return JSON.parse(localStorage.getItem("fpl_id_history") || "[]");
+      return JSON.parse(localStorage.getItem("fpl_id_history") || "[]").map((h) => ({
+        id: h.id,
+        manager: h.manager || h.name || "",
+        teamName: h.teamName || "",
+        time: h.time,
+      }));
     } catch {
       return [];
     }
   };
   const [recentIds, setRecentIds] = useState(getRecentIds);
 
-  const saveToHistory = (id, managerName) => {
+  const saveToHistory = (id, manager, teamName) => {
     const history = getRecentIds().filter((h) => h.id !== id);
-    history.unshift({ id, name: managerName || `Team ${id}`, time: Date.now() });
-    const trimmed = history.slice(0, 5); // keep last 5
+    history.unshift({ id, manager: manager || "", teamName: teamName || "", time: Date.now() });
+    const trimmed = history.slice(0, 5);
     localStorage.setItem("fpl_id_history", JSON.stringify(trimmed));
     setRecentIds(trimmed);
   };
@@ -66,16 +71,17 @@ export default function MyTeam() {
 
   const team = teamData?.team ?? null;
   const transferSuggestions = teamData?.transferSuggestions ?? [];
-  const managerName = team?.manager_name || teamData?.manager_name;
+  const managerName = team?.manager || teamData?.manager;
+  const teamName = team?.teamName || teamData?.team_name;
 
   useEffect(() => {
     if (team && submittedId) {
       const already = recentIds.find((h) => h.id === submittedId);
-      if (!already || (managerName && already.name !== managerName)) {
-        saveToHistory(submittedId, managerName);
+      if (!already || (managerName && already.manager !== managerName)) {
+        saveToHistory(submittedId, managerName, teamName);
       }
     }
-  }, [team, submittedId, managerName]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [team, submittedId, managerName, teamName]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleLoadTeam = (e) => {
     e.preventDefault();
@@ -120,6 +126,10 @@ export default function MyTeam() {
             {isLoading ? "Loading…" : "Load"}
           </button>
         </form>
+        <p className="text-xs text-surface-500 -mt-3">
+          Any valid FPL ID works, try a random number between 1 and 11,500,000 to explore other
+          managers' teams.
+        </p>
         {error && (
           <p className="text-sm text-danger-400">
             {error.message || "Failed to load team. Check your FPL ID."}
@@ -141,7 +151,8 @@ export default function MyTeam() {
                   className="flex-1 text-left px-3 py-1.5 rounded border border-surface-700/50 text-sm hover:border-brand-500/30 hover:bg-brand-500/5 transition-colors"
                 >
                   <span className="text-surface-200 font-data">{h.id}</span>
-                  <span className="text-surface-500 ml-2">{h.name}</span>
+                  {h.teamName && <span className="text-surface-300 ml-2">{h.teamName}</span>}
+                  {h.manager && <span className="text-surface-500 ml-2">| {h.manager}</span>}
                 </button>
                 <button
                   onClick={() => removeFromHistory(h.id)}
