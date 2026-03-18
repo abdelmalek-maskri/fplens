@@ -83,9 +83,13 @@ export default function MyTeam() {
     }
   }, [team, submittedId, managerName, teamName]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const MAX_FPL_ID = 15_000_000;
+
   const handleLoadTeam = (e) => {
     e.preventDefault();
-    if (fplId) setSubmittedId(fplId);
+    const id = parseInt(fplId, 10);
+    if (!id || id < 1 || id > MAX_FPL_ID) return;
+    setSubmittedId(String(id));
   };
 
   const handlePlayerClick = (elementId) => {
@@ -132,7 +136,9 @@ export default function MyTeam() {
         </p>
         {error && (
           <p className="text-sm text-danger-400">
-            {error.message || "Failed to load team. Check your FPL ID."}
+            {error.message?.includes("Not found") || error.message?.includes("404")
+              ? "No team found for that FPL ID. Double-check and try again."
+              : error.message || "Failed to load team. Check your FPL ID."}
           </p>
         )}
 
