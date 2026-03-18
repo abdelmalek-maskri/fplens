@@ -1,3 +1,7 @@
+> **HISTORICAL** — Extended features are now part of the standard pipeline (109 baseline features).
+> Current best: Config D Stacked Ensemble (MAE=1.016, 145 features).
+> See `outputs/experiments/` for current metrics.
+
 # Experiment 004: Extended Features Ensemble
 
 **Status:** Completed (SIGNIFICANT IMPROVEMENT)

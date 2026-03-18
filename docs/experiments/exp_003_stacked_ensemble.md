@@ -1,3 +1,7 @@
+> **HISTORICAL** — This was the pre-injury/news ensemble (106 features).
+> Current best: Config D with injury+news features (145 features, MAE=1.016).
+> See `outputs/experiments/ablation_injury/` for current ablation results.
+
 # Experiment 003: Stacked Ensemble with Meta-Learning
 
 **Status:** Completed (Mixed Results)

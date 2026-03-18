@@ -1,3 +1,6 @@
+> **HISTORICAL** — Superseded by Config D Stacked Ensemble (MAE=1.016).
+> See `outputs/experiments/` for current metrics.
+
 # Experiment 005: Two-Head Model
 
 **Status:** Completed (No Improvement over Extended)

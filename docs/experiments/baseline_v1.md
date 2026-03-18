@@ -1,3 +1,7 @@
+> **HISTORICAL** — This experiment used 2023-24 as holdout with 72 baseline features.
+> Current best: Config D Stacked Ensemble (MAE=1.016, 145 features, 2024-25 holdout).
+> See `outputs/experiments/` for current metrics.
+
 # Baseline v1 (Frozen): FPL + Understat + LightGBM
 
 ## Purpose
