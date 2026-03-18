@@ -640,9 +640,10 @@ def enrich_with_understat(df: pd.DataFrame, current_gw: int, season: str = "2025
         logger.warning("No Understat data before GW %d, skipping", current_gw)
         return df
 
-    # Reconstruct full GW series per player (including missing GWs as NaN)
-    # so shift+rolling matches the training pipeline exactly
-    all_gws = range(1, current_gw)
+    # Reconstruct full GW series per player including a synthetic row for
+    # current_gw (with NaN base values). After shift+rolling, selecting
+    # the current_gw row gives lag1 = GW N-1's value, matching training.
+    all_gws = range(1, current_gw + 1)  # include current_gw
     elements = us["element"].unique()
     idx = pd.MultiIndex.from_product([elements, all_gws], names=["element", "GW"])
     full = pd.DataFrame(index=idx).reset_index()
@@ -658,8 +659,8 @@ def enrich_with_understat(df: pd.DataFrame, current_gw: int, season: str = "2025
                 lambda x, _w=w: x.shift(1).rolling(window=_w, min_periods=1).mean()
             )
 
-    # Take the row for current_gw - 1 (latest completed GW) per player
-    latest = full[full["GW"] == current_gw - 1].copy()
+    # Select current_gw row — lag1 now correctly reflects GW N-1
+    latest = full[full["GW"] == current_gw].copy()
     feat_cols = [c for c in latest.columns if c.endswith(("_lag1", "_roll3", "_roll5", "_roll10"))]
     feat = latest[["element"] + feat_cols]
 
