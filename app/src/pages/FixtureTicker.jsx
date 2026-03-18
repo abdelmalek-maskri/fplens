@@ -2,7 +2,7 @@ import { useSearchParams } from "react-router-dom";
 import { TEAM_COLORS } from "../lib/constants";
 import TabBar from "../components/ui/TabBar";
 import ErrorState from "../components/feedback/ErrorState";
-import { SkeletonTable } from "../components/skeletons";
+import Loading from "../components/feedback/Loading";
 import { useFixtures } from "../hooks";
 
 export default function FixtureTicker() {
@@ -18,12 +18,7 @@ export default function FixtureTicker() {
   };
 
   const { data: fixtureData, isLoading, error } = useFixtures();
-  if (isLoading)
-    return (
-      <div className="space-y-6">
-        <SkeletonTable rows={20} cols={8} />
-      </div>
-    );
+  if (isLoading) return <Loading />;
   if (error) return <ErrorState message="Failed to load fixture data." />;
   if (!fixtureData) return null;
   const {

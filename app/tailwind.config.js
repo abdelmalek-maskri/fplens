@@ -89,6 +89,20 @@ export default {
       transitionTimingFunction: {
         DEFAULT: "cubic-bezier(0.4, 0, 0.2, 1)",
       },
+      keyframes: {
+        "ball-bounce": {
+          "0%, 100%": { transform: "translateX(-50%) translateY(0)" },
+          "50%": { transform: "translateX(-50%) translateY(-36px)" },
+        },
+        "ball-shadow": {
+          "0%, 100%": { transform: "translateX(-50%) scaleX(1)", opacity: "0.3" },
+          "50%": { transform: "translateX(-50%) scaleX(0.5)", opacity: "0.1" },
+        },
+      },
+      animation: {
+        "ball-bounce": "ball-bounce 0.6s ease-in-out infinite",
+        "ball-shadow": "ball-shadow 0.6s ease-in-out infinite",
+      },
     },
   },
   plugins: [],

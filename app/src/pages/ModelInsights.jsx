@@ -1,7 +1,7 @@
 import { useSearchParams } from "react-router-dom";
 import TabBar from "../components/ui/TabBar";
 import ErrorState from "../components/feedback/ErrorState";
-import { SkeletonStatStrip, SkeletonTable } from "../components/skeletons";
+import Loading from "../components/feedback/Loading";
 import { useModelInsights } from "../hooks";
 import OverviewTab from "./insights/OverviewTab";
 import ShapTab from "./insights/ShapTab";
@@ -13,13 +13,7 @@ export default function ModelInsights() {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get("tab") || "overview";
   const { data, isLoading, error } = useModelInsights();
-  if (isLoading)
-    return (
-      <div className="space-y-6">
-        <SkeletonStatStrip items={4} />
-        <SkeletonTable rows={4} cols={5} />
-      </div>
-    );
+  if (isLoading) return <Loading />;
   if (error) return <ErrorState message="Failed to load model data." />;
   if (!data) return null;
   const {

@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import TeamBadge from "../components/badges/TeamBadge";
 import { useTransfers } from "../hooks";
-import { SkeletonTable } from "../components/skeletons";
+import Loading from "../components/feedback/Loading";
 import ErrorState from "../components/feedback/ErrorState";
 
 function computeSuggestions(squad, targets, horizon, maxTransfers = 1) {
@@ -105,7 +105,7 @@ export default function TransferPlanner() {
     setTransfers((prev) => [...prev, { out: s.out.element, in: s.in.element }]);
   };
 
-  if (isLoading) return <SkeletonTable rows={15} cols={6} />;
+  if (isLoading) return <Loading />;
   if (error) return <ErrorState message="Failed to load transfer data." />;
   if (!transferData) return null;
 

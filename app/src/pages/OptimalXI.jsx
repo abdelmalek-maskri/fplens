@@ -4,7 +4,7 @@ import { PitchView } from "../components/pitch";
 import TeamBadge from "../components/badges/TeamBadge";
 import FdrBadge from "../components/badges/FdrBadge";
 import ErrorState from "../components/feedback/ErrorState";
-import { SkeletonStatStrip, SkeletonPitch } from "../components/skeletons";
+import Loading from "../components/feedback/Loading";
 import { useBestXI } from "../hooks";
 
 export default function OptimalXI() {
@@ -21,13 +21,7 @@ export default function OptimalXI() {
 
   const { data, isLoading, error } = useBestXI();
 
-  if (isLoading)
-    return (
-      <div className="space-y-6">
-        <SkeletonStatStrip items={3} />
-        <SkeletonPitch id="optimal-sk" />
-      </div>
-    );
+  if (isLoading) return <Loading />;
   if (error) return <ErrorState message="Failed to load squad data." />;
   if (!data) return null;
 
