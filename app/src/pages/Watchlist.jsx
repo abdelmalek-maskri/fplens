@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { POSITION_COLORS } from "../lib/constants";
 import { useWatchlist } from "../hooks";
-import { SkeletonCard } from "../components/skeletons";
+import Loading from "../components/feedback/Loading";
 import ErrorState from "../components/feedback/ErrorState";
 import SuggestedSection from "./watchlist/SuggestedSection";
 import WatchedPlayerRow from "./watchlist/WatchedPlayerRow";
@@ -30,14 +30,7 @@ export default function Watchlist() {
     watchIds.includes(id) ? remove(id) : add(id);
   };
 
-  if (isLoading)
-    return (
-      <div className="space-y-3">
-        {Array.from({ length: 5 }, (_, i) => (
-          <SkeletonCard key={i} lines={2} />
-        ))}
-      </div>
-    );
+  if (isLoading) return <Loading />;
 
   if (error) return <ErrorState message="Failed to load watchlist." />;
 

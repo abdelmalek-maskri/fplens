@@ -10,7 +10,7 @@ import TeamBadge from "../components/badges/TeamBadge";
 import TabBar from "../components/ui/TabBar";
 import ErrorState from "../components/feedback/ErrorState";
 import EmptyState from "../components/feedback/EmptyState";
-import { SkeletonStatStrip, SkeletonTable } from "../components/skeletons";
+import Loading from "../components/feedback/Loading";
 import { usePredictions } from "../hooks";
 import DifferentialsTab from "./dashboard/DifferentialsTab";
 import XGTab from "./dashboard/XGTab";
@@ -72,13 +72,7 @@ export default function Dashboard() {
     return result;
   }, [predictions, positionFilter, sortBy, sortDesc, searchQuery]);
 
-  if (isLoading)
-    return (
-      <div className="space-y-6">
-        <SkeletonStatStrip items={3} />
-        <SkeletonTable rows={10} cols={9} />
-      </div>
-    );
+  if (isLoading) return <Loading />;
   if (error) return <ErrorState message="Failed to load predictions." />;
   if (!data) return null;
 
