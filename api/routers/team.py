@@ -2,7 +2,7 @@
 
 import logging
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Path, Request
 
 from api.solvers import suggest_transfers
 from ml.pipelines.inference.fetch_live_data import fetch_user_team
@@ -29,18 +29,21 @@ _ENRICH_FIELDS = {
 
 
 @router.get("/team/{fpl_id}")
-def get_team(fpl_id: int, request: Request):
+def get_team(
+    fpl_id: int = Path(..., ge=1, le=15_000_000),
+    request: Request,
+):
     """Fetch user's FPL team picks and merge with predictions."""
     cache = request.app.state.cache
 
     try:
         team_data = cache.get_or_fetch(f"team_{fpl_id}", lambda: fetch_user_team(fpl_id))
-    except RuntimeError as e:
-        raise HTTPException(status_code=502, detail=f"FPL API error: {e}") from None
+    except RuntimeError:
+        raise HTTPException(status_code=502, detail="Failed to fetch team data") from None
     except Exception as e:
         if "404" in str(e) or "Not Found" in str(e):
-            raise HTTPException(status_code=404, detail=f"FPL ID {fpl_id} not found") from None
-        raise HTTPException(status_code=502, detail=str(e)) from None
+            raise HTTPException(status_code=404, detail="FPL ID not found") from None
+        raise HTTPException(status_code=502, detail="Failed to fetch team data") from None
 
     # merge picks with predictions for player names + predicted points
     predictions_df = None
@@ -84,7 +87,10 @@ def get_team(fpl_id: int, request: Request):
 
 
 @router.get("/player/{element_id}")
-def get_player(element_id: int, request: Request):
+def get_player(
+    element_id: int = Path(..., ge=1),
+    request: Request,
+):
     """Full player profile: predictions, GW history, fixtures, SHAP breakdown."""
     cache = request.app.state.cache
     return cache.get_or_fetch(f"player_{element_id}", lambda: _build_player_detail(element_id, request))

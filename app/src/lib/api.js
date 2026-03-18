@@ -2,6 +2,12 @@ const BASE_URL = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000").repla
 
 const DEFAULT_TIMEOUT = 30_000;
 
+function buildUrl(path, params = {}) {
+  const qs = new URLSearchParams(Object.entries(params).filter(([, v]) => v != null));
+  const query = qs.toString();
+  return query ? `${path}?${query}` : path;
+}
+
 async function apiFetch(path, { method = "GET", headers = {}, timeout = DEFAULT_TIMEOUT } = {}) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeout);
@@ -14,8 +20,11 @@ async function apiFetch(path, { method = "GET", headers = {}, timeout = DEFAULT_
     });
 
     if (!res.ok) {
-      const body = await res.text().catch(() => "");
-      throw new Error(`${res.status} ${res.statusText}${body ? `: ${body}` : ""}`);
+      if (res.status === 422) throw new Error("Invalid input — check your values and try again.");
+      if (res.status === 404) throw new Error("Not found.");
+      const body = await res.json().catch(() => null);
+      const detail = body?.detail || res.statusText;
+      throw new Error(`${res.status}: ${detail}`);
     }
 
     return res.json();
@@ -30,8 +39,7 @@ async function apiFetch(path, { method = "GET", headers = {}, timeout = DEFAULT_
 }
 
 export function getPredictions(modelId) {
-  const params = modelId ? `?model=${modelId}` : "";
-  return apiFetch(`/api/predictions${params}`);
+  return apiFetch(buildUrl("/api/predictions", { model: modelId }));
 }
 
 export function getModels() {
@@ -43,19 +51,19 @@ export function getBestXI() {
 }
 
 export function getBestSquad(budget = 100) {
-  return apiFetch(`/api/best-squad?budget=${budget}`);
+  return apiFetch(buildUrl("/api/best-squad", { budget }));
 }
 
 export function getFixtures(numGws = 6) {
-  return apiFetch(`/api/fixtures?num_gws=${numGws}`);
+  return apiFetch(buildUrl("/api/fixtures", { num_gws: numGws }));
 }
 
 export function getTeam(fplId) {
-  return apiFetch(`/api/team/${fplId}`);
+  return apiFetch(`/api/team/${encodeURIComponent(fplId)}`);
 }
 
 export function getPlayer(elementId) {
-  return apiFetch(`/api/player/${elementId}`);
+  return apiFetch(`/api/player/${encodeURIComponent(elementId)}`);
 }
 
 export function getModelInsights() {
@@ -63,11 +71,11 @@ export function getModelInsights() {
 }
 
 export function getNews(days = 7) {
-  return apiFetch(`/api/news?days=${days}`);
+  return apiFetch(buildUrl("/api/news", { days }));
 }
 
 export function getMultiGW(horizon = 3) {
-  return apiFetch(`/api/predictions/multi-gw?horizon=${horizon}`);
+  return apiFetch(buildUrl("/api/predictions/multi-gw", { horizon }));
 }
 
 export function refresh(secret = "dev-secret") {
