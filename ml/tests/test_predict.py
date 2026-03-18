@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import numpy as np
@@ -13,39 +14,27 @@ from ml.pipelines.inference.predict import (
 
 class TestGetModelFeatures:
     def test_lightgbm(self):
-        model = MagicMock()
-        model.feature_name_ = ["a", "b", "c"]
-        del model.base_models
-        del model.feature_names_
-        del model.feature_names_in_
+        model = SimpleNamespace(feature_name_=["a", "b", "c"])
         assert get_model_features(model) == ["a", "b", "c"]
 
     def test_catboost(self):
-        model = MagicMock()
-        model.feature_names_ = ["x", "y"]
-        del model.base_models
-        del model.feature_name_
-        del model.feature_names_in_
+        model = SimpleNamespace(feature_names_=["x", "y"])
         assert get_model_features(model) == ["x", "y"]
 
     def test_sklearn(self):
-        model = MagicMock()
-        model.feature_names_in_ = np.array(["f1", "f2"])
-        del model.base_models
-        del model.feature_name_
-        del model.feature_names_
+        model = SimpleNamespace(feature_names_in_=np.array(["f1", "f2"]))
         assert get_model_features(model) == ["f1", "f2"]
 
     def test_stacked_ensemble(self):
-        lgbm = MagicMock()
-        lgbm.feature_name_ = ["a", "b"]
-        model = MagicMock()
-        model.base_models = {"lgbm": (lgbm, "regressor")}
-        model.base_names = ["lgbm"]
+        lgbm = SimpleNamespace(feature_name_=["a", "b"])
+        model = SimpleNamespace(
+            base_models={"lgbm": (lgbm, "regressor")},
+            base_names=["lgbm"],
+        )
         assert get_model_features(model) == ["a", "b"]
 
     def test_unknown_model_raises(self):
-        model = MagicMock(spec=[])
+        model = SimpleNamespace()
         with pytest.raises(ValueError, match="Cannot extract feature names"):
             get_model_features(model)
 
