@@ -4,7 +4,7 @@ import { TEAM_COLORS, POSITION_COLORS } from "../lib/constants";
 import TeamBadge from "../components/badges/TeamBadge";
 import TabBar from "../components/ui/TabBar";
 import { useNews } from "../hooks";
-import { SkeletonStatStrip, SkeletonCard, SkeletonArticle } from "../components/skeletons";
+import Loading from "../components/feedback/Loading";
 import ErrorState from "../components/feedback/ErrorState";
 import EmptyState from "../components/feedback/EmptyState";
 
@@ -143,16 +143,7 @@ export default function NewsSentiment() {
     return { total, positive, negative, injuries };
   }, [articles]);
 
-  if (isLoading)
-    return (
-      <div className="space-y-6">
-        <SkeletonStatStrip items={4} />
-        <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
-          <SkeletonCard lines={8} />
-          <SkeletonArticle count={5} />
-        </div>
-      </div>
-    );
+  if (isLoading) return <Loading />;
 
   if (error) return <ErrorState message="Failed to load news articles." />;
 

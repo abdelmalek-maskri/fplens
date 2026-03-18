@@ -3,7 +3,7 @@ import { FDR_COLORS, POSITION_COLORS, POSITION_BG } from "../lib/constants";
 import TeamBadge from "../components/badges/TeamBadge";
 import StatusBadge from "../components/badges/StatusBadge";
 import ErrorState from "../components/feedback/ErrorState";
-import { SkeletonStatStrip, SkeletonCard } from "../components/skeletons";
+import Loading from "../components/feedback/Loading";
 import SentimentDot from "../components/badges/SentimentDot";
 import { usePlayer } from "../hooks";
 
@@ -43,24 +43,7 @@ export default function PlayerDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { data: player, isLoading, error } = usePlayer(id);
-  if (isLoading)
-    return (
-      <div className="space-y-6">
-        <div className="flex items-start gap-4">
-          <div className="flex-1 space-y-2">
-            <div className="skeleton h-4 w-20" />
-            <div className="skeleton h-6 w-48" />
-            <div className="skeleton h-3 w-36" />
-          </div>
-          <div className="skeleton h-8 w-16" />
-        </div>
-        <SkeletonStatStrip items={5} />
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <SkeletonCard lines={6} />
-          <SkeletonCard lines={6} />
-        </div>
-      </div>
-    );
+  if (isLoading) return <Loading />;
   if (error) return <ErrorState message="Failed to load player data." />;
   if (!player) return null;
 

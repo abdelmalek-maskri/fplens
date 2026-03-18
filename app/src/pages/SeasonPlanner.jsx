@@ -1,6 +1,6 @@
 import { PitchView } from "../components/pitch";
 import ErrorState from "../components/feedback/ErrorState";
-import { SkeletonStatStrip, SkeletonPitch } from "../components/skeletons";
+import Loading from "../components/feedback/Loading";
 import { useSeasonPlanner } from "../hooks";
 
 export default function SeasonPlanner() {
@@ -9,13 +9,7 @@ export default function SeasonPlanner() {
   const recommended = plannerData?.recommended;
   const BUDGET = plannerData?.budget ?? 100;
 
-  if (isLoading)
-    return (
-      <div className="space-y-6">
-        <SkeletonStatStrip items={4} />
-        <SkeletonPitch id="season-sk" />
-      </div>
-    );
+  if (isLoading) return <Loading />;
   if (error) return <ErrorState message="Failed to load season data." />;
   if (!plannerData || !recommended) return <ErrorState message="No squad data available." />;
 

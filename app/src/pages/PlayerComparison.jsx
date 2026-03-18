@@ -6,7 +6,7 @@ import TabBar from "../components/ui/TabBar";
 import RadarChart from "../components/charts/RadarChart";
 import ErrorState from "../components/feedback/ErrorState";
 import EmptyState from "../components/feedback/EmptyState";
-import { SkeletonCard } from "../components/skeletons";
+import Loading from "../components/feedback/Loading";
 import { usePlayerPool } from "../hooks";
 import PlayerSelector from "./compare/PlayerSelector";
 import ComparisonBar from "./compare/ComparisonBar";
@@ -18,16 +18,7 @@ export default function PlayerComparison() {
   const [playerB, setPlayerB] = useState(50); // Isak default
   const [viewMode, setViewMode] = useState("bars");
 
-  if (isLoading)
-    return (
-      <div className="space-y-6">
-        <div className="grid grid-cols-[1fr_auto_1fr] gap-4">
-          <SkeletonCard lines={3} />
-          <div />
-          <SkeletonCard lines={3} />
-        </div>
-      </div>
-    );
+  if (isLoading) return <Loading />;
   if (error) return <ErrorState message="Failed to load player data." />;
   if (!poolData) return null;
   const allPlayers = poolData.players;
