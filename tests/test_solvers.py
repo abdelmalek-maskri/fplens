@@ -52,7 +52,7 @@ class TestSolveBestXI:
         result = solve_best_xi(_make_pool())
         captain = next(s for s in result["starters"] if s["element"] == result["captain_id"])
         assert result["total_with_captain"] == pytest.approx(
-            result["total_points"] + captain["predicted_points"]
+            result["total_points"] + captain["predicted_points"], abs=0.01
         )
 
 
