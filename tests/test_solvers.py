@@ -1,111 +1,127 @@
-"""Test and compare squad selection solvers."""
-import sys
-sys.path.insert(0, ".")
-
-from pathlib import Path
-import joblib
+import numpy as np
 import pandas as pd
-from api.solvers import solve_best_xi, FORMATIONS
+import pytest
 
-# --- load real predictions ---
-print("Loading model and running predictions...")
-from ml.pipelines.inference.predict import run as run_predictions
-model = joblib.load("outputs/experiments/ablation_injury/config_D/model.joblib")
-df = run_predictions(model=model, save_output=False)["predictions"]
-print(f"\nTotal players: {len(df)}")
-available = df[(df["status"] != "i") & (df["chance_of_playing"] > 0)]
-print(f"Available players: {len(available)}")
+from api.solvers import solve_best_xi, solve_best_squad, suggest_transfers
 
-# --- 1. run the greedy solver ---
-print("\n" + "=" * 60)
-print("GREEDY SOLVER (current)")
-print("=" * 60)
-result = solve_best_xi(df)
-print(f"Formation: {result['formation']}")
-print(f"Total points: {result['total_points']}")
-print(f"Total with captain: {result['total_with_captain']}")
-print(f"\nStarters:")
-for p in result["starters"]:
-    cap = " (C)" if p["element"] == result["captain_id"] else " (V)" if p["element"] == result["vice_id"] else ""
-    print(f"  {p['position']:3s}  {p['web_name']:18s}  {p['team_name']:3s}  {p['predicted_points']:.2f}{cap}")
-print(f"\nBench:")
-for p in result["bench"]:
-    print(f"  {p['position']:3s}  {p['web_name']:18s}  {p['team_name']:3s}  {p['predicted_points']:.2f}")
 
-# --- 2. show all formation totals ---
-print("\n" + "=" * 60)
-print("ALL FORMATIONS COMPARED")
-print("=" * 60)
-gks = available[available["position"] == "GK"].sort_values("predicted_points", ascending=False)
-defs = available[available["position"] == "DEF"].sort_values("predicted_points", ascending=False)
-mids = available[available["position"] == "MID"].sort_values("predicted_points", ascending=False)
-fwds = available[available["position"] == "FWD"].sort_values("predicted_points", ascending=False)
+def _make_pool(n=100):
+    """Build a pool with enough players across 20 teams for ILP feasibility."""
+    positions = (["GK"] * 10 + ["DEF"] * 30 + ["MID"] * 40 + ["FWD"] * 20)[:n]
+    teams = [f"T{(i % 20) + 1}" for i in range(n)]
+    return pd.DataFrame({
+        "element": range(1, n + 1),
+        "web_name": [f"Player{i}" for i in range(1, n + 1)],
+        "team_name": teams,
+        "position": positions,
+        "predicted_points": np.linspace(4.0, 1.0, n),
+        "value": np.linspace(4.0, 8.0, n),
+        "status": ["a"] * n,
+        "chance_of_playing": [100.0] * n,
+        "form": [3.0] * n,
+    })
 
-formation_results = []
-for n_def, n_mid, n_fwd in FORMATIONS:
-    xi = pd.concat([gks.head(1), defs.head(n_def), mids.head(n_mid), fwds.head(n_fwd)])
-    total = xi["predicted_points"].sum()
-    formation_results.append((f"{n_def}-{n_mid}-{n_fwd}", total))
 
-formation_results.sort(key=lambda x: x[1], reverse=True)
-for f, t in formation_results:
-    marker = " <-- BEST" if f == result["formation"] else ""
-    print(f"  {f}:  {t:.2f}{marker}")
+class TestSolveBestXI:
+    def test_returns_11_starters(self):
+        result = solve_best_xi(_make_pool())
+        assert len(result["starters"]) == 11
 
-# --- 3. position pool depth ---
-print("\n" + "=" * 60)
-print("POSITION POOL DEPTH (top 5 per position)")
-print("=" * 60)
-for pos, pool in [("GK", gks), ("DEF", defs), ("MID", mids), ("FWD", fwds)]:
-    print(f"\n{pos} ({len(pool)} available):")
-    for _, row in pool.head(5).iterrows():
-        print(f"  {row['web_name']:18s}  {row['team_name']:3s}  {row['predicted_points']:.2f}")
+    def test_valid_formation(self):
+        result = solve_best_xi(_make_pool())
+        formation = result["formation"]
+        parts = [int(x) for x in formation.split("-")]
+        assert len(parts) == 3
+        assert parts[0] >= 3  # at least 3 DEF
+        assert parts[1] >= 2  # at least 2 MID
+        assert parts[2] >= 1  # at least 1 FWD
+        assert sum(parts) == 10  # 10 outfield = 11 - 1 GK
 
-# --- 4. prove greedy = optimal for unconstrained ---
-print("\n" + "=" * 60)
-print("GREEDY vs ILP (proving they match for unconstrained selection)")
-print("=" * 60)
-try:
-    from scipy.optimize import linprog
-    import numpy as np
+    def test_captain_is_highest_predicted(self):
+        result = solve_best_xi(_make_pool())
+        starters = result["starters"]
+        captain = next(s for s in starters if s["element"] == result["captain_id"])
+        for s in starters:
+            assert s["predicted_points"] <= captain["predicted_points"]
 
-    # ILP: maximise total predicted_points picking exactly 1 GK + formation DEF/MID/FWD
-    # we solve for the best formation found by greedy, to verify they match
-    best_f = result["formation"]
-    n_d, n_m, n_f = [int(x) for x in best_f.split("-")]
+    def test_vice_differs_from_captain(self):
+        result = solve_best_xi(_make_pool())
+        assert result["captain_id"] != result["vice_id"]
 
-    # for each position, ILP just picks top N (no budget constraint = trivial)
-    ilp_total = (
-        gks.head(1)["predicted_points"].sum()
-        + defs.head(n_d)["predicted_points"].sum()
-        + mids.head(n_m)["predicted_points"].sum()
-        + fwds.head(n_f)["predicted_points"].sum()
-    )
-    print(f"  Greedy total: {result['total_points']:.2f}")
-    print(f"  ILP total:    {ilp_total:.2f}")
-    print(f"  Match: {'YES' if abs(ilp_total - result['total_points']) < 0.01 else 'NO'}")
-    print(f"\n  Without budget constraints, greedy IS optimal.")
-    print(f"  ILP becomes useful for FF-8 (best squad with £100 budget + max 3/team).")
-except ImportError:
-    print("  scipy not installed, skipping ILP comparison")
+    def test_total_with_captain_includes_double(self):
+        result = solve_best_xi(_make_pool())
+        captain = next(s for s in result["starters"] if s["element"] == result["captain_id"])
+        assert result["total_with_captain"] == pytest.approx(
+            result["total_points"] + captain["predicted_points"], abs=0.01
+        )
 
-# --- 5. sensitivity: what if we used different captain strategies? ---
-print("\n" + "=" * 60)
-print("CAPTAIN STRATEGY COMPARISON")
-print("=" * 60)
-starters = pd.DataFrame(result["starters"])
-sorted_by_pts = starters.sort_values("predicted_points", ascending=False)
 
-strategies = {
-    "Highest predicted (current)": sorted_by_pts.iloc[0],
-    "2nd highest predicted": sorted_by_pts.iloc[1],
-    "Best midfielder": starters[starters["position"] == "MID"].sort_values("predicted_points", ascending=False).iloc[0] if len(starters[starters["position"] == "MID"]) > 0 else None,
-    "Best forward": starters[starters["position"] == "FWD"].sort_values("predicted_points", ascending=False).iloc[0] if len(starters[starters["position"] == "FWD"]) > 0 else None,
-}
+class TestSolveBestSquad:
+    def test_picks_15_players(self):
+        result = solve_best_squad(_make_pool())
+        assert len(result["squad"]) == 15
 
-base_total = result["total_points"]
-for name, player in strategies.items():
-    if player is None:
-        continue
-    total_with_cap = base_total + player["predicted_points"]
-    print(f"  {name:30s}  {player['web_name']:15s}  total={total_with_cap:.2f}  (+{player['predicted_points']:.2f})")
+    def test_position_limits(self):
+        result = solve_best_squad(_make_pool())
+        squad = pd.DataFrame(result["squad"])
+        assert len(squad[squad.position == "GK"]) == 2
+        assert len(squad[squad.position == "DEF"]) == 5
+        assert len(squad[squad.position == "MID"]) == 5
+        assert len(squad[squad.position == "FWD"]) == 3
+
+    def test_budget_respected(self):
+        result = solve_best_squad(_make_pool(), budget=100.0)
+        assert result["total_value"] <= 100.0
+
+    def test_max_3_per_team(self):
+        result = solve_best_squad(_make_pool())
+        squad = pd.DataFrame(result["squad"])
+        for team, group in squad.groupby("team_name"):
+            assert len(group) <= 3, f"Team {team} has {len(group)} players"
+
+    def test_includes_best_xi(self):
+        result = solve_best_squad(_make_pool())
+        assert "best_xi" in result
+        assert len(result["best_xi"]["starters"]) == 11
+
+    def test_tight_budget_picks_cheaper(self):
+        pool = _make_pool()
+        loose = solve_best_squad(pool, budget=200.0)
+        tight = solve_best_squad(pool, budget=90.0)
+        assert tight["total_value"] <= loose["total_value"]
+
+
+class TestSuggestTransfers:
+    def _pick(self, pool, element_id):
+        row = pool[pool.element == element_id].iloc[0]
+        return {
+            "element": int(row.element),
+            "player_position": row.position,
+            "value": float(row.value),
+            "predicted_points": float(row.predicted_points),
+            "team_name": row.team_name,
+            "web_name": row.web_name,
+        }
+
+    def test_returns_suggestions(self):
+        pool = _make_pool()
+        weak = pool[pool.position == "MID"].iloc[-1]
+        user_picks = [self._pick(pool, int(weak.element))]
+        result = suggest_transfers(user_picks, pool, bank=20.0)
+        assert len(result) >= 1
+        assert result[0]["in"]["predicted_points"] > result[0]["out"]["predicted_points"]
+
+    def test_position_matching(self):
+        pool = _make_pool()
+        weak_gk = pool[pool.position == "GK"].iloc[-1]
+        user_picks = [self._pick(pool, int(weak_gk.element))]
+        result = suggest_transfers(user_picks, pool, bank=20.0)
+        for s in result:
+            assert s["out"]["position"] == s["in"]["position"]
+
+    def test_max_suggestions_limit(self):
+        pool = _make_pool()
+        weak = pool.nsmallest(10, "predicted_points")
+        user_picks = [self._pick(pool, int(row.element)) for _, row in weak.iterrows()]
+        result = suggest_transfers(user_picks, pool, bank=20.0, max_suggestions=2)
+        assert len(result) <= 2

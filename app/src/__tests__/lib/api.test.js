@@ -51,26 +51,48 @@ describe("apiFetch shared behavior", () => {
     expect(opts.signal).toBeInstanceOf(AbortSignal);
   });
 
-  it("throws on non-2xx response with status and body", async () => {
+  it("throws friendly message on 404", async () => {
     mockFetch.mockResolvedValue({
       ok: false,
       status: 404,
       statusText: "Not Found",
-      text: () => Promise.resolve("no such route"),
+      json: () => Promise.resolve({ detail: "not found" }),
     });
 
-    await expect(getPredictions()).rejects.toThrow("404 Not Found: no such route");
+    await expect(getPredictions()).rejects.toThrow("Not found.");
   });
 
-  it("throws on non-2xx with empty body", async () => {
+  it("throws friendly message on 422", async () => {
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 422,
+      statusText: "Unprocessable Entity",
+      json: () => Promise.resolve({ detail: "validation error" }),
+    });
+
+    await expect(health()).rejects.toThrow("Invalid input");
+  });
+
+  it("includes detail from response body on other errors", async () => {
     mockFetch.mockResolvedValue({
       ok: false,
       status: 500,
       statusText: "Internal Server Error",
-      text: () => Promise.resolve(""),
+      json: () => Promise.resolve({ detail: "something broke" }),
     });
 
-    await expect(health()).rejects.toThrow("500 Internal Server Error");
+    await expect(health()).rejects.toThrow("500: something broke");
+  });
+
+  it("falls back to statusText when body has no detail", async () => {
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 502,
+      statusText: "Bad Gateway",
+      json: () => Promise.reject(new Error("not json")),
+    });
+
+    await expect(health()).rejects.toThrow("502: Bad Gateway");
   });
 
   it("converts AbortError to timeout message", async () => {
