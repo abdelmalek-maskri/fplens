@@ -88,7 +88,7 @@ def get_team(
 
 @router.get("/player/{element_id}")
 def get_player(
-    element_id: int = Path(..., ge=1, le=1000),
+    element_id: int = Path(..., ge=1),
     request: Request = None,
 ):
     """Full player profile: predictions, GW history, fixtures, SHAP breakdown."""
