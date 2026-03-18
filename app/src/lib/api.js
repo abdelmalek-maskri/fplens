@@ -3,9 +3,7 @@ const BASE_URL = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000").repla
 const DEFAULT_TIMEOUT = 30_000;
 
 function buildUrl(path, params = {}) {
-  const qs = new URLSearchParams(
-    Object.entries(params).filter(([, v]) => v != null),
-  );
+  const qs = new URLSearchParams(Object.entries(params).filter(([, v]) => v != null));
   const query = qs.toString();
   return query ? `${path}?${query}` : path;
 }
