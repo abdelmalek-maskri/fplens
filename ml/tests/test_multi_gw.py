@@ -1,8 +1,7 @@
-import numpy as np
-import pandas as pd
-import pytest
 from unittest.mock import MagicMock, patch
 
+import numpy as np
+import pandas as pd
 
 FIXTURES_DATA = {
     "teams": ["ARS", "BOU"],
@@ -25,38 +24,42 @@ FIXTURES_DATA = {
 def _make_gw1_predictions(n=5):
     """Build a realistic gw1_predictions DataFrame, sorted by predicted_points desc."""
     elements = list(range(100, 100 + n))
-    df = pd.DataFrame({
-        "element": elements,
-        "web_name": [f"Player{i}" for i in range(n)],
-        "team_name": ["Arsenal"] * n,
-        "position": ["MID"] * n,
-        "value": [7.0] * n,
-        "predicted_points": np.linspace(4.0, 1.0, n),
-        "uncertainty": [0.3] * n,
-        "predicted_range_low": [1.0] * n,
-        "predicted_range_high": [5.0] * n,
-        "form": [3.0] * n,
-        "status": ["a"] * n,
-        "opponent_name": ["BOU"] * n,
-        "chance_of_playing": [100.0] * n,
-        "news": [""] * n,
-    })
+    df = pd.DataFrame(
+        {
+            "element": elements,
+            "web_name": [f"Player{i}" for i in range(n)],
+            "team_name": ["Arsenal"] * n,
+            "position": ["MID"] * n,
+            "value": [7.0] * n,
+            "predicted_points": np.linspace(4.0, 1.0, n),
+            "uncertainty": [0.3] * n,
+            "predicted_range_low": [1.0] * n,
+            "predicted_range_high": [5.0] * n,
+            "form": [3.0] * n,
+            "status": ["a"] * n,
+            "opponent_name": ["BOU"] * n,
+            "chance_of_playing": [100.0] * n,
+            "news": [""] * n,
+        }
+    )
     return df.sort_values("predicted_points", ascending=False).reset_index(drop=True)
 
 
 def _make_feature_matrix(n=5):
     """Build a feature matrix in original API order (NOT sorted by predictions)."""
     elements = list(range(100, 100 + n))
-    return pd.DataFrame({
-        "element": elements,
-        "team_name": ["Arsenal"] * n,
-        "minutes_lag1": np.random.rand(n) * 90,
-        "value": [7.0] * n,
-        "season": pd.Categorical(["2025-26"] * n),
-        "position": pd.Categorical(["MID"] * n),
-        "team": pd.Categorical([1] * n),
-        "opponent_team": pd.Categorical([4.0] * n),
-    })
+    return pd.DataFrame(
+        {
+            "element": elements,
+            "team_name": ["Arsenal"] * n,
+            "minutes_lag1": np.random.rand(n) * 90,
+            "value": [7.0] * n,
+            "season": pd.Categorical(["2025-26"] * n),
+            "position": pd.Categorical(["MID"] * n),
+            "team": pd.Categorical([1] * n),
+            "opponent_team": pd.Categorical([4.0] * n),
+        }
+    )
 
 
 class TestAddFutureFixtureFeatures:

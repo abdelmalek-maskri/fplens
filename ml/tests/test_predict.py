@@ -1,11 +1,12 @@
+from unittest.mock import MagicMock
+
 import numpy as np
 import pandas as pd
 import pytest
-from unittest.mock import MagicMock
 
 from ml.pipelines.inference.predict import (
-    get_model_features,
     align_features,
+    get_model_features,
     prepare_features,
 )
 
@@ -74,22 +75,26 @@ class TestAlignFeatures:
 
 class TestPrepareFeatures:
     def test_converts_cat_cols(self):
-        df = pd.DataFrame({
-            "season": ["2025-26"],
-            "position": ["MID"],
-            "team": [5],
-            "opponent_team": [10.0],
-            "numeric_feat": [1.5],
-        })
+        df = pd.DataFrame(
+            {
+                "season": ["2025-26"],
+                "position": ["MID"],
+                "team": [5],
+                "opponent_team": [10.0],
+                "numeric_feat": [1.5],
+            }
+        )
         result = prepare_features(df, ["season", "position", "team", "opponent_team", "numeric_feat"])
         assert result["season"].dtype.name == "category"
         assert result["position"].dtype.name == "category"
 
     def test_fills_numeric_nan(self):
-        df = pd.DataFrame({
-            "a": [1.0, np.nan],
-            "b": [np.nan, 3.0],
-        })
+        df = pd.DataFrame(
+            {
+                "a": [1.0, np.nan],
+                "b": [np.nan, 3.0],
+            }
+        )
         result = prepare_features(df, ["a", "b"])
         assert result["a"].isna().sum() == 0
         assert result["b"].isna().sum() == 0
