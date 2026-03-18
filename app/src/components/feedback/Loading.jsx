@@ -34,22 +34,28 @@ export default function Loading() {
   const [fade, setFade] = useState(true);
 
   useEffect(() => {
-    let i = 0;
+    let i = -1;
+    let timeout;
     const interval = setInterval(() => {
       setFade(false);
-      setTimeout(() => {
+      timeout = setTimeout(() => {
         i = (i + 1) % MESSAGES.length;
         setMsg(MESSAGES[i]);
         setFade(true);
       }, 200);
     }, 2800);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      clearTimeout(timeout);
+    };
   }, []);
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh]">
       <BouncingBall />
       <p
+        role="status"
+        aria-live="polite"
         className={`text-base text-surface-400 transition-opacity duration-200 ${fade ? "opacity-100" : "opacity-0"}`}
       >
         {msg}
