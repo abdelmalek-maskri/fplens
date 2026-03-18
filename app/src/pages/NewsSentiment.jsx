@@ -274,32 +274,37 @@ export default function NewsSentiment() {
           ) : (
             <div className="space-y-2">
               {filteredArticles.map((a) => (
-                <a
+                <div
                   key={a.id}
-                  href={a.url || undefined}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={`block border-l-2 ${sentimentBorderClass(a.sentiment)} rounded-r bg-surface-850/50 hover:bg-surface-800/70 transition-colors group`}
-                  onClick={a.url ? undefined : (e) => e.preventDefault()}
+                  className={`border-l-2 ${sentimentBorderClass(a.sentiment)} rounded-r bg-surface-850/50 hover:bg-surface-800/70 transition-colors`}
                 >
                   <div className="px-4 py-3">
                     <div className="flex items-start justify-between gap-3">
-                      <p className="text-sm text-surface-200 leading-snug group-hover:text-surface-100 transition-colors flex-1">
-                        {a.headline}
-                        {a.url && (
-                          <svg
-                            className="inline-block w-3 h-3 ml-1.5 text-surface-600 group-hover:text-brand-400 transition-colors -translate-y-px"
-                            viewBox="0 0 12 12"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="1.5"
+                      <p className="text-sm text-surface-200 leading-snug flex-1">
+                        {a.url ? (
+                          <a
+                            href={a.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="hover:text-surface-100 transition-colors"
                           >
-                            <path
-                              d="M3.5 1.5h7m0 0v7m0-7L2 10"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
+                            {a.headline}
+                            <svg
+                              className="inline-block w-3 h-3 ml-1.5 text-surface-600 hover:text-brand-400 transition-colors -translate-y-px"
+                              viewBox="0 0 12 12"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="1.5"
+                            >
+                              <path
+                                d="M3.5 1.5h7m0 0v7m0-7L2 10"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                          </a>
+                        ) : (
+                          a.headline
                         )}
                       </p>
                       <div className="flex items-center gap-2 shrink-0">
@@ -339,7 +344,7 @@ export default function NewsSentiment() {
                       <PlayerTags players={a.players} navigate={navigate} />
                     </div>
                   </div>
-                </a>
+                </div>
               ))}
             </div>
           )}
