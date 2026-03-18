@@ -301,10 +301,14 @@ def fetch_recent_news(bootstrap_data, days=7):
             if eid in player_info:
                 players.append(player_info[eid])
 
+        guardian_id = article.get("guardian_id", "")
+        url = f"https://www.theguardian.com/{guardian_id}" if guardian_id else ""
+
         formatted.append(
             {
                 "id": i + 1,
                 "headline": article["title"],
+                "url": url,
                 "source": "The Guardian",
                 "date": article["published_date"][:10] if article["published_date"] else "",
                 "sentiment": article.get("sentiment", 0.0),

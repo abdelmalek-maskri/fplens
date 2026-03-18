@@ -226,12 +226,16 @@ FEATURE_DISPLAY_NAMES = {
     "bps_roll3": "BPS (last 3 GW avg)",
     "ict_index_lag1": "ICT Index (last GW)",
     "ict_index_roll3": "ICT Index (last 3 GW avg)",
-    "us_xG_lag1": "xG (last GW)",
-    "us_xG_roll3": "xG (last 3 GW avg)",
-    "us_xA_lag1": "xA (last GW)",
-    "us_xA_roll3": "xA (last 3 GW avg)",
+    "us_xg_lag1": "xG (last GW)",
+    "us_xg_roll3": "xG (last 3 GW avg)",
+    "us_xa_lag1": "xA (last GW)",
+    "us_xa_roll3": "xA (last 3 GW avg)",
+    "us_npxg_lag1": "npxG (last GW)",
+    "us_xgchain_lag1": "xG Chain (last GW)",
+    "us_xgbuildup_lag1": "xG Buildup (last GW)",
     "us_shots_lag1": "Shots (last GW)",
     "us_key_passes_lag1": "Key passes (last GW)",
+    "us_time_lag1": "Minutes (Understat, last GW)",
     "bonus_lag1": "Bonus (last GW)",
     "bonus_roll3": "Bonus (last 3 GW avg)",
     "clean_sheets_lag1": "Clean sheets (last GW)",
@@ -331,7 +335,13 @@ def get_top_picks(predictions: pd.DataFrame, n: int = 15) -> pd.DataFrame:
     return picks_df
 
 
-def run(model_path: Path | None = None, model=None, save_output: bool = True, include_history: bool = True):
+def run(
+    model_path: Path | None = None,
+    model=None,
+    save_output: bool = True,
+    include_history: bool = True,
+    include_understat: bool = True,
+):
     # Main inference pipeline
     print("=" * 60)
     print("FPL PREDICTION INFERENCE")
@@ -350,7 +360,7 @@ def run(model_path: Path | None = None, model=None, save_output: bool = True, in
 
     # Fetch live data
     print()
-    live_df = fetch_current_gw_data(include_history=include_history)
+    live_df = fetch_current_gw_data(include_history=include_history, include_understat=include_understat)
 
     # Keep player info for output — pass through all fields the frontend needs
     keep_cols = [
@@ -460,7 +470,13 @@ if __name__ == "__main__":
     parser.add_argument(
         "--no-history", action="store_true", help="Skip per-player history fetch (faster, less accurate)"
     )
+    parser.add_argument("--no-understat", action="store_true", help="Skip Understat enrichment (for A/B comparison)")
     args = parser.parse_args()
 
-    result = run(model_path=args.model, save_output=not args.no_save, include_history=not args.no_history)
+    result = run(
+        model_path=args.model,
+        save_output=not args.no_save,
+        include_history=not args.no_history,
+        include_understat=not args.no_understat,
+    )
     print(f"\nPredicted {len(result['predictions'])} players")
