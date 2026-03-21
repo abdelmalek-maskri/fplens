@@ -33,7 +33,7 @@ def run_one(season: str) -> Path:
     out.parent.mkdir(parents=True, exist_ok=True)
     m.to_csv(out, index=False)
 
-    print(f"Saved: {out} rows: {len(m)}")
+    print(f"saved: {out} rows: {len(m)}")
     return out
 
 
