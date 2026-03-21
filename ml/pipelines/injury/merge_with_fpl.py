@@ -11,7 +11,7 @@ from pathlib import Path
 import pandas as pd
 
 INJURY_DATA = Path("data/processed/injury/injury_states.csv")
-FPL_BASE = Path("data/processed/merged/fpl_base_enriched.csv")
+FPL_BASE = Path("data/processed/merged/fpl_understat_merged.csv")
 OUTPUT_PATH = Path("data/processed/injury/fpl_with_injury.csv")
 
 # snapshot_date needed downstream to parse absolute return dates

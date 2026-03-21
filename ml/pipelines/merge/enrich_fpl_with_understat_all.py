@@ -8,7 +8,7 @@ from ml.config.seasons import SEASONS_ALL
 from ml.utils.io import safe_read_csv
 
 FPL_BASE = Path("data/processed/fpl/fpl_base.csv")
-OUT = Path("data/processed/merged/fpl_base_enriched.csv")
+OUT = Path("data/processed/merged/fpl_understat_merged.csv")
 
 
 def run(seasons):
