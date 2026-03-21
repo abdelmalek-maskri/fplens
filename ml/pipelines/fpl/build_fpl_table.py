@@ -6,7 +6,7 @@ import pandas as pd
 from ml.utils.io import find_latest_snapshot, safe_read_csv
 
 SNAPSHOT_ROOT = Path("data/raw/fpl")
-OUT_PATH = Path("data/processed/merged/fpl_base.csv")
+OUT_PATH = Path("data/processed/fpl/fpl_base.csv")
 
 KEEP_COLS = [
     # identifiers
@@ -56,7 +56,6 @@ KEEP_COLS = [
     "expected_goal_involvements",
     "expected_goals_conceded",
 ]
-
 
 def run():
     snapshot = find_latest_snapshot(SNAPSHOT_ROOT)
