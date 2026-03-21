@@ -1,4 +1,12 @@
 # ml/pipelines/understat/fetch_understat.py
+"""Scrape per-player match data from Understat for all EPL seasons.
+
+Writes to data/raw/understat/:
+    players_EPL_{YEAR}.csv              - league player table
+    player_matches_EPL_{YEAR}_all_filtered.csv  - match rows (EPL only)
+
+YEAR is the season start year (e.g. 2023 for 2023-24).
+"""
 
 import argparse
 import asyncio
