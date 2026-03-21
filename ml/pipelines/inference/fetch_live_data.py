@@ -624,7 +624,7 @@ def enrich_with_understat(df: pd.DataFrame, current_gw: int, season: str = "2025
     Loads per-player-per-GW Understat stats and computes lag1 + rolling
     features to match training. Uses GW < current_gw to prevent leakage.
     """
-    us_path = Path(f"data/processed/external/understat/understat_gw_{season}.csv")
+    us_path = Path(f"data/processed/understat/understat_gw_{season}.csv")
     if not us_path.exists():
         logger.warning("Understat CSV not found at %s, skipping", us_path)
         return df
