@@ -5,6 +5,7 @@ from pathlib import Path
 import pandas as pd
 
 from ml.config.seasons import SEASONS_ALL
+from ml.utils.io import safe_read_csv
 from ml.utils.name_normalize import norm
 
 
@@ -25,7 +26,7 @@ def run_one(season: str) -> Path:
         raise FileNotFoundError(f"missing {under_in} (run fetch_understat first)")
 
     # convert kickoff time to datetime.
-    fx = pd.read_csv(fpl_fix, low_memory=False)
+    fx = safe_read_csv(fpl_fix)
     fx["kickoff_time"] = pd.to_datetime(fx["kickoff_time"], errors="coerce", utc=True)
 
     # drop rows missing essential fields needed for matching.
@@ -42,7 +43,7 @@ def run_one(season: str) -> Path:
     fx["away_team_id"] = fx["away_team_id"].astype(int)
 
     # load team name mapping (normalised name -> FPL team id).
-    tm = pd.read_csv(teammap, low_memory=False)
+    tm = safe_read_csv(teammap)
 
     # handle different possible column names for team id.
     if "team_id" in tm.columns:
@@ -74,7 +75,7 @@ def run_one(season: str) -> Path:
     # build lookup: normalised name -> team_id.
     name_to_id = dict(zip(tm["team_name_norm"], tm[team_id_col]))
 
-    under = pd.read_csv(under_in, low_memory=False)
+    under = safe_read_csv(under_in)
 
     # convert Understat date to match FPL date format.
     under["date"] = pd.to_datetime(under["date"], errors="coerce").dt.date
