@@ -9,7 +9,9 @@ Notes:
 """
 
 from pathlib import Path
+
 import pandas as pd
+
 from ml.config.seasons import SEASONS_ALL
 from ml.utils.io import find_latest_snapshot, safe_read_csv
 from ml.utils.name_normalize import norm
@@ -17,6 +19,7 @@ from ml.utils.name_normalize import norm
 SNAPSHOT_ROOT = Path("data/raw/fpl")
 UNDERSTAT_DIR = Path("data/raw/understat")
 OUT_DIR = Path("data/processed/mappings")
+
 
 def run_one(season: str, snapshot: Path) -> Path:
     """Build a player mapping CSV for a single season."""
@@ -58,9 +61,7 @@ def run_one(season: str, snapshot: Path) -> Path:
     # - full name: first_name + second_name
     # - web name: display/shortened FPL name
     fpl["name_full"] = (
-        fpl.get("first_name", "").fillna("").astype(str)
-        + " "
-        + fpl.get("second_name", "").fillna("").astype(str)
+        fpl.get("first_name", "").fillna("").astype(str) + " " + fpl.get("second_name", "").fillna("").astype(str)
     ).str.strip()
     fpl["name_web"] = fpl.get("web_name", "").fillna("").astype(str)
 
@@ -150,11 +151,7 @@ def run_one(season: str, snapshot: Path) -> Path:
     unclaimed_us = us[~us["us_player_id"].isin(claimed_us_ids)].copy()
 
     # precompute token sets for remaining Understat players.
-    us_tokens = {
-        row.us_player_id: set(row.n_player.split())
-        for row in unclaimed_us.itertuples()
-        if row.n_player
-    }
+    us_tokens = {row.us_player_id: set(row.n_player.split()) for row in unclaimed_us.itertuples() if row.n_player}
 
     token_rows = []
 
@@ -205,12 +202,7 @@ def run_one(season: str, snapshot: Path) -> Path:
     comb["has_match"] = comb["us_player_id"].notna().astype(int)
 
     # prefer stronger strategies when multiple candidates exist.
-    comb["priority"] = (
-        comb["match_type"]
-        .map({"full_name": 0, "web_name": 1, "token_subset": 2})
-        .fillna(9)
-        .astype(int)
-    )
+    comb["priority"] = comb["match_type"].map({"full_name": 0, "web_name": 1, "token_subset": 2}).fillna(9).astype(int)
 
     # Sort so the best row appears first for each FPL element:
     # - matched rows before unmatched rows
@@ -218,7 +210,7 @@ def run_one(season: str, snapshot: Path) -> Path:
     comb = comb.sort_values(
         ["element", "has_match", "priority"],
         ascending=[True, False, True],
-        kind="mergesort",  
+        kind="mergesort",
     )
 
     # keep the single best candidate per FPL player.
@@ -250,6 +242,7 @@ def main() -> None:
     for season in SEASONS_ALL:
         print("\n=== Processing season:", season, "===")
         run_one(season, snap)
+
 
 if __name__ == "__main__":
     main()

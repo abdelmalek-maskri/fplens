@@ -9,8 +9,10 @@ from ml.utils.io import find_latest_snapshot, safe_read_csv
 SNAPSHOT_ROOT = Path("data/raw/fpl")
 OUT_DIR = Path("data/processed/mappings")
 
+
 def _snapshot():
     return find_latest_snapshot(SNAPSHOT_ROOT)
+
 
 def norm(s: str) -> str:
     # normalize team names so matching is more reliable across sources (Understat vs FPL).
@@ -19,9 +21,11 @@ def norm(s: str) -> str:
     s = " ".join(s.split())
     return s
 
+
 def normalize_season(s: str) -> str:
     # normalize season strings so '2016/17' and '2016-17' match.
     return str(s).strip().replace("/", "-")
+
 
 def load_from_master(season: str) -> pd.DataFrame:
     # returns: DataFrame with columns: team_id, team_name, team_name_norm
@@ -55,6 +59,7 @@ def load_from_master(season: str) -> pd.DataFrame:
 
     return out.drop_duplicates(subset=["team_id"]).sort_values("team_id").reset_index(drop=True)
 
+
 def load_from_teams_csv(season: str) -> pd.DataFrame:
     # returns: DataFrame with columns: team_id, team_name, team_name_norm
     teams_path = _snapshot() / season / "teams.csv"
@@ -87,6 +92,7 @@ def load_from_teams_csv(season: str) -> pd.DataFrame:
 
     return out.drop_duplicates(subset=["team_id"]).sort_values("team_id").reset_index(drop=True)
 
+
 def run_one(season: str) -> Path:
     """build team_id -> team_name mapping for a single season"""
     out = load_from_master(season)
@@ -104,9 +110,11 @@ def run_one(season: str) -> Path:
     print(out.head(25).to_string(index=False))
     return out_path
 
+
 def main():
     for season in SEASONS_ALL:
         run_one(season)
+
 
 if __name__ == "__main__":
     main()

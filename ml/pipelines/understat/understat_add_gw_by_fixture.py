@@ -1,8 +1,9 @@
 # ml/pipelines/understat/understat_add_gw_by_fixture.py
 from pathlib import Path
-import pandas as pd
+
 from ml.config.seasons import SEASONS_ALL
 from ml.utils.io import safe_read_csv
+
 
 def run_one(season: str) -> Path:
     year = int(season.split("-")[0])
@@ -32,6 +33,7 @@ def run_one(season: str) -> Path:
 def main():
     for season in SEASONS_ALL:
         run_one(season)
+
 
 if __name__ == "__main__":
     main()

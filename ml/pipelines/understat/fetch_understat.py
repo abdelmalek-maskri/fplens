@@ -86,7 +86,7 @@ async def fetch_all(
     max_players: int | None,
     concurrency: int,
 ) -> None:
-    
+
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
     # limit open connections and use generous timeouts for slower responses.

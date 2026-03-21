@@ -57,6 +57,7 @@ KEEP_COLS = [
     "expected_goals_conceded",
 ]
 
+
 def run():
     snapshot = find_latest_snapshot(SNAPSHOT_ROOT)
     print("using snapshot:", snapshot)

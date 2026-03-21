@@ -1,12 +1,15 @@
 # ml/pipelines/understat/build_understat_gw.py
 
 from pathlib import Path
+
 import pandas as pd
+
 from ml.config.seasons import SEASONS_ALL
 from ml.utils.io import safe_read_csv
 
 # Understat match-level stats we want to aggregate into GW features
 US_COLS = ["xG", "xA", "npxG", "xGChain", "xGBuildup", "shots", "key_passes", "time"]
+
 
 def run_one(season: str) -> Path:
     year = int(season.split("-")[0])
@@ -40,7 +43,7 @@ def run_one(season: str) -> Path:
     # only keeps rows where mapping exists (inner join)
     us = us.merge(mp[["element", "us_player_id"]], on="us_player_id", how="inner")
 
-    # ensure all stats are numeric 
+    # ensure all stats are numeric
     for c in US_COLS:
         us[c] = pd.to_numeric(us[c], errors="coerce")
 
@@ -60,9 +63,11 @@ def run_one(season: str) -> Path:
     print("saved:", out, "rows:", len(agg))
     return out
 
+
 def main():
     for season in SEASONS_ALL:
         run_one(season)
+
 
 if __name__ == "__main__":
     main()

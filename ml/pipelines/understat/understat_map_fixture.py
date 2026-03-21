@@ -1,7 +1,9 @@
 # ml/pipelines/understat/understat_map_fixture.py
 
 from pathlib import Path
+
 import pandas as pd
+
 from ml.config.seasons import SEASONS_ALL
 from ml.utils.name_normalize import norm
 
@@ -125,11 +127,7 @@ def run_one(season: str) -> Path:
     print("saved:", out_path)
     print("mapped fixture %:", float(merged["fixture"].notna().mean()))
     print("unmapped sample:")
-    print(
-        merged.loc[merged["fixture"].isna(), ["date", "h_team", "a_team"]]
-        .head(12)
-        .to_string(index=False)
-    )
+    print(merged.loc[merged["fixture"].isna(), ["date", "h_team", "a_team"]].head(12).to_string(index=False))
 
     return out_path
 
@@ -137,6 +135,7 @@ def run_one(season: str) -> Path:
 def main():
     for season in SEASONS_ALL:
         run_one(season)
+
 
 if __name__ == "__main__":
     main()

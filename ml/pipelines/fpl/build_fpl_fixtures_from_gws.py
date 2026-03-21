@@ -9,8 +9,9 @@ from ml.utils.io import find_latest_snapshot, safe_read_csv
 
 SNAPSHOT_ROOT = Path("data/raw/fpl")
 
+
 def build_element_to_team_map(season_dir: Path) -> pd.Series:
-    # build mapping: element_id -> team_id 
+    # build mapping: element_id -> team_id
     players_path = season_dir / "players_raw.csv"
     players = safe_read_csv(players_path)
 

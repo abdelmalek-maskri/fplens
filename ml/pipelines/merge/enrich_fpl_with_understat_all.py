@@ -1,12 +1,15 @@
-# ml/pipelines/enrich_fpl_with_understat_all.py 
+# ml/pipelines/enrich_fpl_with_understat_all.py
 
 from pathlib import Path
+
 import pandas as pd
+
 from ml.config.seasons import SEASONS_ALL
 from ml.utils.io import safe_read_csv
 
 FPL_BASE = Path("data/processed/fpl/fpl_base.csv")
 OUT = Path("data/processed/merged/fpl_base_enriched.csv")
+
 
 def run(seasons):
     fpl = safe_read_csv(FPL_BASE)
@@ -70,8 +73,10 @@ def run(seasons):
     # coverage only where player played
     print(full.loc[full["minutes"] > 0, "us_xg"].notna().mean())
 
+
 def main():
     run(SEASONS_ALL)
+
 
 if __name__ == "__main__":
     main()
