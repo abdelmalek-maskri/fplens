@@ -2,6 +2,7 @@
 
 import contextlib
 import os
+import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -14,15 +15,21 @@ from api.routers import fixtures, insights, predictions, team
 from ml.pipelines.inference.multi_gw import load_horizon_models
 from ml.pipelines.inference.predict import DEFAULT_MODEL
 
-# joblib needs these classes in scope to unpickle custom model objects
-with contextlib.suppress(Exception):
-    from ml.pipelines.train.train_stacked_ensemble import StackedEnsemble  # noqa: F401
-with contextlib.suppress(Exception):
-    from ml.pipelines.train.train_stacked_with_injury import StackedEnsembleInjury  # noqa: F401
-with contextlib.suppress(Exception):
-    from ml.pipelines.train.train_twohead_model import TwoHeadModel  # noqa: F401
-with contextlib.suppress(Exception):
-    from ml.pipelines.train.train_position_specific import PositionSpecificLGBMModel  # noqa: F401
+# joblib needs these classes in scope to unpickle custom model objects.
+# Models pickled when training scripts ran as __main__; uvicorn --reload
+# remaps that to __mp_main__, so we patch both modules.
+from ml.pipelines.train.train_stacked_ensemble import StackedEnsemble  
+from ml.pipelines.train.train_twohead_model import TwoHeadModel 
+from ml.pipelines.train.train_position_specific import PositionSpecificLGBMModel  
+
+with contextlib.suppress(ImportError):
+    from ml.pipelines.train.train_stacked_with_injury import StackedEnsembleInjury  
+
+_MODEL_CLASSES = [StackedEnsemble, TwoHeadModel, PositionSpecificLGBMModel]
+for _mod in ("__main__", "__mp_main__"):
+    if _mod in sys.modules:
+        for _cls in _MODEL_CLASSES:
+            setattr(sys.modules[_mod], _cls.__name__, _cls)
 
 MODEL_PATH = Path(os.environ.get("MODEL_PATH", str(DEFAULT_MODEL)))
 
@@ -36,14 +43,14 @@ MODEL_REGISTRY = {
     "config_a": ("Config A: FPL + Understat only", "outputs/experiments/ablation_injury/config_A/model.joblib", 1.026),
     "config_b": ("Config B: + Injury features", "outputs/experiments/ablation_injury/config_B/model.joblib", 1.016),
     "config_c": ("Config C: + News features", "outputs/experiments/ablation_injury/config_C/model.joblib", 1.023),
-    "stacked_ensemble": ("Stacked Ensemble (109 features)", "outputs/models/stacked_ensemble.joblib", 1.051),
+    "stacked_ensemble": ("Stacked Ensemble (109 features)", "outputs/experiments/stacked_ensemble/model.joblib", 1.051),
     "catboost_tweedie": (
         "CatBoost Tweedie vp1.5",
         "outputs/experiments/multi_horizon/gw1/catboost_tweedie_vp1.5/model.joblib",
         1.032,
     ),
     "lgbm_baseline": ("LightGBM Baseline", "outputs/experiments/multi_horizon/gw1/lgbm_baseline/model.joblib", 1.054),
-    "baseline": ("Single LightGBM (production)", "outputs/models/baseline.joblib", 1.060),
+    "baseline": ("Single LightGBM (production)", "outputs/experiments/baseline/model.joblib", 1.060),
 }
 
 REFRESH_SECRET = os.environ.get("REFRESH_SECRET", "dev-secret")
