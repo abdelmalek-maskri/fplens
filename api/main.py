@@ -18,14 +18,25 @@ from ml.pipelines.inference.predict import DEFAULT_MODEL
 # joblib needs these classes in scope to unpickle custom model objects.
 # Models pickled when training scripts ran as __main__; uvicorn --reload
 # remaps that to __mp_main__, so we patch both modules.
-from ml.pipelines.train.train_stacked_ensemble import StackedEnsemble  
-from ml.pipelines.train.train_twohead_model import TwoHeadModel 
-from ml.pipelines.train.train_position_specific import PositionSpecificLGBMModel  
+# Guarded imports: training deps (xgboost, etc.) may not be installed in API env.
+_MODEL_CLASSES = []
 
 with contextlib.suppress(ImportError):
-    from ml.pipelines.train.train_stacked_with_injury import StackedEnsembleInjury  
+    from ml.pipelines.train.train_stacked_ensemble import StackedEnsemble
+    _MODEL_CLASSES.append(StackedEnsemble)
 
-_MODEL_CLASSES = [StackedEnsemble, TwoHeadModel, PositionSpecificLGBMModel]
+with contextlib.suppress(ImportError):
+    from ml.pipelines.train.train_twohead_model import TwoHeadModel
+    _MODEL_CLASSES.append(TwoHeadModel)
+
+with contextlib.suppress(ImportError):
+    from ml.pipelines.train.train_position_specific import PositionSpecificLGBMModel
+    _MODEL_CLASSES.append(PositionSpecificLGBMModel)
+
+with contextlib.suppress(ImportError):
+    from ml.pipelines.train.train_stacked_with_injury import StackedEnsembleInjury
+    _MODEL_CLASSES.append(StackedEnsembleInjury)
+
 for _mod in ("__main__", "__mp_main__"):
     if _mod in sys.modules:
         for _cls in _MODEL_CLASSES:
