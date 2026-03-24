@@ -1,13 +1,7 @@
 # ml/evaluation/comprehensive_metrics.py
 """
-Comprehensive Evaluation Framework for FPL Prediction
-
-Addresses key gaps in standard MAE/RMSE evaluation:
-1. Stratified performance (played vs not-played, by position)
-2. Calibration analysis
-3. High-value player focus
-4. Business-relevant metrics (captain pick accuracy)
-5. Stability across seasons
+Comprehensive evaluation beyond MAE/RMSE: stratified performance,
+calibration, captain pick accuracy, and per-GW stability.
 """
 
 import argparse
@@ -21,15 +15,9 @@ import pandas as pd
 from scipy import stats
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 
-from ml.config.eval_config import (
-    CAT_COLS,
-    DROP_COLS,
-    HOLDOUT_SEASON,
-    TARGET_COL,
-)
+from ml.config.eval_config import CAT_COLS, DROP_COLS, HOLDOUT_SEASON, TARGET_COL
 
-# Import model classes for unpickling saved joblib files.
-# Keep these optional to avoid hard deps (e.g., xgboost) when not needed.
+# joblib needs these classes in scope to unpickle saved ensemble models
 try:
     from ml.pipelines.train.train_stacked_ensemble import StackedEnsemble
 except Exception:
@@ -64,111 +52,83 @@ except Exception:
 
 @dataclass
 class StratifiedMetrics:
-    """Performance breakdown by subgroup."""
-
     mae_overall: float
     rmse_overall: float
-
-    # Played vs not-played
     mae_played: float
     mae_not_played: float
     n_played: int
     n_not_played: int
     pct_played: float
-
-    # By position
     mae_gk: float | None = None
     mae_def: float | None = None
     mae_mid: float | None = None
     mae_fwd: float | None = None
-
-    # High-value players (>= 5 points actual)
+    # players scoring >= 5 pts (the ones that matter for captain/transfer decisions)
     mae_high_return: float | None = None
     n_high_return: int = 0
 
 
 @dataclass
 class CalibrationMetrics:
-    """Prediction calibration analysis."""
-
     mean_predicted: float
     mean_actual: float
     std_predicted: float
     std_actual: float
     correlation: float
     spearman_rho: float
-
-    # Binned calibration (predicted vs actual by decile)
-    decile_mae: list  # MAE within each prediction decile
+    decile_mae: list
 
 
 @dataclass
 class BusinessMetrics:
-    """FPL-specific business metrics."""
+    """Captain pick accuracy: did our top prediction match the actual top scorer each GW?"""
 
-    # Captain pick accuracy (highest predicted = highest actual?)
-    top1_accuracy: float  # Did top predicted player have highest actual?
-    top3_accuracy: float  # Did top 3 contain the actual top 1?
-    top5_accuracy: float  # Did top 5 contain the actual top 1?
-
-    # Points capture
-    optimal_captain_points: float  # If we always picked best
-    predicted_captain_points: float  # Using our predictions
-    captain_efficiency: float  # predicted / optimal
+    top1_accuracy: float
+    top3_accuracy: float
+    top5_accuracy: float
+    optimal_captain_points: float
+    predicted_captain_points: float
+    captain_efficiency: float
 
 
 @dataclass
 class StabilityMetrics:
-    """Stability across evaluation folds/seasons."""
-
     mae_mean: float
     mae_std: float
     mae_min: float
     mae_max: float
-    coefficient_of_variation: float  # std / mean
+    coefficient_of_variation: float
     seasons: list
     per_season_mae: list
 
 
-def compute_stratified_metrics(
-    y_true: np.ndarray,
-    y_pred: np.ndarray,
-    positions: np.ndarray | None = None,
-) -> StratifiedMetrics:
-    """Compute stratified performance metrics."""
-
-    # Overall
+def compute_stratified_metrics(y_true, y_pred, positions=None) -> StratifiedMetrics:
     mae = mean_absolute_error(y_true, y_pred)
     rmse = np.sqrt(mean_squared_error(y_true, y_pred))
 
-    # Played vs not-played
-    played_mask = y_true > 0
-    n_played = int(played_mask.sum())
-    n_not_played = int((~played_mask).sum())
+    # ~60% of rows are 0-point (player didn't feature); split matters for interpretation
+    played = y_true > 0
+    n_played = int(played.sum())
+    n_not = int((~played).sum())
+    mae_played = mean_absolute_error(y_true[played], y_pred[played]) if n_played > 0 else 0.0
+    mae_not = mean_absolute_error(y_true[~played], y_pred[~played]) if n_not > 0 else 0.0
 
-    mae_played = mean_absolute_error(y_true[played_mask], y_pred[played_mask]) if n_played > 0 else 0.0
-    mae_not_played = mean_absolute_error(y_true[~played_mask], y_pred[~played_mask]) if n_not_played > 0 else 0.0
-
-    # High-return players (>=5 points)
-    high_return_mask = y_true >= 5
-    n_high_return = int(high_return_mask.sum())
-    mae_high_return = (
-        mean_absolute_error(y_true[high_return_mask], y_pred[high_return_mask]) if n_high_return > 0 else None
-    )
+    high = y_true >= 5
+    n_high = int(high.sum())
+    mae_high = mean_absolute_error(y_true[high], y_pred[high]) if n_high > 0 else None
 
     result = StratifiedMetrics(
         mae_overall=float(mae),
         rmse_overall=float(rmse),
         mae_played=float(mae_played),
-        mae_not_played=float(mae_not_played),
+        mae_not_played=float(mae_not),
         n_played=n_played,
-        n_not_played=n_not_played,
+        n_not_played=n_not,
         pct_played=float(100 * n_played / len(y_true)),
-        mae_high_return=float(mae_high_return) if mae_high_return else None,
-        n_high_return=n_high_return,
+        mae_high_return=float(mae_high) if mae_high else None,
+        n_high_return=n_high,
     )
 
-    # By position (if provided)
     if positions is not None:
         for pos, attr in [("GK", "mae_gk"), ("DEF", "mae_def"), ("MID", "mae_mid"), ("FWD", "mae_fwd")]:
             mask = positions == pos
@@ -178,28 +138,13 @@ def compute_stratified_metrics(
     return result
 
 
-def compute_calibration_metrics(
-    y_true: np.ndarray,
-    y_pred: np.ndarray,
-    n_bins: int = 10,
-) -> CalibrationMetrics:
-    """Compute calibration metrics."""
-
-    # Basic statistics
-    mean_pred = float(np.mean(y_pred))
-    mean_actual = float(np.mean(y_true))
-    std_pred = float(np.std(y_pred))
-    std_actual = float(np.std(y_true))
-
-    # Correlation
+def compute_calibration_metrics(y_true, y_pred, n_bins=10) -> CalibrationMetrics:
     correlation = float(np.corrcoef(y_true, y_pred)[0, 1])
-    spearman_rho = float(stats.spearmanr(y_true, y_pred)[0])
+    rho = float(stats.spearmanr(y_true, y_pred)[0])
 
-    # Decile calibration
     try:
         deciles = pd.qcut(y_pred, q=n_bins, labels=False, duplicates="drop")
     except ValueError:
-        # Handle case with too few unique values
         deciles = pd.cut(y_pred, bins=n_bins, labels=False, duplicates="drop")
 
     decile_mae = []
@@ -209,240 +154,135 @@ def compute_calibration_metrics(
             decile_mae.append(float(mean_absolute_error(y_true[mask], y_pred[mask])))
 
     return CalibrationMetrics(
-        mean_predicted=mean_pred,
-        mean_actual=mean_actual,
-        std_predicted=std_pred,
-        std_actual=std_actual,
+        mean_predicted=float(np.mean(y_pred)),
+        mean_actual=float(np.mean(y_true)),
+        std_predicted=float(np.std(y_pred)),
+        std_actual=float(np.std(y_true)),
         correlation=correlation,
-        spearman_rho=spearman_rho,
+        spearman_rho=rho,
         decile_mae=decile_mae,
     )
 
 
-def compute_business_metrics(
-    y_true: np.ndarray,
-    y_pred: np.ndarray,
-    gameweek_ids: np.ndarray,
-) -> BusinessMetrics:
-    """
-    Compute FPL business metrics.
+def compute_business_metrics(y_true, y_pred, gameweek_ids) -> BusinessMetrics:
+    """Per-GW captain accuracy: does our top predicted player actually score highest?"""
+    top1 = top3 = top5 = 0
+    optimal_pts = pred_pts = 0
 
-    Args:
-        y_true: Actual points
-        y_pred: Predicted points
-        gameweek_ids: Identifier for each gameweek (to compute per-GW captain picks)
-    """
-
-    unique_gws = np.unique(gameweek_ids)
-
-    top1_correct = 0
-    top3_correct = 0
-    top5_correct = 0
-
-    optimal_points = 0
-    predicted_points = 0
-
-    for gw in unique_gws:
+    for gw in np.unique(gameweek_ids):
         mask = gameweek_ids == gw
-        gw_true = y_true[mask]
-        gw_pred = y_pred[mask]
-
-        if len(gw_true) == 0:
+        gt, gp = y_true[mask], y_pred[mask]
+        if len(gt) == 0:
             continue
 
-        # Indices sorted by prediction (descending)
-        pred_order = np.argsort(-gw_pred)
+        pred_order = np.argsort(-gp)
+        best_idx = np.argmax(gt)
 
-        # Actual best player
-        actual_best_idx = np.argmax(gw_true)
-        actual_best_points = gw_true[actual_best_idx]
+        top1 += int(pred_order[0] == best_idx)
+        top3 += int(best_idx in pred_order[:3])
+        top5 += int(best_idx in pred_order[:5])
 
-        # Check if our top predictions contain the actual best
-        top1_correct += int(pred_order[0] == actual_best_idx)
-        top3_correct += int(actual_best_idx in pred_order[:3])
-        top5_correct += int(actual_best_idx in pred_order[:5])
+        optimal_pts += gt[best_idx]
+        pred_pts += gt[pred_order[0]]
 
-        # Points captured
-        optimal_points += actual_best_points
-        predicted_points += gw_true[pred_order[0]]  # Points of our top pick
-
-    n_gws = len(unique_gws)
-
+    n = len(np.unique(gameweek_ids))
     return BusinessMetrics(
-        top1_accuracy=float(top1_correct / n_gws) if n_gws > 0 else 0.0,
-        top3_accuracy=float(top3_correct / n_gws) if n_gws > 0 else 0.0,
-        top5_accuracy=float(top5_correct / n_gws) if n_gws > 0 else 0.0,
-        optimal_captain_points=float(optimal_points),
-        predicted_captain_points=float(predicted_points),
-        captain_efficiency=float(predicted_points / optimal_points) if optimal_points > 0 else 0.0,
+        top1_accuracy=float(top1 / n) if n else 0.0,
+        top3_accuracy=float(top3 / n) if n else 0.0,
+        top5_accuracy=float(top5 / n) if n else 0.0,
+        optimal_captain_points=float(optimal_pts),
+        predicted_captain_points=float(pred_pts),
+        captain_efficiency=float(pred_pts / optimal_pts) if optimal_pts > 0 else 0.0,
     )
 
 
-def compute_stability_metrics(
-    cv_results: pd.DataFrame,
-    mae_col: str = "mae",
-    season_col: str = "test_season",
-) -> StabilityMetrics:
-    """Compute stability metrics from CV results."""
-
-    mae_values = cv_results[mae_col].values
-
+def compute_stability_metrics(cv_results, mae_col="mae", season_col="test_season") -> StabilityMetrics:
+    vals = cv_results[mae_col].values
     return StabilityMetrics(
-        mae_mean=float(np.mean(mae_values)),
-        mae_std=float(np.std(mae_values)),
-        mae_min=float(np.min(mae_values)),
-        mae_max=float(np.max(mae_values)),
-        coefficient_of_variation=float(np.std(mae_values) / np.mean(mae_values)),
+        mae_mean=float(np.mean(vals)),
+        mae_std=float(np.std(vals)),
+        mae_min=float(np.min(vals)),
+        mae_max=float(np.max(vals)),
+        coefficient_of_variation=float(np.std(vals) / np.mean(vals)),
         seasons=cv_results[season_col].tolist(),
-        per_season_mae=mae_values.tolist(),
+        per_season_mae=vals.tolist(),
     )
 
 
 class ComprehensiveEvaluator:
-    """
-    Unified evaluator that computes all metrics.
-    """
-
     def __init__(self, output_dir: Path):
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
-    def evaluate_holdout(
-        self,
-        y_true: np.ndarray,
-        y_pred: np.ndarray,
-        positions: np.ndarray | None = None,
-        gameweek_ids: np.ndarray | None = None,
-        experiment_name: str = "experiment",
-    ) -> dict:
-        """Full holdout evaluation."""
-
+    def evaluate_holdout(self, y_true, y_pred, positions=None, gameweek_ids=None, experiment_name="experiment") -> dict:
         results = {}
+        results["stratified"] = asdict(compute_stratified_metrics(y_true, y_pred, positions))
+        results["calibration"] = asdict(compute_calibration_metrics(y_true, y_pred))
 
-        # Stratified metrics
-        strat = compute_stratified_metrics(y_true, y_pred, positions)
-        results["stratified"] = asdict(strat)
-
-        # Calibration
-        calib = compute_calibration_metrics(y_true, y_pred)
-        results["calibration"] = asdict(calib)
-
-        # Business metrics (if GW IDs provided)
         if gameweek_ids is not None:
-            biz = compute_business_metrics(y_true, y_pred, gameweek_ids)
-            results["business"] = asdict(biz)
+            results["business"] = asdict(compute_business_metrics(y_true, y_pred, gameweek_ids))
 
-        # Naive baselines for comparison
-        results["baselines"] = self._compute_baselines(y_true, positions)
+        results["baselines"] = self._baselines(y_true, positions)
 
-        # Save
-        out_path = self.output_dir / f"{experiment_name}_comprehensive.json"
-        out_path.write_text(json.dumps(results, indent=2, default=str))
-
+        out = self.output_dir / f"{experiment_name}_comprehensive.json"
+        out.write_text(json.dumps(results, indent=2, default=str))
         return results
 
-    def _compute_baselines(
-        self,
-        y_true: np.ndarray,
-        positions: np.ndarray | None = None,
-    ) -> dict:
-        """Compute naive baselines for comparison."""
+    def _baselines(self, y_true, positions=None) -> dict:
+        b = {}
+        b["zero_mae"] = float(mean_absolute_error(y_true, np.zeros_like(y_true)))
+        b["mean_mae"] = float(mean_absolute_error(y_true, np.full_like(y_true, np.mean(y_true), dtype=float)))
 
-        baselines = {}
-
-        # Zero baseline
-        zero_pred = np.zeros_like(y_true)
-        baselines["zero_mae"] = float(mean_absolute_error(y_true, zero_pred))
-
-        # Mean baseline
-        mean_pred = np.full_like(y_true, np.mean(y_true), dtype=float)
-        baselines["mean_mae"] = float(mean_absolute_error(y_true, mean_pred))
-
-        # Position-specific mean baseline
         if positions is not None:
             pos_pred = np.zeros_like(y_true, dtype=float)
             for pos in np.unique(positions):
                 mask = positions == pos
                 pos_pred[mask] = np.mean(y_true[mask])
-            baselines["position_mean_mae"] = float(mean_absolute_error(y_true, pos_pred))
+            b["position_mean_mae"] = float(mean_absolute_error(y_true, pos_pred))
 
-        # Conditional played-mean baseline
-        played_mask = y_true > 0
-        cond_pred = np.zeros_like(y_true, dtype=float)
-        cond_pred[played_mask] = np.mean(y_true[played_mask])
-        baselines["played_cond_mean_mae"] = float(mean_absolute_error(y_true, cond_pred))
+        # "predict mean if played, 0 if not" baseline
+        played = y_true > 0
+        cond = np.zeros_like(y_true, dtype=float)
+        cond[played] = np.mean(y_true[played])
+        b["played_cond_mean_mae"] = float(mean_absolute_error(y_true, cond))
 
-        return baselines
+        return b
 
-    def print_summary(self, results: dict, experiment_name: str = "Experiment"):
-        """Print formatted evaluation summary."""
+    def print_summary(self, results: dict, name: str = "Experiment"):
+        s = results["stratified"]
+        c = results["calibration"]
 
         print(f"\n{'=' * 60}")
-        print(f"COMPREHENSIVE EVALUATION: {experiment_name}")
+        print(f"  {name}")
         print(f"{'=' * 60}")
+        print(f"  MAE: {s['mae_overall']:.4f}  RMSE: {s['rmse_overall']:.4f}  ρ: {c['spearman_rho']:.4f}")
+        print(f"  played: {s['mae_played']:.4f} (n={s['n_played']:,})  not-played: {s['mae_not_played']:.4f}")
 
-        strat = results["stratified"]
-        print("\nSTRATIFIED METRICS")
-        print(f"  Overall MAE:     {strat['mae_overall']:.4f}")
-        print(f"  Overall RMSE:    {strat['rmse_overall']:.4f}")
-        print(f"  Played MAE:      {strat['mae_played']:.4f} (n={strat['n_played']:,})")
-        print(f"  Not-played MAE:  {strat['mae_not_played']:.4f} (n={strat['n_not_played']:,})")
+        if s.get("mae_high_return"):
+            print(f"  high-return (≥5): {s['mae_high_return']:.4f} (n={s['n_high_return']:,})")
 
-        if strat.get("mae_high_return"):
-            print(f"  High-return MAE: {strat['mae_high_return']:.4f} (n={strat['n_high_return']:,}, ≥5 pts)")
-
-        if strat.get("mae_gk"):
-            print("\n  By Position:")
-            print(f"    GK:  {strat['mae_gk']:.4f}")
-            print(f"    DEF: {strat['mae_def']:.4f}")
-            print(f"    MID: {strat['mae_mid']:.4f}")
-            print(f"    FWD: {strat['mae_fwd']:.4f}")
-
-        calib = results["calibration"]
-        print("\nCALIBRATION")
-        print(f"  Mean predicted: {calib['mean_predicted']:.4f}")
-        print(f"  Mean actual:    {calib['mean_actual']:.4f}")
-        print(f"  Correlation:    {calib['correlation']:.4f}")
-        print(f"  Spearman rho:   {calib['spearman_rho']:.4f}")
+        if s.get("mae_gk"):
+            print(f"  GK: {s['mae_gk']:.4f}  DEF: {s['mae_def']:.4f}  MID: {s['mae_mid']:.4f}  FWD: {s['mae_fwd']:.4f}")
 
         if "business" in results:
-            biz = results["business"]
-            print("\nBUSINESS METRICS (Captain Picks)")
-            print(f"  Top-1 accuracy: {biz['top1_accuracy'] * 100:.1f}%")
-            print(f"  Top-3 accuracy: {biz['top3_accuracy'] * 100:.1f}%")
-            print(f"  Top-5 accuracy: {biz['top5_accuracy'] * 100:.1f}%")
-            print(f"  Captain efficiency: {biz['captain_efficiency'] * 100:.1f}%")
+            b = results["business"]
+            print(f"  captain: top1={b['top1_accuracy']*100:.1f}%  top3={b['top3_accuracy']*100:.1f}%  eff={b['captain_efficiency']*100:.1f}%")
 
         base = results["baselines"]
-        print("\nBASELINES (for context)")
-        print(f"  Zero baseline MAE:        {base['zero_mae']:.4f}")
-        print(f"  Mean baseline MAE:        {base['mean_mae']:.4f}")
-        print(f"  Played-cond mean MAE:     {base['played_cond_mean_mae']:.4f}")
-
-        # Delta vs baselines
-        delta_zero = base["zero_mae"] - strat["mae_overall"]
-        delta_mean = base["mean_mae"] - strat["mae_overall"]
-        delta_played = base["played_cond_mean_mae"] - strat["mae_overall"]
-
-        print("\nMODEL IMPROVEMENT")
-        print(f"  vs Zero:        {delta_zero:+.4f} ({delta_zero / base['zero_mae'] * 100:+.1f}%)")
-        print(f"  vs Mean:        {delta_mean:+.4f} ({delta_mean / base['mean_mae'] * 100:+.1f}%)")
-        print(f"  vs Played-cond: {delta_played:+.4f} ({delta_played / base['played_cond_mean_mae'] * 100:+.1f}%)")
-
-        print(f"\n{'=' * 60}\n")
+        delta = base["zero_mae"] - s["mae_overall"]
+        print(f"  vs zero: {delta:+.4f} ({delta/base['zero_mae']*100:+.1f}%)")
+        print(f"{'=' * 60}\n")
 
 
-def _prepare_xy(df: pd.DataFrame):
+def _prepare_xy(df):
     y = df[TARGET_COL].values
     drop = set([TARGET_COL] + DROP_COLS)
     X = df.drop(columns=[c for c in drop if c in df.columns])
     return X, y
 
 
-def _load_holdout_data(features_path: Path) -> tuple[pd.DataFrame, np.ndarray, np.ndarray, np.ndarray]:
+def _load_holdout(features_path: Path):
     df = pd.read_csv(features_path, low_memory=False)
-
-    # Convert categoricals for models that expect category dtype (e.g., LightGBM)
     for c in CAT_COLS:
         if c in df.columns:
             df[c] = df[c].astype("category")
@@ -450,96 +290,69 @@ def _load_holdout_data(features_path: Path) -> tuple[pd.DataFrame, np.ndarray, n
     if HOLDOUT_SEASON not in set(df["season"].dropna().unique()):
         raise ValueError(f"Holdout season {HOLDOUT_SEASON} not in data")
 
-    holdout_df = df[df["season"] == HOLDOUT_SEASON].copy().reset_index(drop=True)
-
-    positions = holdout_df["position"].values if "position" in holdout_df.columns else None
-    gameweek_ids = holdout_df["GW"].values if "GW" in holdout_df.columns else None
-
-    X, y = _prepare_xy(holdout_df)
-    return X, y, positions, gameweek_ids
+    h = df[df["season"] == HOLDOUT_SEASON].copy().reset_index(drop=True)
+    positions = h["position"].values if "position" in h.columns else None
+    gw_ids = h["GW"].values if "GW" in h.columns else None
+    X, y = _prepare_xy(h)
+    return X, y, positions, gw_ids
 
 
-def _align_features_for_model(X: pd.DataFrame, model) -> pd.DataFrame:
-    # LightGBM uses feature_name_, CatBoost uses feature_names_
-    feature_names = None
+def _align_features(X: pd.DataFrame, model) -> pd.DataFrame:
+    """Ensure X has exactly the columns the model expects, in the right order."""
+    names = None
     if hasattr(model, "feature_name_"):
-        feature_names = list(model.feature_name_)
+        names = list(model.feature_name_)
     elif hasattr(model, "feature_names_"):
-        feature_names = list(model.feature_names_)
+        names = list(model.feature_names_)
 
-    if feature_names is not None:
-        missing = [c for c in feature_names if c not in X.columns]
+    if names is not None:
+        missing = [c for c in names if c not in X.columns]
         if missing:
-            raise ValueError(f"Missing features required by model: {missing}")
-        return X[feature_names]
+            raise ValueError(f"Missing features: {missing}")
+        return X[names]
     return X
 
 
-def _predict_model(model, X: pd.DataFrame, positions: np.ndarray | None) -> np.ndarray:
+def _predict(model, X, positions=None):
+    """Handle varying predict() signatures across model types."""
     try:
         preds = model.predict(X)
     except TypeError:
         if positions is None:
             raise
         preds = model.predict(X, positions)
+
+    # Some models return dicts or tuples instead of arrays
     if isinstance(preds, tuple):
-        primary = preds[0]
-        return np.asarray(primary)
+        return np.asarray(preds[0])
     if isinstance(preds, dict):
-        if "soft" in preds:
-            return np.asarray(preds["soft"])
-        if "stacked" in preds:
-            return np.asarray(preds["stacked"])
-        if "mean" in preds:
-            return np.asarray(preds["mean"])
+        for key in ("soft", "stacked", "mean"):
+            if key in preds:
+                return np.asarray(preds[key])
     return np.asarray(preds)
 
 
 def run_from_cli() -> None:
-    parser = argparse.ArgumentParser(description="Run comprehensive evaluation on holdout data.")
-    parser.add_argument("--model-path", required=True, help="Path to trained model (joblib).")
-    parser.add_argument(
-        "--features-path",
-        default="data/features/baseline_features.csv",
-        help="Path to baseline features CSV.",
-    )
-    parser.add_argument(
-        "--output-dir",
-        default="outputs/metrics/comprehensive",
-        help="Directory to save comprehensive metrics JSON.",
-    )
-    parser.add_argument(
-        "--experiment-name",
-        default=None,
-        help="Optional name for output file. Defaults to model filename.",
-    )
-
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--model-path", required=True)
+    parser.add_argument("--features-path", default="data/features/extended_features.csv")
+    parser.add_argument("--output-dir", default="outputs/evaluation/metrics")
+    parser.add_argument("--experiment-name", default=None)
     args = parser.parse_args()
 
     model_path = Path(args.model_path)
-    features_path = Path(args.features_path)
-    output_dir = Path(args.output_dir)
-
     if not model_path.exists():
         raise FileNotFoundError(f"Model not found: {model_path}")
-    if not features_path.exists():
-        raise FileNotFoundError(f"Features not found: {features_path}")
 
     model = joblib.load(model_path)
-    X, y_true, positions, gameweek_ids = _load_holdout_data(features_path)
-    X = _align_features_for_model(X, model)
-    y_pred = _predict_model(model, X, positions)
+    X, y_true, positions, gw_ids = _load_holdout(Path(args.features_path))
+    X = _align_features(X, model)
+    y_pred = _predict(model, X, positions)
 
-    evaluator = ComprehensiveEvaluator(output_dir)
-    experiment_name = args.experiment_name or model_path.stem
-    results = evaluator.evaluate_holdout(
-        y_true=y_true,
-        y_pred=y_pred,
-        positions=positions,
-        gameweek_ids=gameweek_ids,
-        experiment_name=experiment_name,
-    )
-    evaluator.print_summary(results, experiment_name)
+    evaluator = ComprehensiveEvaluator(Path(args.output_dir))
+    name = args.experiment_name or model_path.stem
+    results = evaluator.evaluate_holdout(y_true, y_pred, positions, gw_ids, name)
+    evaluator.print_summary(results, name)
 
 
 if __name__ == "__main__":
