@@ -186,7 +186,7 @@ def run():
 
     # Save
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    holdout_eval = full_evaluation(y_test, predictions["soft"], y_train)
+    holdout_eval = full_evaluation(y_test, predictions[best_method], y_train)
     metrics = {
         "model_name": "twohead_v1",
         "holdout_season": HOLDOUT_SEASON,
