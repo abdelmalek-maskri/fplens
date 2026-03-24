@@ -142,10 +142,12 @@ def run():
     (OUT_DIR / "metrics.json").write_text(json.dumps(metrics, indent=2, default=str))
     cv_df.to_csv(OUT_DIR / "cv_results.csv", index=False)
 
-    imp = pd.DataFrame({
-        "feature": model.feature_name_,
-        "importance": model.feature_importances_,
-    }).sort_values("importance", ascending=False)
+    imp = pd.DataFrame(
+        {
+            "feature": model.feature_name_,
+            "importance": model.feature_importances_,
+        }
+    ).sort_values("importance", ascending=False)
     imp.to_csv(OUT_DIR / "feature_importance.csv", index=False)
 
     print_final_summary(

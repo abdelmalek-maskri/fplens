@@ -6,6 +6,7 @@ Shared evaluation metrics for all models
 import numpy as np
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
+
 def compute_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
     """Compute standard regression metrics"""
     return {
@@ -13,6 +14,7 @@ def compute_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
         "rmse": float(np.sqrt(mean_squared_error(y_true, y_pred))),
         "r2": float(r2_score(y_true, y_pred)),
     }
+
 
 def compute_baselines(y_true: np.ndarray, y_train: np.ndarray) -> dict:
     """

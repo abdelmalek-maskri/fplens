@@ -148,11 +148,13 @@ def compute_shap_values(model, X: pd.DataFrame, positions: np.ndarray, sample_si
 
 def global_importance(shap_values: np.ndarray, X_sample: pd.DataFrame) -> pd.DataFrame:
     imp = np.abs(shap_values).mean(axis=0)
-    return pd.DataFrame({
-        "feature": X_sample.columns,
-        "importance": imp,
-        "importance_pct": imp / imp.sum() * 100,
-    }).sort_values("importance", ascending=False)
+    return pd.DataFrame(
+        {
+            "feature": X_sample.columns,
+            "importance": imp,
+            "importance_pct": imp / imp.sum() * 100,
+        }
+    ).sort_values("importance", ascending=False)
 
 
 def position_importance(shap_values: np.ndarray, X_sample: pd.DataFrame, positions: np.ndarray) -> dict:
@@ -165,11 +167,13 @@ def position_importance(shap_values: np.ndarray, X_sample: pd.DataFrame, positio
         if mask.sum() < 10:
             continue
         imp = np.abs(shap_values[mask]).mean(axis=0)
-        results[pos] = pd.DataFrame({
-            "feature": X_sample.columns,
-            "importance": imp,
-            "importance_pct": imp / imp.sum() * 100,
-        }).sort_values("importance", ascending=False)
+        results[pos] = pd.DataFrame(
+            {
+                "feature": X_sample.columns,
+                "importance": imp,
+                "importance_pct": imp / imp.sum() * 100,
+            }
+        ).sort_values("importance", ascending=False)
 
     return results
 
@@ -228,16 +232,12 @@ def build_report(global_imp, pos_imp, interactions, examples, model_name):
     for pos, df in pos_imp.items():
         report["position_top_3"][pos] = df.head(3)["feature"].tolist()
 
-    report["findings"].append(
-        f"Most important: {report['top_feature']} ({report['top_feature_pct']:.1f}%)"
-    )
+    report["findings"].append(f"Most important: {report['top_feature']} ({report['top_feature_pct']:.1f}%)")
 
     gk = pos_imp.get("GK", pd.DataFrame())
     fwd = pos_imp.get("FWD", pd.DataFrame())
     if not gk.empty and not fwd.empty:
-        report["findings"].append(
-            f"GK relies on '{gk.iloc[0]['feature']}', FWD on '{fwd.iloc[0]['feature']}'"
-        )
+        report["findings"].append(f"GK relies on '{gk.iloc[0]['feature']}', FWD on '{fwd.iloc[0]['feature']}'")
 
     avail = ["consecutive_starts", "games_since_start", "minutes_trend", "played_lag1"]
     avail_pct = global_imp[global_imp["feature"].isin(avail)]["importance_pct"].sum()
@@ -251,11 +251,13 @@ def build_report(global_imp, pos_imp, interactions, examples, model_name):
     top_pairs = []
     for i in range(len(interactions.columns)):
         for j in range(i + 1, len(interactions.columns)):
-            top_pairs.append({
-                "feature_a": interactions.columns[i],
-                "feature_b": interactions.columns[j],
-                "correlation": float(interactions.iloc[i, j]),
-            })
+            top_pairs.append(
+                {
+                    "feature_a": interactions.columns[i],
+                    "feature_b": interactions.columns[j],
+                    "correlation": float(interactions.iloc[i, j]),
+                }
+            )
     top_pairs.sort(key=lambda x: abs(x["correlation"]), reverse=True)
     report["top_interactions"] = top_pairs[:5]
 
@@ -301,13 +303,13 @@ def run() -> None:
 
     global_imp = global_importance(shap_values, X_sample)
     global_imp.to_csv(output_dir / "global_importance.csv", index=False)
-    print(f"\n  top 15 features:")
+    print("\n  top 15 features:")
     print(global_imp.head(15).to_string(index=False))
 
     pos_imp = position_importance(shap_values, X_sample, pos_sample)
     for pos, df in pos_imp.items():
         df.to_csv(output_dir / f"{pos.lower()}_importance.csv", index=False)
-    print(f"\n  top 5 by position:")
+    print("\n  top 5 by position:")
     for pos in ["GK", "DEF", "MID", "FWD"]:
         if pos in pos_imp:
             top5 = ", ".join(pos_imp[pos].head(5)["feature"].tolist())
@@ -321,7 +323,7 @@ def run() -> None:
     report = build_report(global_imp, pos_imp, corr, examples, model_name)
     (output_dir / "shap_report.json").write_text(json.dumps(report, indent=2, default=str))
 
-    print(f"\n  findings:")
+    print("\n  findings:")
     for f in report["findings"]:
         print(f"    - {f}")
 

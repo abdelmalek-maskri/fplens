@@ -38,6 +38,7 @@ def prepare_xy(df: pd.DataFrame):
     X = df.drop(columns=[c for c in drop if c in df.columns])
     return X, y
 
+
 class PositionSpecificLGBMModel:
     """wrapper that trains and predicts with a separate LightGBM per position."""
 
@@ -104,7 +105,7 @@ def run():
     cat_cols = [c for c in CAT_COLS if c in X_train.columns]
 
     print(f"  train: {len(train_df):,}  test: {len(test_df):,}")
-    print(f"  positions: {', '.join(f'{p}={int((positions_test==p).sum())}' for p in POSITIONS)}")
+    print(f"  positions: {', '.join(f'{p}={int((positions_test == p).sum())}' for p in POSITIONS)}")
 
     model = PositionSpecificLGBMModel()
     model.fit(X_train, y_train, positions_train, cat_cols)
@@ -113,7 +114,7 @@ def run():
     holdout_eval = full_evaluation(y_test, preds, y_train)
 
     # Per-position breakdown
-    print(f"\n  per-position MAE:")
+    print("\n  per-position MAE:")
     per_pos = {}
     for pos in POSITIONS:
         mask = positions_test == pos

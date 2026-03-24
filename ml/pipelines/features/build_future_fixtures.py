@@ -17,6 +17,7 @@ from ml.utils.io import find_latest_snapshot
 
 VAASTAV_DIR = find_latest_snapshot(Path("data/raw/fpl"))
 
+
 def load_team_strengths() -> dict[str, pd.DataFrame]:
     """
     load season-specific team strength ratings from vaastav teams.csv files.
@@ -114,7 +115,7 @@ def compute_fdr(
                 def_home = sdf.set_index("id")["strength_defence_home"].to_dict()
                 def_away = sdf.set_index("id")["strength_defence_away"].to_dict()
 
-                home_mask = season_mask & (schedule[home_col] == True)   # noqa: E712
+                home_mask = season_mask & (schedule[home_col] == True)  # noqa: E712
                 away_mask = season_mask & (schedule[home_col] == False)  # noqa: E712
 
                 # If the player's team is at home, the opponent is away, and vice versa.

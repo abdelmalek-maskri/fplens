@@ -7,6 +7,7 @@ cross-source mapping, and merge. Steps 1-10 in the pipeline.
 import subprocess
 import sys
 
+
 def sh(cmd):
     print("\n", " ".join(cmd))
     subprocess.check_call(cmd)
@@ -37,6 +38,7 @@ def main():
 
     # 4) final merge (enrich FPL with Understat features)
     run_module("ml.pipelines.merge.enrich_fpl_with_understat_all")
+
 
 if __name__ == "__main__":
     main()

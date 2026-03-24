@@ -47,6 +47,7 @@ SEASON_AVG_COLS = [
     "bps",
 ]
 
+
 def add_season_avg_features(df: pd.DataFrame, num_cols: list) -> pd.DataFrame:
     """add expanding season average features (all games so far this season)."""
     print("adding season average features...")
@@ -211,9 +212,9 @@ def run() -> None:
     # future fixture features for multi-horizon prediction
     print("\nbuilding future fixture features...")
     df = add_future_fixture_features(df)
-    
+
     print("\ncleaning up...")
-    
+
     # Require at least 1 previous GW
     before = len(df)
     if "total_points_lag1" in df.columns:

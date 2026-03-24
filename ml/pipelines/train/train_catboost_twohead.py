@@ -18,7 +18,7 @@ import joblib
 import numpy as np
 import pandas as pd
 from catboost import CatBoostClassifier, CatBoostRegressor
-from sklearn.metrics import mean_absolute_error, roc_auc_score
+from sklearn.metrics import roc_auc_score
 
 from ml.config.eval_config import CAT_COLS, CV_SEASONS, DROP_COLS, HOLDOUT_SEASON, TARGET_COL
 from ml.evaluation.comprehensive_metrics import ComprehensiveEvaluator
@@ -104,7 +104,7 @@ class CatBoostTwoHead:
             "points_if_play": e_points,
             "soft": p_play * e_points,
             "hard": np.where(p_play > 0.5, e_points, 0),
-            "weighted": (p_play ** 0.7) * e_points,  # softer than linear, harsher than sqrt
+            "weighted": (p_play**0.7) * e_points,  # softer than linear, harsher than sqrt
         }
 
 
@@ -129,7 +129,7 @@ def run():
     cat_cols = [c for c in CAT_COLS if c in X_train.columns]
 
     print(f"  train: {len(train_df):,}  test: {len(test_df):,}")
-    print(f"  played in test: {(y_test > 0).sum():,} ({(y_test > 0).mean()*100:.1f}%)")
+    print(f"  played in test: {(y_test > 0).sum():,} ({(y_test > 0).mean() * 100:.1f}%)")
 
     model = CatBoostTwoHead()
     model.fit(X_train, y_train, cat_cols)

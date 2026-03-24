@@ -266,11 +266,13 @@ class ComprehensiveEvaluator:
 
         if "business" in results:
             b = results["business"]
-            print(f"  captain: top1={b['top1_accuracy']*100:.1f}%  top3={b['top3_accuracy']*100:.1f}%  eff={b['captain_efficiency']*100:.1f}%")
+            print(
+                f"  captain: top1={b['top1_accuracy'] * 100:.1f}%  top3={b['top3_accuracy'] * 100:.1f}%  eff={b['captain_efficiency'] * 100:.1f}%"
+            )
 
         base = results["baselines"]
         delta = base["zero_mae"] - s["mae_overall"]
-        print(f"  vs zero: {delta:+.4f} ({delta/base['zero_mae']*100:+.1f}%)")
+        print(f"  vs zero: {delta:+.4f} ({delta / base['zero_mae'] * 100:+.1f}%)")
         print(f"{'=' * 60}\n")
 
 

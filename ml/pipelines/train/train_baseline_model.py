@@ -44,6 +44,7 @@ def prepare_xy(df: pd.DataFrame):
     X = df.drop(columns=[c for c in drop if c in df.columns])
     return X, y
 
+
 def rolling_season_cv(df: pd.DataFrame, seasons: list[str]) -> pd.DataFrame:
     rows = []
     for i in range(MIN_TRAIN_SEASONS, len(seasons)):
@@ -168,9 +169,9 @@ def run() -> None:
     (OUT_DIR / "metrics.json").write_text(json.dumps(metrics, indent=2))
 
     # Feature importance
-    imp = pd.DataFrame(
-        {"feature": X_train.columns, "importance": model.feature_importances_}
-    ).sort_values("importance", ascending=False)
+    imp = pd.DataFrame({"feature": X_train.columns, "importance": model.feature_importances_}).sort_values(
+        "importance", ascending=False
+    )
     imp.to_csv(OUT_DIR / "feature_importance.csv", index=False)
 
     # 4) Comprehensive evaluation (same metrics as all other models)

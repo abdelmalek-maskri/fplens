@@ -59,9 +59,7 @@ def run() -> None:
     # Rolling means based only on prior gameweeks to avoid target leakage
     for w in ROLL_WINDOWS:
         for col in num_cols:
-            df[f"{col}_roll{w}"] = g[col].transform(
-                lambda x, _w=w: x.shift(1).rolling(window=_w, min_periods=1).mean()
-            )
+            df[f"{col}_roll{w}"] = g[col].transform(lambda x, _w=w: x.shift(1).rolling(window=_w, min_periods=1).mean())
 
     # Indicator for whether the player appeared in the previous gameweek
     if "minutes_lag1" in df.columns:
@@ -97,10 +95,7 @@ def run() -> None:
     ]
     keep = [c for c in keep if c in df.columns]
 
-    feature_cols = [
-        c for c in df.columns
-        if (c.endswith("_lag1") or "_roll" in c) and c != "played_lag1"
-    ]
+    feature_cols = [c for c in df.columns if (c.endswith("_lag1") or "_roll" in c) and c != "played_lag1"]
     keep += feature_cols
 
     out = df[keep].copy()
