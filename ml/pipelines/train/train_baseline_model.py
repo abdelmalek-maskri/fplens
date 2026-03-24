@@ -12,21 +12,17 @@ from ml.config.eval_config import (
     CV_SEASONS,
     DROP_COLS,
     HOLDOUT_SEASON,
-    METRICS_DIR,
     MIN_TRAIN_SEASONS,
-    MODELS_DIR,
     TARGET_COL,
 )
+from ml.evaluation.comprehensive_metrics import ComprehensiveEvaluator
 from ml.utils.eval_metrics import (
     full_evaluation,
     print_final_summary,
 )
 
-IN_PATH = Path("data/features/extended_features.csv")
-OUT_MODEL = Path(MODELS_DIR) / "baseline.joblib"
-OUT_METRICS = Path(METRICS_DIR) / "baseline.json"
-OUT_IMPORTANCE = Path(METRICS_DIR) / "baseline_feature_importance.csv"
-OUT_CV = Path(METRICS_DIR) / "baseline_cv.csv"
+IN_PATH = Path("data/features/baseline_features.csv")
+OUT_DIR = Path("outputs/experiments/baseline")
 
 
 def build_model() -> LGBMRegressor:
@@ -42,12 +38,11 @@ def build_model() -> LGBMRegressor:
 
 
 def prepare_xy(df: pd.DataFrame):
-    """Extract features (X) and target (y) from dataframe."""
+    """extract features (X) and target (y) from dataframe."""
     y = df[TARGET_COL].values
     drop = set([TARGET_COL] + DROP_COLS)
     X = df.drop(columns=[c for c in drop if c in df.columns])
     return X, y
-
 
 def rolling_season_cv(df: pd.DataFrame, seasons: list[str]) -> pd.DataFrame:
     rows = []
@@ -83,7 +78,7 @@ def rolling_season_cv(df: pd.DataFrame, seasons: list[str]) -> pd.DataFrame:
         }
         rows.append(fold)
 
-        print(f"  CV fold {test_season}: MAE={eval_result['model']['mae']:.4f}, R²={eval_result['model']['r2']:.4f}")
+        print(f"CV fold {test_season}: MAE={eval_result['model']['mae']:.4f}, R²={eval_result['model']['r2']:.4f}")
 
     return pd.DataFrame(rows)
 
@@ -95,7 +90,6 @@ def run() -> None:
     print(f"Holdout season: {HOLDOUT_SEASON}")
     print(f"CV seasons: {CV_SEASONS}")
     print()
-
     print("Loading baseline features...")
     df = pd.read_csv(IN_PATH, low_memory=False)
 
@@ -117,8 +111,8 @@ def run() -> None:
     print("Running rolling-season CV...")
     cv_df = rolling_season_cv(df[df["season"].isin(cv_seasons_available)], cv_seasons_available)
 
-    OUT_CV.parent.mkdir(parents=True, exist_ok=True)
-    cv_df.to_csv(OUT_CV, index=False)
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    cv_df.to_csv(OUT_DIR / "cv_results.csv", index=False)
 
     cv_summary = {
         "n_folds": int(len(cv_df)),
@@ -131,8 +125,7 @@ def run() -> None:
         f"\nCV Summary: MAE={cv_summary['mae_mean']:.4f} ± {cv_summary['mae_std']:.4f}, R²={cv_summary['r2_mean']:.4f}"
     )
 
-    # 2) Final holdout evaluation (train on all CV seasons, test on holdout)
-
+    # 2) Final holdout evaluation
     print(f"\nTraining final model for holdout evaluation ({HOLDOUT_SEASON})...")
 
     train_df = df[df["season"].isin(cv_seasons_available)]
@@ -151,18 +144,18 @@ def run() -> None:
     holdout_eval = full_evaluation(y_test, preds, y_train)
 
     print_final_summary(
-        model_name="lgbm_baseline_v1",
+        model_name="baseline",
         holdout_season=HOLDOUT_SEASON,
         train_seasons=cv_seasons_available,
         n_train=len(train_df),
         n_test=len(test_df),
         eval_result=holdout_eval,
-        output_dir=str(OUT_METRICS.parent),
+        output_dir=str(OUT_DIR),
     )
-    # 3) Save outputs
 
+    # 3) Save model + metrics
     metrics = {
-        "model_name": "lgbm_baseline_v1",
+        "model_name": "baseline",
         "holdout_season": HOLDOUT_SEASON,
         "cv_seasons": cv_seasons_available,
         "rows_train": int(len(train_df)),
@@ -171,30 +164,29 @@ def run() -> None:
         "cv_summary": cv_summary,
     }
 
-    OUT_MODEL.parent.mkdir(parents=True, exist_ok=True)
-    OUT_METRICS.parent.mkdir(parents=True, exist_ok=True)
-
-    joblib.dump(model, OUT_MODEL)
-    OUT_METRICS.write_text(json.dumps(metrics, indent=2))
+    joblib.dump(model, OUT_DIR / "model.joblib")
+    (OUT_DIR / "metrics.json").write_text(json.dumps(metrics, indent=2))
 
     # Feature importance
     imp = pd.DataFrame(
-        {
-            "feature": X_train.columns,
-            "importance": model.feature_importances_,
-        }
+        {"feature": X_train.columns, "importance": model.feature_importances_}
     ).sort_values("importance", ascending=False)
+    imp.to_csv(OUT_DIR / "feature_importance.csv", index=False)
 
-    OUT_IMPORTANCE.parent.mkdir(parents=True, exist_ok=True)
-    imp.to_csv(OUT_IMPORTANCE, index=False)
+    # 4) Comprehensive evaluation (same metrics as all other models)
+    print("\nRunning comprehensive evaluation...")
+    evaluator = ComprehensiveEvaluator(OUT_DIR)
+    evaluator.evaluate_holdout(
+        y_true=y_test,
+        y_pred=preds,
+        positions=test_df["position"].values if "position" in test_df.columns else None,
+        gameweek_ids=test_df["GW"].values if "GW" in test_df.columns else None,
+        experiment_name="baseline",
+    )
 
     print("\n" + "=" * 60)
-    print("OUTPUTS SAVED")
+    print(f"All outputs saved to: {OUT_DIR}/")
     print("=" * 60)
-    print(f"Model:      {OUT_MODEL}")
-    print(f"Metrics:    {OUT_METRICS}")
-    print(f"CV results: {OUT_CV}")
-    print(f"Features:   {OUT_IMPORTANCE}")
 
     print("\nTop 15 features:")
     print(imp.head(15).to_string(index=False))
