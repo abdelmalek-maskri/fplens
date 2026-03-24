@@ -67,8 +67,10 @@ def run(seasons):
     full.to_csv(OUT, index=False)
     print("saved:", OUT)
     print("shape:", full.shape)
-    print("overall xG coverage:", full["us_xg"].notna().mean())
-    print("xG coverage (minutes > 0):", full.loc[full["minutes"] > 0, "us_xg"].notna().mean())
+    if "us_xg" in full.columns:
+        print("overall xG coverage:", full["us_xg"].notna().mean())
+        if "minutes" in full.columns:
+            print("xG coverage (minutes > 0):", full.loc[full["minutes"] > 0, "us_xg"].notna().mean())
 
 
 def main():
