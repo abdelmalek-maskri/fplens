@@ -78,22 +78,22 @@ class ModelSpec:
 # GW+1: full comparison (production + ablation + ff9b)
 MODELS_GW1 = [
     ModelSpec(
-        "baseline", "production", "outputs/models/baseline.joblib", "data/features/extended_features.csv", "plain"
+        "baseline", "production", "outputs/experiments/baseline/model.joblib", "data/features/extended_features.csv", "plain"
     ),
     ModelSpec(
-        "twohead", "production", "outputs/models/twohead.joblib", "data/features/extended_features.csv", "twohead"
+        "twohead", "production", "outputs/experiments/twohead/model.joblib", "data/features/extended_features.csv", "twohead"
     ),
     ModelSpec(
         "position_specific",
         "production",
-        "outputs/models/position_specific.joblib",
+        "outputs/experiments/position_specific/model.joblib",
         "data/features/extended_features.csv",
         "position",
     ),
     ModelSpec(
         "stacked_ensemble",
         "production",
-        "outputs/models/stacked_ensemble.joblib",
+        "outputs/experiments/stacked_ensemble/model.joblib",
         "data/features/extended_features.csv",
         "stacked",
     ),

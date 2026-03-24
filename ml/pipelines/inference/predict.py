@@ -4,7 +4,7 @@ This module loads a trained model and generates predictions for the current
 gameweek, handling feature alignment between live data and training format.
 Usage:
     python -m ml.pipelines.inference.predict
-    python -m ml.pipelines.inference.predict --model outputs/experiments/ablation_injury/config_D/model.joblib
+    python -m ml.pipelines.inference.predict --model outputs/experiments/stacked_ensemble/model.joblib
 """
 
 from datetime import datetime
@@ -18,7 +18,7 @@ from ml.config.eval_config import CAT_COLS, DROP_COLS, TARGET_COL
 from ml.pipelines.inference.fetch_live_data import fetch_current_gw_data
 
 # Default paths
-DEFAULT_MODEL = Path("outputs/experiments/ablation_injury/config_D/model.joblib")
+DEFAULT_MODEL = Path("outputs/experiments/stacked_ensemble/model.joblib")
 OUTPUT_DIR = Path("data/inference")
 
 # Prediction constants
