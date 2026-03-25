@@ -1,5 +1,3 @@
-"""Fantasy Foresight API — serves ML predictions from trained models."""
-
 import contextlib
 import os
 import sys
@@ -15,24 +13,22 @@ from api.routers import fixtures, insights, predictions, team
 from ml.pipelines.inference.multi_gw import load_horizon_models
 from ml.pipelines.inference.predict import DEFAULT_MODEL
 
-# joblib needs these classes in scope to unpickle custom model objects.
-# Models pickled when training scripts ran as __main__; uvicorn --reload
-# remaps that to __mp_main__, so we patch both modules.
-# Guarded imports: training deps (xgboost, etc.) may not be installed in API env.
-_MODEL_CLASSES = []
+# Unpickling model objects
+# joblib needs these classes importable at load time. Training scripts
+# pickle under __main__, but uvicorn --reload remaps to __mp_main__,
+# so we patch both. Guarded because training deps (xgboost, catboost)
+# may not be installed in the API environment.
 
+_MODEL_CLASSES = []
 with contextlib.suppress(ImportError):
     from ml.pipelines.train.train_stacked_ensemble import StackedEnsemble
     _MODEL_CLASSES.append(StackedEnsemble)
-
 with contextlib.suppress(ImportError):
     from ml.pipelines.train.train_twohead_model import TwoHeadModel
     _MODEL_CLASSES.append(TwoHeadModel)
-
 with contextlib.suppress(ImportError):
     from ml.pipelines.train.train_position_specific import PositionSpecificLGBMModel
     _MODEL_CLASSES.append(PositionSpecificLGBMModel)
-
 with contextlib.suppress(ImportError):
     from ml.pipelines.train.train_stacked_with_injury import StackedEnsembleInjury
     _MODEL_CLASSES.append(StackedEnsembleInjury)
@@ -44,16 +40,17 @@ for _mod in ("__main__", "__mp_main__"):
 
 MODEL_PATH = Path(os.environ.get("MODEL_PATH", str(DEFAULT_MODEL)))
 
-# All GW+1 models available for user selection via /api/models
+# Model registry (all GW+1 variants available via /api/models)
+
 MODEL_REGISTRY = {
     "config_d": (
         "Config D: Stacked + Injury + News (Best)",
-        "outputs/experiments/ablation_injury/config_D/model.joblib",
+        "outputs/experiments/ablation/config_D/model.joblib",
         1.016,
     ),
-    "config_a": ("Config A: FPL + Understat only", "outputs/experiments/ablation_injury/config_A/model.joblib", 1.026),
-    "config_b": ("Config B: + Injury features", "outputs/experiments/ablation_injury/config_B/model.joblib", 1.016),
-    "config_c": ("Config C: + News features", "outputs/experiments/ablation_injury/config_C/model.joblib", 1.023),
+    "config_a": ("Config A: FPL + Understat only", "outputs/experiments/ablation/config_A/model.joblib", 1.026),
+    "config_b": ("Config B: + Injury features", "outputs/experiments/ablation/config_B/model.joblib", 1.016),
+    "config_c": ("Config C: + News features", "outputs/experiments/ablation/config_C/model.joblib", 1.023),
     "stacked_ensemble": ("Stacked Ensemble (109 features)", "outputs/experiments/stacked_ensemble/model.joblib", 1.051),
     "catboost_tweedie": (
         "CatBoost Tweedie vp1.5",
@@ -69,23 +66,25 @@ REFRESH_SECRET = os.environ.get("REFRESH_SECRET", "dev-secret")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Load all models and initialise cache on startup."""
+    """Load all models and initialise the FPL data cache on startup."""
     if not MODEL_PATH.exists():
         raise FileNotFoundError(f"Model file not found: {MODEL_PATH}")
 
+    # Load every registered model that exists on disk
     app.state.models = {}
     app.state.model_info = []
     for model_id, (name, path, mae) in MODEL_REGISTRY.items():
         p = Path(path)
-        if p.exists():
-            try:
-                print(f"  Loading {name} from {path}...")
-                app.state.models[model_id] = joblib.load(p)
-                app.state.model_info.append({"id": model_id, "name": name, "mae": mae})
-            except Exception as e:
-                print(f"  WARNING: Failed to load {name}: {e}")
+        if not p.exists():
+            continue
+        try:
+            print(f"  Loading {name} from {path}...")
+            app.state.models[model_id] = joblib.load(p)
+            app.state.model_info.append({"id": model_id, "name": name, "mae": mae})
+        except Exception as e:
+            print(f"  WARNING: Failed to load {name}: {e}")
 
-    # Default model: prefer config_d, fallback to MODEL_PATH
+    # config_d is the best ablation variant (MAE 1.016); fall back to MODEL_PATH
     if "config_d" in app.state.models:
         app.state.model = app.state.models["config_d"]
         print(f"Loaded {len(app.state.models)} models, default: config_d")

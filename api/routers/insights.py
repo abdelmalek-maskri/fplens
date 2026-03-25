@@ -11,13 +11,13 @@ router = APIRouter(tags=["Insights"])
 logger = logging.getLogger(__name__)
 
 OUTPUTS = Path("outputs")
-NEWS_CACHE_TTL = 60  # minutes — news doesn't change fast
+NEWS_CACHE_TTL = 60  # minutes; news doesn't change fast
 
 
 @router.get("/model-insights")
 def get_model_insights():
     """Training metrics, ablation results, SHAP global importance."""
-    ablation_path = OUTPUTS / "experiments/ablation_injury/ablation_summary.json"
+    ablation_path = OUTPUTS / "experiments/ablation/ablation_summary.json"
     ablation = json.loads(ablation_path.read_text()) if ablation_path.exists() else {}
 
     shap_path = OUTPUTS / "analysis/shap/stacked_ensemble_global_importance.csv"
@@ -28,7 +28,7 @@ def get_model_insights():
 
     variants = []
     for config in ["A", "B", "C", "D"]:
-        summary_path = OUTPUTS / f"experiments/ablation_injury/config_{config}/summary.json"
+        summary_path = OUTPUTS / f"experiments/ablation/config_{config}/summary.json"
         if summary_path.exists():
             variants.append(json.loads(summary_path.read_text()))
 
