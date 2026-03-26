@@ -841,7 +841,8 @@ def enrich_with_understat(
 
 
 def enrich_with_news(df: pd.DataFrame, bootstrap_data: dict) -> pd.DataFrame:
-    """Add live Guardian news features matching the 8 training columns."""
+    """Add live Guardian news features (excluding news_sentiment which is
+    already created by add_injury_features from FPL injury news text)."""
     NEWS_COLS = [
         "news_mentioned",
         "news_mention_count",
@@ -850,7 +851,6 @@ def enrich_with_news(df: pd.DataFrame, bootstrap_data: dict) -> pd.DataFrame:
         "news_sentiment_pos",
         "news_sentiment_neg",
         "news_injury_context",
-        "news_sentiment",
     ]
 
     try:
@@ -889,8 +889,9 @@ def enrich_with_news(df: pd.DataFrame, bootstrap_data: dict) -> pd.DataFrame:
                     }
                 pf = player_features[eid]
                 pf["mention_count"] += 1
-                headline = article.get("headline", "")
-                if player.get("web_name", "???") in headline:
+                headline = article.get("headline", "").lower()
+                web_name = player.get("web_name", "")
+                if len(web_name) >= 4 and re.search(r"\b" + re.escape(web_name.lower()) + r"\b", headline):
                     pf["title_mentions"] += 1
                 sent = article.get("sentiment", 0.0)
                 pf["sentiments_raw"].append(sent)
@@ -913,7 +914,6 @@ def enrich_with_news(df: pd.DataFrame, bootstrap_data: dict) -> pd.DataFrame:
                     "news_sentiment_pos": sum(pf["sentiments_pos"]) / n if n else 0,
                     "news_sentiment_neg": sum(pf["sentiments_neg"]) / n if n else 0,
                     "news_injury_context": min(pf["injury_contexts"], 1),
-                    "news_sentiment": sum(pf["sentiments_raw"]) / n if n else 0,
                 }
             )
 
