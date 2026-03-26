@@ -18,7 +18,7 @@ from ml.config.eval_config import CAT_COLS, DROP_COLS, TARGET_COL
 from ml.pipelines.inference.fetch_live_data import fetch_current_gw_data
 
 # Default paths
-DEFAULT_MODEL = Path("outputs/experiments/stacked_ensemble/model.joblib")
+DEFAULT_MODEL = Path("outputs/experiments/ablation/config_D/model.joblib")
 OUTPUT_DIR = Path("data/inference")
 
 # Prediction constants
@@ -39,11 +39,23 @@ def load_model(model_path: Path = DEFAULT_MODEL):
 def get_model_features(model) -> list[str]:
     # Extract the feature list from a trained model object.
     # Stacked ensemble: dig into the first LightGBM base learner
-    if hasattr(model, "base_models"):
+    if hasattr(model, "base_models") and isinstance(model.base_models, dict):
         for name in getattr(model, "base_names", model.base_models.keys()):
             m, ltype = model.base_models[name]
             if hasattr(m, "feature_name_"):
                 return m.feature_name_
+
+    # PositionSpecificLGBMModel stores feature_cols during fit
+    if hasattr(model, "feature_cols") and model.feature_cols:
+        return model.feature_cols
+
+    # TwoHeadModel / CatBoostTwoHead: extract from the regressor sub-model
+    if hasattr(model, "regressor"):
+        reg = model.regressor
+        if hasattr(reg, "feature_name_"):
+            return reg.feature_name_
+        if hasattr(reg, "feature_names_"):
+            return list(reg.feature_names_)
 
     # Plain LightGBM / XGBoost
     if hasattr(model, "feature_name_"):
@@ -134,14 +146,27 @@ def predict(
     print("Generating predictions...")
 
     # CatBoost needs string categories, not numeric codes
-    if type(model).__name__ == "CatBoostRegressor":
+    model_name = type(model).__name__
+    if model_name == "CatBoostRegressor":
         for c in CAT_COLS:
             if c in X.columns:
                 X[c] = X[c].astype(str).replace("nan", "missing").astype("category")
 
-    # Predict — stacked ensembles return (pred, base_preds_dict)
-    raw = model.predict(X)
-    if isinstance(raw, tuple):
+    # PositionSpecificLGBMModel needs a positions Series
+    if model_name == "PositionSpecificLGBMModel":
+        positions = player_info["position"] if "position" in player_info.columns else pd.Series("MID", index=X.index)
+        raw = model.predict(X, positions)
+    else:
+        raw = model.predict(X)
+
+    # Normalize output: stacked ensembles return (pred, base_preds_dict),
+    # two-head models return a dict with "soft"/"hard" keys,
+    # plain models return an array.
+    if isinstance(raw, dict):
+        best_key = getattr(model, "best_method", "soft")
+        predictions = raw.get(best_key, raw.get("soft", next(iter(raw.values()))))
+        base_preds = {k: v for k, v in raw.items() if k not in ("play_prob", "points_if_play")}
+    elif isinstance(raw, tuple):
         predictions, base_preds = raw
     else:
         predictions, base_preds = raw, None
@@ -255,7 +280,8 @@ FEATURE_DISPLAY_NAMES = {
 
 def _get_lgbm_from_model(model):
     """Extract the primary LightGBM model for SHAP explainer."""
-    if hasattr(model, "base_models"):
+    # Stacked ensemble: base_models is {name: (model, type_str)}
+    if hasattr(model, "base_models") and isinstance(model.base_models, dict):
         base_models = model.base_models
         if not base_models:
             return model
@@ -263,6 +289,14 @@ def _get_lgbm_from_model(model):
             return base_models["lgbm"][0]
         first_name = list(base_models.keys())[0]
         return base_models[first_name][0]
+    # TwoHead / CatBoostTwoHead: use the regressor
+    if hasattr(model, "regressor"):
+        return model.regressor
+    # PositionSpecific: use the first position model (MID has most data)
+    if hasattr(model, "models") and isinstance(model.models, dict):
+        for pos in ("MID", "DEF", "FWD", "GK"):
+            if pos in model.models:
+                return model.models[pos]
     return model
 
 
