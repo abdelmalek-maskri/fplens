@@ -4,11 +4,9 @@ export default function OverviewTab({
   ensembleWeights,
   datasetStats,
   twoheadMethods,
-  ablationConfigs,
 }) {
   const bestModel = modelVariants.find((m) => m.best);
   const bestMae = bestModel.mae;
-  const configD = ablationConfigs.find((c) => c.best);
 
   return (
     <div className="space-y-6">
@@ -117,19 +115,6 @@ export default function OverviewTab({
           </tbody>
         </table>
 
-        {configD && (
-          <div className="mt-3 p-3 rounded-md bg-info-500/5 border border-info-500/20">
-            <p className="text-sm text-surface-300">
-              <span className="font-semibold text-surface-100">Deployed model: Config D</span> —
-              Stacked Ensemble with injury + news features ({configD.features} features). MAE{" "}
-              <span className="font-data font-semibold text-info-400">
-                {configD.mae.toFixed(4)}
-              </span>
-              , Spearman ρ <span className="font-data">{configD.rho.toFixed(3)}</span>. See Ablation
-              Study tab for comparison.
-            </p>
-          </div>
-        )}
       </div>
 
       <div>
