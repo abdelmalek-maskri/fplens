@@ -32,6 +32,9 @@ with contextlib.suppress(ImportError):
 with contextlib.suppress(ImportError):
     from ml.pipelines.train.train_stacked_with_injury import StackedEnsembleInjury
     _MODEL_CLASSES.append(StackedEnsembleInjury)
+with contextlib.suppress(ImportError):
+    from ml.pipelines.train.train_catboost_twohead import CatBoostTwoHead
+    _MODEL_CLASSES.append(CatBoostTwoHead)
 
 for _mod in ("__main__", "__mp_main__"):
     if _mod in sys.modules:
@@ -46,19 +49,17 @@ MODEL_REGISTRY = {
     "config_d": (
         "Config D: Stacked + Injury + News (Best)",
         "outputs/experiments/ablation/config_D/model.joblib",
-        1.016,
+        1.029,
     ),
-    "config_a": ("Config A: FPL + Understat only", "outputs/experiments/ablation/config_A/model.joblib", 1.026),
-    "config_b": ("Config B: + Injury features", "outputs/experiments/ablation/config_B/model.joblib", 1.016),
-    "config_c": ("Config C: + News features", "outputs/experiments/ablation/config_C/model.joblib", 1.023),
-    "stacked_ensemble": ("Stacked Ensemble (109 features)", "outputs/experiments/stacked_ensemble/model.joblib", 1.051),
-    "catboost_tweedie": (
-        "CatBoost Tweedie vp1.5",
-        "outputs/experiments/multi_horizon/gw1/catboost_tweedie_vp1.5/model.joblib",
-        1.032,
-    ),
-    "lgbm_baseline": ("LightGBM Baseline", "outputs/experiments/multi_horizon/gw1/lgbm_baseline/model.joblib", 1.054),
-    "baseline": ("Single LightGBM (production)", "outputs/experiments/baseline/model.joblib", 1.060),
+    "config_b": ("Config B: + Injury features", "outputs/experiments/ablation/config_B/model.joblib", 1.032),
+    "config_c": ("Config C: + News features", "outputs/experiments/ablation/config_C/model.joblib", 1.037),
+    "config_a": ("Config A: FPL + Understat only", "outputs/experiments/ablation/config_A/model.joblib", 1.039),
+    "baseline_tweedie": ("LightGBM Tweedie", "outputs/experiments/baseline_tweedie/model.joblib", 1.021),
+    "stacked_ensemble": ("Stacked Ensemble (fpl+Understat)", "outputs/experiments/stacked_ensemble/model.joblib", 1.080),
+    "twohead": ("Two-Head (Classifier + Regressor)", "outputs/experiments/twohead/model.joblib", 1.087),
+    "baseline": ("Single LightGBM", "outputs/experiments/baseline/model.joblib", 1.091),
+    "position_specific": ("Position-Specific (4x LightGBM)", "outputs/experiments/position_specific/model.joblib", 1.095),
+    "catboost_twohead": ("CatBoost Two-Head", "outputs/experiments/catboost_twohead/model.joblib", 1.097),
 }
 
 REFRESH_SECRET = os.environ.get("REFRESH_SECRET", "dev-secret")

@@ -3,7 +3,7 @@
 import pandas as pd
 from fastapi import APIRouter, HTTPException, Query, Request
 
-from api.solvers import solve_best_squad, solve_best_xi
+from api.solvers import solve_best_squad
 from ml.pipelines.inference.multi_gw import predict_multi_gw
 from ml.pipelines.inference.predict import run as run_predictions
 
@@ -41,12 +41,6 @@ def get_predictions(
 def get_models(request: Request):
     """List available models for the frontend selector."""
     return getattr(request.app.state, "model_info", [])
-
-
-@router.get("/best-xi")
-def get_best_xi(request: Request):
-    """Global best starting 11 from all available players."""
-    return solve_best_xi(_get_predictions(request))
 
 
 @router.get("/best-squad")

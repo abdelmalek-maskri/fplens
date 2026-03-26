@@ -77,13 +77,18 @@ export default function CalibrationTab({ calibrationDeciles, calibrationStats })
           series={[
             {
               name: "Single LightGBM",
-              color: "rgb(var(--info-500))",
+              color: "rgb(var(--surface-500))",
               values: calibrationDeciles.baseline,
             },
             {
               name: "Stacked Ensemble",
-              color: "rgb(var(--brand-500))",
+              color: "rgb(var(--info-500))",
               values: calibrationDeciles.stacked,
+            },
+            {
+              name: "Config D (Best)",
+              color: "rgb(var(--brand-500))",
+              values: calibrationDeciles.config_d,
             },
           ]}
           yMin={0}

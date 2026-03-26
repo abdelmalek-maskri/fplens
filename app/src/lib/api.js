@@ -46,10 +46,6 @@ export function getModels() {
   return apiFetch("/api/models");
 }
 
-export function getBestXI() {
-  return apiFetch("/api/best-xi");
-}
-
 export function getBestSquad(budget = 100) {
   return apiFetch(buildUrl("/api/best-squad", { budget }));
 }

@@ -52,7 +52,7 @@ export default function OverviewTab({
         <div className="py-3 border-b border-surface-700">
           <span className="section-label">Architecture Comparison</span>
           <span className="text-xs text-surface-500 ml-2">
-            ({bestModel.features} features, holdout 2024-25)
+            (holdout 2024-25)
           </span>
         </div>
         <table className="w-full">
@@ -160,7 +160,7 @@ export default function OverviewTab({
       <div>
         <div className="py-3 border-b border-surface-700 mb-3">
           <span className="section-label">Two-Head: Hard vs Soft</span>
-          <span className="text-xs text-surface-500 ml-3">Classifier AUC: 0.882</span>
+          <span className="text-xs text-surface-500 ml-3">Classifier AUC: 0.896</span>
         </div>
         <table className="w-full">
           <thead className="bg-surface-800/30">

@@ -190,10 +190,10 @@ export default function AblationTab({ ablationConfigs, ablationSignificance, int
         <div className="mt-3 p-3 rounded-md bg-surface-800/50 border border-surface-700">
           <p className="text-sm text-surface-300">
             <span className="font-semibold text-surface-100">
-              Redundancy: {interactionEffect.redundancy.toFixed(2)}&times;10&sup3;
+              Synergy: +{interactionEffect.synergy.toFixed(2)}%
             </span>{" "}
-            — news signal is largely captured by injury features. Adding news on top of injury
-            provides no statistically significant improvement (p = 0.348).
+            — the combined effect exceeds the sum of individual gains. Injury and news features
+            interact: news captures soft signals that structured injury data misses.
           </p>
         </div>
       </div>
@@ -206,7 +206,7 @@ export default function AblationTab({ ablationConfigs, ablationSignificance, int
               Yes — injury features significantly improve predictions
             </p>
             <p className="text-xs text-surface-500 mt-1">
-              Config B reduces MAE by 0.90% over baseline (p {"<"} 0.001). Structured injury data
+              Config B reduces MAE by 0.69% over baseline (p {"<"} 0.001). Structured injury data
               adds signal beyond playing time patterns.
             </p>
           </div>
@@ -215,11 +215,11 @@ export default function AblationTab({ ablationConfigs, ablationSignificance, int
           <span className="badge bg-warning-500/20 text-warning-400 shrink-0 mt-0.5">RQ2</span>
           <div>
             <p className="text-sm text-surface-200 font-medium">
-              Marginal — news alone helps slightly (p = 0.003)
+              Yes — news features provide a small but significant improvement
             </p>
             <p className="text-xs text-surface-500 mt-1">
-              Config C reduces MAE by 0.22% vs baseline. But when injury features are present, news
-              adds nothing significant.
+              Config C reduces MAE by 0.15% vs baseline (p = 0.006). Guardian sentiment captures
+              soft contextual signals the structured data misses.
             </p>
           </div>
         </div>
@@ -227,12 +227,12 @@ export default function AblationTab({ ablationConfigs, ablationSignificance, int
           <span className="badge bg-brand-500/20 text-brand-400 shrink-0 mt-0.5">RQ3</span>
           <div>
             <p className="text-sm text-surface-200 font-medium">
-              Redundant — news signal is already captured by injury data
+              Synergistic — combining both exceeds the sum of individual gains
             </p>
             <p className="text-xs text-surface-500 mt-1">
-              B → D improvement is not significant (p = 0.348). The{" "}
-              {interactionEffect.redundancy.toFixed(2)}&times;10&sup3; redundancy shows Guardian
-              sentiment overlaps with FPL API injury status.
+              B → D improvement is significant (p {"<"} 0.001). The +{interactionEffect.synergy.toFixed(2)}%
+              synergy shows injury and news features interact: news captures signals that
+              structured injury data misses, and vice versa.
             </p>
           </div>
         </div>

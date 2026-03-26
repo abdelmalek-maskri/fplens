@@ -14,7 +14,6 @@ const navItems = [
     items: [
       { name: "My Team", path: "/my-team" },
       { name: "Transfers", path: "/transfers" },
-      { name: "Season Planner", path: "/season-planner" },
       { name: "Fixture Ticker", path: "/fixtures" },
     ],
   },

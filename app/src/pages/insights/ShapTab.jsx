@@ -16,6 +16,7 @@ export default function ShapTab({ shapFeatures, exampleShap }) {
     Static: "Fixed player info like team, price, and position",
     Season: "Full-season averages up to this point",
     Understat: "Expected stats from Understat (xG, xA, shot data)",
+    Injury: "Availability status and chance of playing from FPL API",
   };
 
   const featureLabels = {
@@ -29,6 +30,8 @@ export default function ShapTab({ shapFeatures, exampleShap }) {
     total_points_roll10: "Avg points (last 10 GWs)",
     ict_index_roll10: "Avg ICT index (last 10 GWs)",
     total_points_roll3: "Avg points (last 3 GWs)",
+    chance_next_round: "Chance of playing next GW",
+    status_encoded: "Availability status",
   };
 
   const barColors = {
@@ -37,6 +40,7 @@ export default function ShapTab({ shapFeatures, exampleShap }) {
     Static: "#3B82F6",
     Season: "#8B5CF6",
     Understat: "#EC4899",
+    Injury: "#EF4444",
   };
 
   return (
@@ -118,7 +122,7 @@ export default function ShapTab({ shapFeatures, exampleShap }) {
                     <span className="text-xs font-bold text-white pl-2 font-data">
                       {f.importance_pct
                         ? `${parseFloat(f.importance_pct).toFixed(1)}%`
-                        : `${(f.importance * 100).toFixed(1)}%`}
+                        : `${f.importance.toFixed(1)}%`}
                     </span>
                   </div>
                 </div>
