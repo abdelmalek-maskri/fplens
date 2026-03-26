@@ -741,7 +741,11 @@ def _fetch_live_understat(season: str, fpl_elements: list[dict]) -> pd.DataFrame
 
             def assign_gw(match_date):
                 for _, gw_row in gw_win.iterrows():
-                    if gw_row["start_date"] - pd.Timedelta(days=1) <= match_date <= gw_row["end_date"] + pd.Timedelta(days=1):
+                    if (
+                        gw_row["start_date"] - pd.Timedelta(days=1)
+                        <= match_date
+                        <= gw_row["end_date"] + pd.Timedelta(days=1)
+                    ):
                         return int(gw_row["GW"])
                 return None
 
@@ -839,9 +843,14 @@ def enrich_with_understat(
 def enrich_with_news(df: pd.DataFrame, bootstrap_data: dict) -> pd.DataFrame:
     """Add live Guardian news features matching the 8 training columns."""
     NEWS_COLS = [
-        "news_mentioned", "news_mention_count", "news_title_mentions",
-        "news_avg_relevance", "news_sentiment_pos", "news_sentiment_neg",
-        "news_injury_context", "news_sentiment",
+        "news_mentioned",
+        "news_mention_count",
+        "news_title_mentions",
+        "news_avg_relevance",
+        "news_sentiment_pos",
+        "news_sentiment_neg",
+        "news_injury_context",
+        "news_sentiment",
     ]
 
     try:
@@ -894,17 +903,19 @@ def enrich_with_news(df: pd.DataFrame, bootstrap_data: dict) -> pd.DataFrame:
         rows = []
         for eid, pf in player_features.items():
             n = pf["mention_count"]
-            rows.append({
-                "element": eid,
-                "news_mentioned": 1,
-                "news_mention_count": n,
-                "news_title_mentions": pf["title_mentions"],
-                "news_avg_relevance": sum(pf["relevances"]) / n if n else 0,
-                "news_sentiment_pos": sum(pf["sentiments_pos"]) / n if n else 0,
-                "news_sentiment_neg": sum(pf["sentiments_neg"]) / n if n else 0,
-                "news_injury_context": min(pf["injury_contexts"], 1),
-                "news_sentiment": sum(pf["sentiments_raw"]) / n if n else 0,
-            })
+            rows.append(
+                {
+                    "element": eid,
+                    "news_mentioned": 1,
+                    "news_mention_count": n,
+                    "news_title_mentions": pf["title_mentions"],
+                    "news_avg_relevance": sum(pf["relevances"]) / n if n else 0,
+                    "news_sentiment_pos": sum(pf["sentiments_pos"]) / n if n else 0,
+                    "news_sentiment_neg": sum(pf["sentiments_neg"]) / n if n else 0,
+                    "news_injury_context": min(pf["injury_contexts"], 1),
+                    "news_sentiment": sum(pf["sentiments_raw"]) / n if n else 0,
+                }
+            )
 
         news_df = pd.DataFrame(rows)
 

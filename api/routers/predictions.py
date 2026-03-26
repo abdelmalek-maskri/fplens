@@ -53,8 +53,11 @@ def _get_inference_result(request: Request, model_id: str | None = None) -> dict
     if model_id and model_id not in models:
         raise HTTPException(status_code=400, detail=f"Unknown model: {model_id}. Available: {list(models.keys())}")
 
-    model = models.get(model_id, request.app.state.model) if model_id else request.app.state.model
-    cache_key = f"predictions_{model_id or 'default'}"
+    # Resolve None / "default" to "config_d" so the same model doesn't get two cache entries
+    if not model_id or model_id == "default":
+        model_id = "config_d"
+    model = models.get(model_id, request.app.state.model)
+    cache_key = f"predictions_{model_id}"
 
     def run_on_cached_data():
         live = _get_live_data(request)

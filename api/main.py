@@ -97,36 +97,9 @@ async def lifespan(app: FastAPI):
     app.state.horizon_models = load_horizon_models()
     app.state.cache = FPLDataCache(ttl_minutes=240)
 
-    # Pre-warm: fetch live data once (shared across all models), then predict with default
-    print("Pre-warming cache (live data + default model)...")
-    try:
-        from ml.pipelines.inference.fetch_live_data import fetch_current_gw_data
-        from ml.pipelines.inference.predict import get_model_features, predict, prepare_features
-
-        live_df = fetch_current_gw_data(include_history=True, include_understat=True)
-        keep_cols = [c for c in [
-            "element", "web_name", "name", "team_name", "position", "value",
-            "status", "form", "total_points", "chance_this_round", "news",
-            "opponent_name", "selected_by_percent", "goals_scored",
-            "expected_goals", "assists", "expected_assists",
-            "transfers_in_event", "transfers_out_event", "ict_index",
-            "minutes", "bonus", "bps", "clean_sheets", "goals_conceded",
-        ] if c in live_df.columns]
-        player_info = live_df[keep_cols].copy()
-        element_ids = list(live_df["element"]) if "element" in live_df.columns else []
-
-        live_cache = {"live_df": live_df, "player_info": player_info, "element_ids": element_ids}
-        app.state.cache.get_or_fetch("live_data", lambda: live_cache)
-
-        model_features = get_model_features(app.state.model)
-        X = prepare_features(live_df, model_features)
-        predictions = predict(app.state.model, X, player_info)
-        result = {"predictions": predictions, "feature_matrix": X, "element_ids": element_ids}
-        app.state.cache.get_or_fetch("predictions_default", lambda: result)
-
-        print(f"  Cache warm: {len(predictions)} players, model switching is now instant")
-    except Exception as e:
-        print(f"  WARNING: Pre-warm failed, first request will be slow: {e}")
+    # No pre-warm — the first request triggers data fetch via _get_live_data()
+    # in predictions.py. The cache dedup lock ensures concurrent requests wait
+    # for the same fetch rather than starting duplicates.
 
     yield
     print("Shutting down...")
