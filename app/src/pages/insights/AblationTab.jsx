@@ -192,7 +192,7 @@ export default function AblationTab({ ablationConfigs, ablationSignificance, int
             <span className="font-semibold text-surface-100">
               Synergy: +{interactionEffect.synergy.toFixed(2)}%
             </span>{" "}
-            — the combined effect exceeds the sum of individual gains. Injury and news features
+           ,the combined effect exceeds the sum of individual gains. Injury and news features
             interact: news captures soft signals that structured injury data misses.
           </p>
         </div>
@@ -203,7 +203,7 @@ export default function AblationTab({ ablationConfigs, ablationSignificance, int
           <span className="badge bg-success-500/20 text-success-400 shrink-0 mt-0.5">RQ1</span>
           <div>
             <p className="text-sm text-surface-200 font-medium">
-              Yes — injury features significantly improve predictions
+              Yes,injury features significantly improve predictions
             </p>
             <p className="text-xs text-surface-500 mt-1">
               Config B reduces MAE by 0.69% over baseline (p {"<"} 0.001). Structured injury data
@@ -215,7 +215,7 @@ export default function AblationTab({ ablationConfigs, ablationSignificance, int
           <span className="badge bg-warning-500/20 text-warning-400 shrink-0 mt-0.5">RQ2</span>
           <div>
             <p className="text-sm text-surface-200 font-medium">
-              Yes — news features provide a small but significant improvement
+              Yes,news features provide a small but significant improvement
             </p>
             <p className="text-xs text-surface-500 mt-1">
               Config C reduces MAE by 0.15% vs baseline (p = 0.006). Guardian sentiment captures
@@ -227,7 +227,7 @@ export default function AblationTab({ ablationConfigs, ablationSignificance, int
           <span className="badge bg-brand-500/20 text-brand-400 shrink-0 mt-0.5">RQ3</span>
           <div>
             <p className="text-sm text-surface-200 font-medium">
-              Synergistic — combining both exceeds the sum of individual gains
+              Synergistic,combining both exceeds the sum of individual gains
             </p>
             <p className="text-xs text-surface-500 mt-1">
               B → D improvement is significant (p {"<"} 0.001). The +

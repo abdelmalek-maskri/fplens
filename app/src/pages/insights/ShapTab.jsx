@@ -1,8 +1,4 @@
-import { useState } from "react";
-import ShapBreakdown from "../../components/charts/ShapBreakdown";
-
-export default function ShapTab({ shapFeatures, exampleShap }) {
-  const [examplePlayer, setExamplePlayer] = useState(null);
+export default function ShapTab({ shapFeatures }) {
   const maxImportance = shapFeatures[0].importance;
 
   const categoryTotals = shapFeatures.reduce((acc, f) => {
@@ -49,7 +45,7 @@ export default function ShapTab({ shapFeatures, exampleShap }) {
         <span className="section-label">What Drives Predictions</span>
         <p className="text-xs text-surface-500 mt-1">
           SHAP analysis shows how much each input variable influences the model&apos;s predicted
-          points. The percentage represents each variable&apos;s share of total influence — higher
+          points. The percentage represents each variable&apos;s share of total influence,higher
           means the model relies on it more when making predictions.
         </p>
       </div>
@@ -138,50 +134,6 @@ export default function ShapTab({ shapFeatures, exampleShap }) {
         </div>
       </div>
 
-      <div className="py-3 border-b border-surface-700">
-        <span className="section-label">Key Takeaways</span>
-      </div>
-      <div className="space-y-2">
-        <p className="text-sm text-surface-300">
-          <span className="text-surface-100 font-medium">Minutes played last GW</span> is by far the
-          strongest predictor (18%) — whether a player featured recently is the best signal for
-          whether they&apos;ll score points next.
-        </p>
-        <p className="text-sm text-surface-300">
-          <span className="text-surface-100 font-medium">Rolling averages</span> (recent form over
-          3-10 gameweeks) collectively account for ~16% — consistent recent performance matters more
-          than any single stat.
-        </p>
-        <p className="text-sm text-surface-300">
-          <span className="text-surface-100 font-medium">Player price and team</span> together
-          contribute ~10% — the model learns that premium players in top teams have higher baseline
-          expectations.
-        </p>
-      </div>
-
-      <div>
-        <span className="section-label">Per-Player Breakdown</span>
-        <div className="flex items-center gap-0 border-b border-surface-700 mt-3 mb-4">
-          {[
-            { id: 2, name: "Haaland" },
-            { id: 3, name: "Salah" },
-            { id: 10, name: "Watkins" },
-          ].map((p) => (
-            <button
-              key={p.id}
-              onClick={() => setExamplePlayer(examplePlayer === p.id ? null : p.id)}
-              className={`px-3 py-1.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
-                examplePlayer === p.id
-                  ? "border-brand-400 text-brand-400"
-                  : "border-transparent text-surface-500 hover:text-surface-300"
-              }`}
-            >
-              {p.name}
-            </button>
-          ))}
-        </div>
-        {examplePlayer && <ShapBreakdown shapData={exampleShap[examplePlayer]} />}
-      </div>
     </div>
   );
 }

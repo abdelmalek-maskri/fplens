@@ -117,6 +117,7 @@ export const positionPerformance = [
     posSpecific: 0.8166,
     twohead: 0.8031,
     tweedie: 0.7227,
+    cbTwohead: 0.796,
     samples: 2705,
   },
   {
@@ -127,6 +128,7 @@ export const positionPerformance = [
     posSpecific: 1.0655,
     twohead: 1.0524,
     tweedie: 0.9742,
+    cbTwohead: 1.095,
     samples: 8612,
   },
   {
@@ -137,6 +139,7 @@ export const positionPerformance = [
     posSpecific: 1.0373,
     twohead: 1.0394,
     tweedie: 0.9902,
+    cbTwohead: 1.035,
     samples: 11557,
   },
   {
@@ -147,6 +150,7 @@ export const positionPerformance = [
     posSpecific: 1.2197,
     twohead: 1.198,
     tweedie: 1.1165,
+    cbTwohead: 1.209,
     samples: 2844,
   },
 ];
