@@ -11,10 +11,11 @@ from pathlib import Path
 import pandas as pd
 
 INJURY_DATA = Path("data/processed/injury/injury_states.csv")
-FPL_BASE = Path("data/processed/merged/fpl_base_enriched.csv")
+FPL_BASE = Path("data/processed/merged/fpl_understat_merged.csv")
 OUTPUT_PATH = Path("data/processed/injury/fpl_with_injury.csv")
 
-# snapshot_date needed downstream to parse absolute return dates
+# snapshot_date needed downstream to convert "expected back 15 Dec"
+# into weeks-until-return relative to the GW
 _INJURY_COLS = [
     "season",
     "GW",
@@ -29,7 +30,7 @@ _INJURY_COLS = [
 
 
 def analyse_status_churn(injury_df: pd.DataFrame) -> None:
-    """Quantify GW-over-GW status changes (upper bound on unshifted leakage)."""
+    """quantify GW-over-GW status changes (upper bound on unshifted leakage)."""
     print("\n" + "-" * 60)
     print("STATUS CHURN ANALYSIS (GW N vs GW N-1)")
     print("-" * 60)
@@ -67,7 +68,7 @@ def analyse_status_churn(injury_df: pd.DataFrame) -> None:
 
 
 def run() -> None:
-    """Merge injury states with FPL base data, applying temporal shift."""
+    """merge injury states with FPL base data, applying temporal shift."""
     print("=" * 60)
     print("MERGE INJURY DATA WITH FPL BASE")
     print("=" * 60)
@@ -83,7 +84,8 @@ def run() -> None:
         df["GW"] = pd.to_numeric(df["GW"], errors="coerce")
         df["element"] = pd.to_numeric(df["element"], errors="coerce")
 
-    # Churn analysis runs BEFORE shift to quantify what the shift prevents
+    # Run churn analysis BEFORE the temporal shift to quantify
+    # how much same-GW information the shift prevents leaking
     analyse_status_churn(injury_df)
 
     available_cols = [c for c in _INJURY_COLS if c in injury_df.columns]

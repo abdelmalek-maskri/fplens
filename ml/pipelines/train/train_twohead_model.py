@@ -1,5 +1,3 @@
-# ml/pipelines/train/train_twohead_model.py
-
 """
 Two-Head Model
 Architecture:
@@ -188,7 +186,7 @@ def run():
 
     # Save
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    holdout_eval = full_evaluation(y_test, predictions["soft"], y_train)
+    holdout_eval = full_evaluation(y_test, predictions[best_method], y_train)
     metrics = {
         "model_name": "twohead_v1",
         "holdout_season": HOLDOUT_SEASON,
@@ -200,12 +198,9 @@ def run():
         "all_methods": results,
         "best_method": best_method,
     }
-    (OUT_DIR / "summary.json").write_text(json.dumps(metrics, indent=2, default=str))
-    out_path = Path("outputs/models/twohead.joblib")
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    joblib.dump(model, out_path)
+    (OUT_DIR / "metrics.json").write_text(json.dumps(metrics, indent=2, default=str))
+    joblib.dump(model, OUT_DIR / "model.joblib")
 
-    # Print standardized summary
     print_final_summary(
         model_name="twohead",
         holdout_season=HOLDOUT_SEASON,
@@ -215,6 +210,19 @@ def run():
         eval_result=holdout_eval,
         output_dir=str(OUT_DIR),
     )
+
+    print("\nRunning comprehensive evaluation...")
+    from ml.evaluation.comprehensive_metrics import ComprehensiveEvaluator
+
+    evaluator = ComprehensiveEvaluator(OUT_DIR)
+    evaluator.evaluate_holdout(
+        y_true=y_test,
+        y_pred=predictions[best_method],
+        positions=test_df["position"].values if "position" in test_df.columns else None,
+        gameweek_ids=test_df["GW"].values if "GW" in test_df.columns else None,
+        experiment_name="twohead",
+    )
+    print(f"All outputs saved to: {OUT_DIR}/")
 
 
 if __name__ == "__main__":

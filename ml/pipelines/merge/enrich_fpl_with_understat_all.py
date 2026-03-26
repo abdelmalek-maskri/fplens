@@ -1,18 +1,18 @@
-# ml/pipelines/enrich_fpl_with_understat_all.py (11)
+# ml/pipelines/enrich_fpl_with_understat_all.py
 
 from pathlib import Path
 
 import pandas as pd
 
 from ml.config.seasons import SEASONS_ALL
+from ml.utils.io import safe_read_csv
 
-FPL_BASE = Path("data/processed/merged/fpl_base.csv")
-OUT = Path("data/processed/merged/fpl_base_enriched.csv")
+FPL_BASE = Path("data/processed/fpl/fpl_base.csv")
+OUT = Path("data/processed/merged/fpl_understat_merged.csv")
 
 
 def run(seasons):
-    # load base FPL table
-    fpl = pd.read_csv(FPL_BASE, low_memory=False)
+    fpl = safe_read_csv(FPL_BASE)
     fpl["GW"] = pd.to_numeric(fpl["GW"], errors="coerce")
     fpl["element"] = pd.to_numeric(fpl["element"], errors="coerce")
 
@@ -20,15 +20,15 @@ def run(seasons):
 
     for season in seasons:
         sub = fpl[fpl["season"] == season].copy()
-        us_path = Path(f"data/processed/external/understat/understat_gw_{season}.csv")
+        us_path = Path(f"data/processed/understat/understat_gw_{season}.csv")
 
         # skip seasons without Understat GW data
         if not us_path.exists():
-            print(f"Missing Understat GW for {season} (skipping)")
+            print(f"missing Understat GW for {season} (skipping)")
             parts.append(sub)
             continue
 
-        us = pd.read_csv(us_path, low_memory=False)
+        us = safe_read_csv(us_path)
         us["GW"] = pd.to_numeric(us["GW"], errors="coerce")
         us["element"] = pd.to_numeric(us["element"], errors="coerce")
 
@@ -42,7 +42,7 @@ def run(seasons):
                 f"Understat GW file likely has duplicate (element, GW) rows."
             )
 
-        # Backfill expected stats where FPL data is missing
+        # backfill expected stats where FPL data is missing
         if "expected_goals" in merged.columns and "us_xg" in merged.columns:
             merged["expected_goals"] = pd.to_numeric(merged["expected_goals"], errors="coerce").fillna(merged["us_xg"])
 
@@ -65,8 +65,12 @@ def run(seasons):
     full = pd.concat(parts, ignore_index=True)
     OUT.parent.mkdir(parents=True, exist_ok=True)
     full.to_csv(OUT, index=False)
-    print("Saved:", OUT)
-    print("Shape:", full.shape)
+    print("saved:", OUT)
+    print("shape:", full.shape)
+    if "us_xg" in full.columns:
+        print("overall xG coverage:", full["us_xg"].notna().mean())
+        if "minutes" in full.columns:
+            print("xG coverage (minutes > 0):", full.loc[full["minutes"] > 0, "us_xg"].notna().mean())
 
 
 def main():

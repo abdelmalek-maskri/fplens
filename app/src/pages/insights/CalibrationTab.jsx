@@ -37,7 +37,7 @@ export default function CalibrationTab({ calibrationDeciles, calibrationStats })
               {calibrationStats.notPlayedMae.toFixed(2)}
             </p>
             <p className="text-xs text-surface-500 mt-1">
-              60% of samples — model predicts near-zero correctly
+              60% of samples,model predicts near-zero correctly
             </p>
           </div>
           <div className="p-4 border border-surface-700 rounded-md">
@@ -46,7 +46,7 @@ export default function CalibrationTab({ calibrationDeciles, calibrationStats })
               {calibrationStats.playedMae.toFixed(2)}
             </p>
             <p className="text-xs text-surface-500 mt-1">
-              40% of samples — harder to predict exact returns
+              40% of samples,harder to predict exact returns
             </p>
           </div>
           <div className="p-4 border border-danger-500/20 rounded-md bg-danger-500/5">
@@ -57,7 +57,7 @@ export default function CalibrationTab({ calibrationDeciles, calibrationStats })
               {calibrationStats.highReturnMae.toFixed(2)}
             </p>
             <p className="text-xs text-surface-500 mt-1">
-              Hauls are rare events — hardest to predict
+              Hauls are rare events,hardest to predict
             </p>
           </div>
         </div>
@@ -69,7 +69,7 @@ export default function CalibrationTab({ calibrationDeciles, calibrationStats })
           <p className="text-xs text-surface-500 mt-1">
             Players are split into 10 equal groups (deciles) by predicted points. D1 = players
             predicted lowest points, D10 = predicted highest. Each bar shows the average prediction
-            error (MAE) for that group — taller bars mean less accurate predictions.
+            error (MAE) for that group,taller bars mean less accurate predictions.
           </p>
         </div>
         <GroupedBarChart
@@ -77,13 +77,18 @@ export default function CalibrationTab({ calibrationDeciles, calibrationStats })
           series={[
             {
               name: "Single LightGBM",
-              color: "rgb(var(--info-500))",
+              color: "rgb(var(--surface-500))",
               values: calibrationDeciles.baseline,
             },
             {
               name: "Stacked Ensemble",
-              color: "rgb(var(--brand-500))",
+              color: "rgb(var(--info-500))",
               values: calibrationDeciles.stacked,
+            },
+            {
+              name: "Config D (Best)",
+              color: "rgb(var(--brand-500))",
+              values: calibrationDeciles.config_d,
             },
           ]}
           yMin={0}
@@ -149,14 +154,14 @@ export default function CalibrationTab({ calibrationDeciles, calibrationStats })
         <div className="p-3 rounded-md bg-success-500/5 border border-success-500/20">
           <p className="text-sm font-medium text-surface-200">Low predictions are accurate</p>
           <p className="text-xs text-surface-500 mt-1">
-            D1-D3 MAE ranges 0.03-0.13 — when the model predicts low, it&apos;s reliable. These are
+            D1-D3 MAE ranges 0.03-0.13,when the model predicts low, it&apos;s reliable. These are
             mostly non-playing or fringe players.
           </p>
         </div>
         <div className="p-3 rounded-md bg-danger-500/5 border border-danger-500/20">
           <p className="text-sm font-medium text-surface-200">Premium players remain hard</p>
           <p className="text-xs text-surface-500 mt-1">
-            D10 MAE 2.6-2.7 — high-predicted players (FWDs, premiums) have unpredictable returns due
+            D10 MAE 2.6-2.7,high-predicted players (FWDs, premiums) have unpredictable returns due
             to goals being rare, high-variance events.
           </p>
         </div>

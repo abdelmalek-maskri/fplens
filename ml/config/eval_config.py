@@ -1,6 +1,6 @@
 # ml/config/eval_config.py
 """
-Shared evaluation configuration for all models.
+shared evaluation configuration for all models.
 """
 
 from ml.config.seasons import SEASONS_ALL
@@ -9,10 +9,9 @@ from ml.config.seasons import SEASONS_ALL
 # HOLDOUT CONFIGURATION
 # -----------------------------------------------------------------------------
 
-# Latest complete season used as final holdout test set.
 HOLDOUT_SEASON = "2024-25"
 
-# Incomplete season (current) - excluded from both CV and holdout
+# Incomplete season (current)
 INCOMPLETE_SEASON = "2025-26"
 
 # -----------------------------------------------------------------------------
@@ -30,8 +29,6 @@ MIN_TRAIN_SEASONS = 3
 # -----------------------------------------------------------------------------
 
 # Columns to always drop before training (identifiers + all target columns).
-# Every horizon target must be dropped to prevent leakage — e.g. the GW+1
-# model must not see points_gw_plus_2/3 as input features.
 DROP_COLS = ["name", "element", "points_next_gw", "points_gw_plus_2", "points_gw_plus_3"]
 
 # Categorical columns for tree-based models
@@ -48,4 +45,4 @@ HORIZON_TARGETS = {1: TARGET_COL, 2: TARGET_COL_GW2, 3: TARGET_COL_GW3}
 # -----------------------------------------------------------------------------
 
 MODELS_DIR = "outputs/models"
-METRICS_DIR = "outputs/metrics"
+METRICS_DIR = "outputs/evaluation/metrics"

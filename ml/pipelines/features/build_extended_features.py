@@ -1,9 +1,7 @@
-# ml/pipelines/features/build_extended_features.py (14)
+# ml/pipelines/features/build_extended_features.py
 
 """
-Extended Feature Engineering for FPL Prediction
-
-Adds to baseline features:
+adds to baseline features:
 1. Extended time windows: roll10 (10-game form)
 2. Season averages: season_avg (full season context)
 3. Trend features: form momentum indicators
@@ -37,7 +35,7 @@ BASE_NUM_COLS = [
     "bonus",
 ]
 
-# Subset of columns for season averages
+# subset of columns for season averages
 SEASON_AVG_COLS = [
     "total_points",
     "minutes",
@@ -51,17 +49,16 @@ SEASON_AVG_COLS = [
 
 
 def add_season_avg_features(df: pd.DataFrame, num_cols: list) -> pd.DataFrame:
-    """Add expanding season average features (all games so far this season)."""
-
+    """add expanding season average features (all games so far this season)."""
     print("adding season average features...")
 
-    # Group by season and element for expanding mean
+    # group by season and element for expanding mean
     g_season = df.groupby(["season", "element"], sort=False)
 
     new_cols = {}
     for col in num_cols:
         if col in SEASON_AVG_COLS:
-            # Expanding mean of all previous games this season
+            # expanding mean of all previous games this season
             new_cols[f"{col}_season_avg"] = g_season[col].transform(
                 lambda x: x.shift(1).expanding(min_periods=1).mean()
             )
@@ -73,17 +70,15 @@ def add_season_avg_features(df: pd.DataFrame, num_cols: list) -> pd.DataFrame:
 
 
 def add_availability_features(df: pd.DataFrame, g) -> pd.DataFrame:
-    """Add features related to player availability/rotation."""
-
+    """add features related to player availability/rotation."""
     print("adding availability features...")
-
     new_cols = {}
 
-    # Count how many consecutive games the player has started
+    # count how many consecutive games the player has started
     if "starts" in df.columns:
 
         def count_consecutive(x):
-            """Count consecutive 1s (starts) ending at each position."""
+            """count consecutive 1s (starts) ending at each position"""
             result = np.zeros(len(x))
             count = 0
             for i, val in enumerate(x):
@@ -98,7 +93,7 @@ def add_availability_features(df: pd.DataFrame, g) -> pd.DataFrame:
             lambda x: pd.Series(count_consecutive(x.shift(1).fillna(0).values), index=x.index)
         )
 
-    # Minutes trend (increasing = more likely to play full 90)
+    # minutes trend (increasing = more likely to play full 90)
     if "minutes" in df.columns:
         new_cols["minutes_trend"] = g["minutes"].transform(
             lambda x: (
@@ -108,11 +103,11 @@ def add_availability_features(df: pd.DataFrame, g) -> pd.DataFrame:
             )
         )
 
-    # Games since last start (rotation indicator)
+    # games since last start (rotation indicator)
     if "starts" in df.columns:
 
         def games_since_start(x):
-            """Count games since last start."""
+            """count games since last start"""
             result = np.zeros(len(x))
             count = 0
             for i, val in enumerate(x):
@@ -134,11 +129,11 @@ def add_availability_features(df: pd.DataFrame, g) -> pd.DataFrame:
 
 
 def add_form_momentum_features(df: pd.DataFrame, g) -> pd.DataFrame:
-    """Add form momentum features (short-term vs long-term form)."""
+    """add form momentum features (short-term vs long-term form)"""
     print("adding form momentum features...")
     new_cols = {}
 
-    # Form momentum: roll3 - roll10 (positive = improving form)
+    # form momentum: roll3 - roll10 (positive = improving form)
     if "total_points_roll3" in df.columns and "total_points_roll10" in df.columns:
         new_cols["points_momentum"] = df["total_points_roll3"] - df["total_points_roll10"]
 
@@ -160,14 +155,14 @@ def run() -> None:
     print("=" * 60)
     print("Extended Feature Engineering")
     print("=" * 60)
-    print("\nLoading fpl_with_target...")
+    print("\nloading fpl_with_target...")
     df = pd.read_csv(IN_PATH, low_memory=False)
 
-    # Ordering keys
+    # ordering keys
     df["GW"] = pd.to_numeric(df["GW"], errors="coerce")
     df["element"] = pd.to_numeric(df["element"], errors="coerce")
 
-    # Stable categoricals
+    # stable categoricals
     if "team" in df.columns:
         df["team"] = df["team"].astype(str)
     if "position" in df.columns:
@@ -176,7 +171,7 @@ def run() -> None:
     df = df.sort_values(["season", "element", "GW"]).reset_index(drop=True)
     g = df.groupby(["season", "element"], sort=False)
 
-    # Add Understat numeric columns
+    # add Understat numeric columns
     us_cols = [c for c in df.columns if c.startswith("us_")]
     num_cols = []
     for c in BASE_NUM_COLS + us_cols:
@@ -185,7 +180,7 @@ def run() -> None:
             num_cols.append(c)
 
     print(f"\nNumeric columns: {len(num_cols)}")
-    print("\nBuilding baseline features...")
+    print("\nbuilding baseline features...")
 
     # Lag-1 features
     new_cols = {}
@@ -202,39 +197,34 @@ def run() -> None:
     if new_cols:
         df = pd.concat([df, pd.DataFrame(new_cols, index=df.index)], axis=1)
 
-    # Played last GW
+    # played last GW
     if "minutes_lag1" in df.columns:
         df["played_lag1"] = (df["minutes_lag1"] > 0).astype(int)
     else:
         df["played_lag1"] = 0
 
     # ---- Extended features ----
-    print("\nBuilding extended features...")
-
-    # Season averages
+    print("\nbuilding extended features...")
     df = add_season_avg_features(df, num_cols)
-
-    # Availability features
     df = add_availability_features(df, g)
-
-    # Form momentum (after roll features exist)
     df = add_form_momentum_features(df, g)
 
-    # Future fixture features for multi-horizon prediction
-    print("\nBuilding future fixture features...")
+    # future fixture features for multi-horizon prediction
+    print("\nbuilding future fixture features...")
     df = add_future_fixture_features(df)
 
-    print("\nCleaning up...")
+    print("\ncleaning up...")
+
     # Require at least 1 previous GW
     before = len(df)
     if "total_points_lag1" in df.columns:
         df = df.dropna(subset=["total_points_lag1"]).copy()
     after = len(df)
 
-    # Remove duplicate columns
+    # remove duplicate columns
     df = df.loc[:, ~df.columns.duplicated()].copy()
 
-    # Select output columns
+    # select output columns
     keep = [
         "season",
         "GW",
@@ -266,7 +256,7 @@ def run() -> None:
         and c != "played_lag1"
     ]
 
-    # Future fixture features for multi-horizon models
+    # future fixture features for multi-horizon models
     future_fixture_cols = [
         c
         for c in df.columns
@@ -279,10 +269,10 @@ def run() -> None:
     OUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     out.to_csv(OUT_PATH, index=False)
     print("\nSaved:", OUT_PATH)
-    print(f"   Rows dropped (no lag history): {before - after}")
-    print(f"   Final shape: {out.shape}")
+    print(f"rows dropped (no lag history): {before - after}")
+    print(f"final shape: {out.shape}")
 
-    # Summary
+    # summary
     baseline_features = len([c for c in out.columns if "_roll3" in c or "_roll5" in c or c.endswith("_lag1")])
     extended_features = len([c for c in out.columns if "_roll10" in c or "_season_avg" in c or "_momentum" in c])
     availability_features = len(
@@ -298,9 +288,9 @@ def run() -> None:
     target_count = len([c for c in out.columns if c.startswith("points_")])
 
     print("\nFeature breakdown:")
-    print(f"   Baseline (lag1, roll3, roll5): {baseline_features}")
-    print(f"   Extended (roll10, season_avg, momentum): {extended_features}")
-    print(f"   Availability: {availability_features}")
+    print(f"baseline (lag1, roll3, roll5): {baseline_features}")
+    print(f"extended (roll10, season_avg, momentum): {extended_features}")
+    print(f"availability: {availability_features}")
     print(f"future fixtures: {fixture_features}")
     print(f"targets: {target_count}")
     remaining = (

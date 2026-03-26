@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   getPredictions,
-  getBestXI,
   getBestSquad,
   getFixtures,
   getTeam,
@@ -114,11 +113,6 @@ describe("GET endpoints", () => {
   it("getPredictions hits /api/predictions", async () => {
     await getPredictions();
     expect(mockFetch.mock.calls[0][0]).toBe("http://127.0.0.1:8000/api/predictions");
-  });
-
-  it("getBestXI hits /api/best-xi", async () => {
-    await getBestXI();
-    expect(mockFetch.mock.calls[0][0]).toBe("http://127.0.0.1:8000/api/best-xi");
   });
 
   it("getBestSquad passes budget query param", async () => {

@@ -1,4 +1,5 @@
-# ml/pipelines/train/train_baseline_model.py
+# ml/pipelines/train/train_baseline_tweedie.py
+"""Single LightGBM with Tweedie loss (vp=1.5) instead of default MSE."""
 
 import json
 from pathlib import Path
@@ -16,17 +17,16 @@ from ml.config.eval_config import (
     TARGET_COL,
 )
 from ml.evaluation.comprehensive_metrics import ComprehensiveEvaluator
-from ml.utils.eval_metrics import (
-    full_evaluation,
-    print_final_summary,
-)
+from ml.utils.eval_metrics import full_evaluation, print_final_summary
 
 IN_PATH = Path("data/features/baseline_features.csv")
-OUT_DIR = Path("outputs/experiments/baseline")
+OUT_DIR = Path("outputs/experiments/baseline_tweedie")
 
 
-def build_model() -> LGBMRegressor:
+def build_model():
     return LGBMRegressor(
+        objective="tweedie",
+        tweedie_variance_power=1.5,
         n_estimators=800,
         learning_rate=0.05,
         num_leaves=63,
@@ -34,18 +34,19 @@ def build_model() -> LGBMRegressor:
         colsample_bytree=0.8,
         random_state=42,
         n_jobs=-1,
+        verbose=-1,
     )
 
 
-def prepare_xy(df: pd.DataFrame):
-    """extract features (X) and target (y) from dataframe."""
-    y = df[TARGET_COL].values
+def prepare_xy(df):
+    # Tweedie loss requires y >= 0; FPL points can be negative (red cards, own goals)
+    y = df[TARGET_COL].values.clip(min=0)
     drop = set([TARGET_COL] + DROP_COLS)
     X = df.drop(columns=[c for c in drop if c in df.columns])
     return X, y
 
 
-def rolling_season_cv(df: pd.DataFrame, seasons: list[str]) -> pd.DataFrame:
+def rolling_season_cv(df, seasons):
     rows = []
     for i in range(MIN_TRAIN_SEASONS, len(seasons)):
         test_season = seasons[i]
@@ -64,72 +65,53 @@ def rolling_season_cv(df: pd.DataFrame, seasons: list[str]) -> pd.DataFrame:
         model.fit(X_train, y_train, categorical_feature=cat_cols)
         preds = model.predict(X_test)
 
-        eval_result = full_evaluation(y_test, preds, y_train)
-
+        ev = full_evaluation(y_test, preds, y_train)
         fold = {
             "test_season": test_season,
             "n_train_seasons": len(train_seasons),
             "rows_train": int(len(train_df)),
             "rows_test": int(len(test_df)),
-            **{f"model_{k}": v for k, v in eval_result["model"].items()},
-            **{f"zero_{k}": v for k, v in eval_result["baselines"]["zero_baseline"].items()},
-            **{f"mean_{k}": v for k, v in eval_result["baselines"]["mean_baseline"].items()},
-            **{f"improve_vs_zero_{k}": v for k, v in eval_result["improvements"]["vs_zero"].items()},
-            **{f"improve_vs_mean_{k}": v for k, v in eval_result["improvements"]["vs_mean"].items()},
+            **{f"model_{k}": v for k, v in ev["model"].items()},
         }
         rows.append(fold)
-
-        print(f"CV fold {test_season}: MAE={eval_result['model']['mae']:.4f}, R²={eval_result['model']['r2']:.4f}")
+        print(f"  CV fold {test_season}: MAE={ev['model']['mae']:.4f}, R2={ev['model']['r2']:.4f}")
 
     return pd.DataFrame(rows)
 
 
-def run() -> None:
+def run():
     print("=" * 60)
-    print("BASELINE MODEL TRAINING")
+    print("BASELINE + TWEEDIE LOSS (LightGBM, vp=1.5)")
     print("=" * 60)
-    print(f"Holdout season: {HOLDOUT_SEASON}")
-    print(f"CV seasons: {CV_SEASONS}")
-    print()
-    print("Loading baseline features...")
+
     df = pd.read_csv(IN_PATH, low_memory=False)
 
-    # Convert categoricals for LightGBM
     for c in CAT_COLS:
         if c in df.columns:
             df[c] = df[c].astype("category")
 
-    # Verify we have required seasons
     available = set(df["season"].dropna().unique())
     if HOLDOUT_SEASON not in available:
-        raise ValueError(f"Holdout season {HOLDOUT_SEASON} not in data: {available}")
+        raise ValueError(f"Holdout season {HOLDOUT_SEASON} not in data")
 
-    cv_seasons_available = [s for s in CV_SEASONS if s in available]
-    if len(cv_seasons_available) < MIN_TRAIN_SEASONS + 1:
-        raise ValueError(f"Not enough CV seasons: {cv_seasons_available}")
+    cv_seasons = [s for s in CV_SEASONS if s in available]
 
-    # 1) Rolling-season CV (on CV_SEASONS only, excludes holdout)
-    print("Running rolling-season CV...")
-    cv_df = rolling_season_cv(df[df["season"].isin(cv_seasons_available)], cv_seasons_available)
+    print(f"  holdout: {HOLDOUT_SEASON}")
+    print(f"  features: {IN_PATH}")
 
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
-    cv_df.to_csv(OUT_DIR / "cv_results.csv", index=False)
+    print("\nRunning rolling-season CV...")
+    cv_df = rolling_season_cv(df[df["season"].isin(cv_seasons)], cv_seasons)
 
     cv_summary = {
         "n_folds": int(len(cv_df)),
         "mae_mean": float(cv_df["model_mae"].mean()),
         "mae_std": float(cv_df["model_mae"].std()),
-        "rmse_mean": float(cv_df["model_rmse"].mean()),
         "r2_mean": float(cv_df["model_r2"].mean()),
     }
-    print(
-        f"\nCV Summary: MAE={cv_summary['mae_mean']:.4f} ± {cv_summary['mae_std']:.4f}, R²={cv_summary['r2_mean']:.4f}"
-    )
+    print(f"\nCV Summary: MAE={cv_summary['mae_mean']:.4f} +/- {cv_summary['mae_std']:.4f}")
 
-    # 2) Final holdout evaluation
-    print(f"\nTraining final model for holdout evaluation ({HOLDOUT_SEASON})...")
-
-    train_df = df[df["season"].isin(cv_seasons_available)]
+    print(f"\nTraining final model ({HOLDOUT_SEASON} holdout)...")
+    train_df = df[df["season"].isin(cv_seasons)]
     test_df = df[df["season"] == HOLDOUT_SEASON]
 
     X_train, y_train = prepare_xy(train_df)
@@ -144,21 +126,12 @@ def run() -> None:
 
     holdout_eval = full_evaluation(y_test, preds, y_train)
 
-    print_final_summary(
-        model_name="baseline",
-        holdout_season=HOLDOUT_SEASON,
-        train_seasons=cv_seasons_available,
-        n_train=len(train_df),
-        n_test=len(test_df),
-        eval_result=holdout_eval,
-        output_dir=str(OUT_DIR),
-    )
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    # 3) Save model + metrics
     metrics = {
-        "model_name": "baseline",
+        "model_name": "baseline_tweedie",
         "holdout_season": HOLDOUT_SEASON,
-        "cv_seasons": cv_seasons_available,
+        "cv_seasons": cv_seasons,
         "rows_train": int(len(train_df)),
         "rows_test": int(len(test_df)),
         "holdout": holdout_eval,
@@ -166,15 +139,27 @@ def run() -> None:
     }
 
     joblib.dump(model, OUT_DIR / "model.joblib")
-    (OUT_DIR / "metrics.json").write_text(json.dumps(metrics, indent=2))
+    (OUT_DIR / "metrics.json").write_text(json.dumps(metrics, indent=2, default=str))
+    cv_df.to_csv(OUT_DIR / "cv_results.csv", index=False)
 
-    # Feature importance
-    imp = pd.DataFrame({"feature": X_train.columns, "importance": model.feature_importances_}).sort_values(
-        "importance", ascending=False
-    )
+    imp = pd.DataFrame(
+        {
+            "feature": model.feature_name_,
+            "importance": model.feature_importances_,
+        }
+    ).sort_values("importance", ascending=False)
     imp.to_csv(OUT_DIR / "feature_importance.csv", index=False)
 
-    # 4) Comprehensive evaluation (same metrics as all other models)
+    print_final_summary(
+        model_name="baseline_tweedie",
+        holdout_season=HOLDOUT_SEASON,
+        train_seasons=cv_seasons,
+        n_train=len(train_df),
+        n_test=len(test_df),
+        eval_result=holdout_eval,
+        output_dir=str(OUT_DIR),
+    )
+
     print("\nRunning comprehensive evaluation...")
     evaluator = ComprehensiveEvaluator(OUT_DIR)
     evaluator.evaluate_holdout(
@@ -182,12 +167,10 @@ def run() -> None:
         y_pred=preds,
         positions=test_df["position"].values if "position" in test_df.columns else None,
         gameweek_ids=test_df["GW"].values if "GW" in test_df.columns else None,
-        experiment_name="baseline",
+        experiment_name="baseline_tweedie",
     )
 
-    print("\n" + "=" * 60)
-    print(f"All outputs saved to: {OUT_DIR}/")
-    print("=" * 60)
+    print(f"\nAll outputs saved to: {OUT_DIR}/")
 
     print("\nTop 15 features:")
     print(imp.head(15).to_string(index=False))

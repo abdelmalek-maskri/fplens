@@ -1,17 +1,22 @@
 # ml/pipelines/train/train_multi_horizon.py
 """
-Multi-Horizon Model Experiments (FF-9b)
+Multi-Horizon Model Experiments
 
-Trains and compares multiple model architectures across GW+1, GW+2, GW+3
-horizons. Each experiment saves structured output to:
-    outputs/experiments/multi_horizon/{gw1,gw2,gw3}/{experiment_name}/
+Tests whether we can predict GW+2 and GW+3, not just GW+1.
+Trains 8 model configs across 3 horizons (~26 runs total).
 
-Run all experiments:
+Experiments:
+    1. LightGBM Baseline: same model at all horizons (control)
+    2. Reduced Features: drops lag-1 at GW+2, drops roll-3 at GW+3
+    4. Two-Stage Hurdle: P(play) x E[points|play], soft and hard variants
+    5. Horizon-Specific: CatBoost Tweedie (vp 1.2/1.5/1.8) + GBM avg (3 seeds)
+
+Output: outputs/experiments/multi_horizon/{gw1,gw2,gw3}/{experiment_name}/
+
+Usage:
     python -m ml.pipelines.train.train_multi_horizon
-
-Run a single experiment:
     python -m ml.pipelines.train.train_multi_horizon --experiment 1
-    python -m ml.pipelines.train.train_multi_horizon --experiment 1 --horizon 2
+    python -m ml.pipelines.train.train_multi_horizon --experiment 5 --horizon 2
 """
 
 import argparse
@@ -24,9 +29,7 @@ import pandas as pd
 from catboost import CatBoostRegressor
 from lightgbm import LGBMClassifier, LGBMRegressor
 from scipy.stats import spearmanr
-from sklearn.linear_model import ElasticNet
 from sklearn.metrics import roc_auc_score
-from sklearn.preprocessing import StandardScaler
 
 from ml.config.eval_config import (
     CAT_COLS,
@@ -434,158 +437,6 @@ def run_experiment_2(df: pd.DataFrame, horizons: list[int]) -> list[dict]:
 
 
 # ===========================================================================
-# Experiment 3: Custom Loss Functions
-# ===========================================================================
-
-# --- Loss function implementations (gradient, hessian for LightGBM) --------
-
-
-def asymmetric_mse(alpha: float):
-    """
-    Under-predictions penalized α× more than over-predictions.
-    L = (y - ŷ)²  if ŷ < y  (under-predict, weighted α)
-    L = (y - ŷ)²  if ŷ >= y (over-predict, weighted 1)
-
-    grad = -2 * w * (y - ŷ)   where w = α if ŷ < y else 1
-    hess =  2 * w
-    """
-
-    def objective(y_true, y_pred):
-        residual = y_true - y_pred
-        weight = np.where(residual > 0, alpha, 1.0)  # under-prediction → residual > 0
-        grad = -2.0 * weight * residual
-        hess = 2.0 * weight * np.ones_like(residual)
-        return grad, hess
-
-    return objective
-
-
-def haul_weighted_mse(beta: float, threshold: float = 6.0):
-    """
-    Errors on high-scoring players (>threshold pts) are weighted (1+β)× more.
-    L = w * (y - ŷ)²  where w = (1+β) if y > threshold else 1
-
-    grad = -2 * w * (y - ŷ)
-    hess =  2 * w
-    """
-
-    def objective(y_true, y_pred):
-        residual = y_true - y_pred
-        weight = np.where(y_true > threshold, 1.0 + beta, 1.0)
-        grad = -2.0 * weight * residual
-        hess = 2.0 * weight * np.ones_like(residual)
-        return grad, hess
-
-    return objective
-
-
-def linex_loss(a: float):
-    """
-    LinEx (Linear-Exponential) loss:
-    L = exp(a * (ŷ - y)) - a * (ŷ - y) - 1
-
-    With a > 0 and diff = (ŷ - y):
-      - Over-prediction (ŷ > y → diff > 0) receives an exponential penalty.
-      - Under-prediction (ŷ < y → diff < 0) is closer to linear.
-
-    grad = a * (exp(a * (ŷ - y)) - 1)
-    hess = a² * exp(a * (ŷ - y))
-    """
-
-    def objective(y_true, y_pred):
-        diff = y_pred - y_true  # positive = over-predict
-        exp_term = np.exp(np.clip(a * diff, -50, 50))  # clip for numerical stability
-        grad = a * (exp_term - 1.0)
-        hess = a * a * exp_term
-        return grad, hess
-
-    return objective
-
-
-# All custom loss configs to test
-CUSTOM_LOSS_CONFIGS = [
-    ("asymmetric_a1.5", asymmetric_mse(1.5)),
-    ("asymmetric_a2.0", asymmetric_mse(2.0)),
-    ("asymmetric_a3.0", asymmetric_mse(3.0)),
-    ("haul_weighted_b0.5", haul_weighted_mse(0.5)),
-    ("haul_weighted_b1.0", haul_weighted_mse(1.0)),
-    ("haul_weighted_b2.0", haul_weighted_mse(2.0)),
-    ("linex_a0.5", linex_loss(0.5)),
-    ("linex_a1.0", linex_loss(1.0)),
-]
-
-
-def run_experiment_3(df: pd.DataFrame, horizons: list[int]) -> list[dict]:
-    """Experiment 3: Custom loss functions for LightGBM."""
-    print("\n" + "=" * 65)
-    print("  EXPERIMENT 3: CUSTOM LOSS FUNCTIONS")
-    print("=" * 65)
-
-    results = []
-    train_df, test_df, train_seasons = split_data(df)
-
-    for h in horizons:
-        target_col = HORIZON_TARGETS[h]
-        print(f"\n  --- GW+{h} (target: {target_col}) ---")
-
-        X_train, y_train = prepare_xy(train_df, target_col)
-        X_test, y_test = prepare_xy(test_df, target_col)
-        X_test = X_test[X_train.columns]
-
-        for c in CAT_COLS:
-            if c in X_train.columns:
-                X_train[c] = X_train[c].astype("category")
-                X_test[c] = X_test[c].astype("category")
-
-        cat_cols = [c for c in CAT_COLS if c in X_train.columns]
-
-        for loss_name, loss_fn in CUSTOM_LOSS_CONFIGS:
-            model = LGBMRegressor(
-                n_estimators=600,
-                learning_rate=0.03,
-                num_leaves=31,
-                subsample=0.7,
-                colsample_bytree=0.7,
-                random_state=123,
-                n_jobs=-1,
-                verbose=-1,
-                objective=loss_fn,
-            )
-            model.fit(X_train, y_train, categorical_feature=cat_cols)
-            preds = model.predict(X_test)
-
-            eval_result = extended_metrics(y_test, preds, y_train)
-
-            metrics = {
-                "experiment": f"loss_{loss_name}",
-                "horizon": h,
-                "target_col": target_col,
-                "holdout_season": HOLDOUT_SEASON,
-                "train_seasons": train_seasons,
-                "n_train": len(X_train),
-                "n_test": len(X_test),
-                "n_features": len(X_train.columns),
-                "loss_function": loss_name,
-                "holdout": eval_result,
-            }
-
-            out_dir = OUT_ROOT / f"gw{h}" / f"loss_{loss_name}"
-            # Skip saving model — custom objective closures can't be pickled
-            save_experiment(out_dir, metrics, model=None)
-            print_horizon_result(f"loss_{loss_name}", h, metrics)
-
-            results.append(
-                {
-                    "experiment": f"loss_{loss_name}",
-                    "horizon": h,
-                    **eval_result["model"],
-                }
-            )
-
-    return results
-
-
-# ===========================================================================
 # Experiment 4: Two-Stage Hurdle Model
 # ===========================================================================
 
@@ -705,22 +556,8 @@ def run_experiment_4(df: pd.DataFrame, horizons: list[int]) -> list[dict]:
 # ===========================================================================
 # Experiment 5: Horizon-Specific Architectures
 #   5a: CatBoost with Tweedie loss (variance_power 1.2, 1.5, 1.8)
-#   5b: ElasticNet (l1_ratio 0.1, 0.5, 0.9)
-#   5c: Simple GBM Average (3 LightGBMs, different seeds, averaged)
+#   5b: Simple GBM Average (3 LightGBMs, different seeds, averaged)
 # ===========================================================================
-
-
-def cats_to_codes(X_train: pd.DataFrame, X_test: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Convert categorical columns to numeric codes, aligning test categories to train."""
-    X_train = X_train.copy()
-    X_test = X_test.copy()
-    for c in X_train.columns:
-        if X_train[c].dtype.name == "category":
-            # Align test categories to train so codes are consistent
-            unified = X_train[c].cat.categories.union(X_test[c].cat.categories)
-            X_train[c] = X_train[c].cat.set_categories(unified).cat.codes.astype(float)
-            X_test[c] = X_test[c].cat.set_categories(unified).cat.codes.astype(float)
-    return X_train, X_test
 
 
 def run_experiment_5(df: pd.DataFrame, horizons: list[int]) -> list[dict]:
@@ -805,74 +642,7 @@ def run_experiment_5(df: pd.DataFrame, horizons: list[int]) -> list[dict]:
                 }
             )
 
-        # ----- 5b: ElasticNet -----
-        # NOTE: Only the raw ElasticNet estimator is saved — the StandardScaler
-        # and categorical encoding (cats_to_codes) are NOT persisted. These
-        # models are for comparison only; reloading for inference would require
-        # re-fitting the scaler and encoder on training data.
-        X_train_num, X_test_num = cats_to_codes(X_train, X_test)
-
-        # Scale features for linear model
-        scaler = StandardScaler()
-        X_train_scaled = scaler.fit_transform(X_train_num.fillna(0))
-        X_test_scaled = scaler.transform(X_test_num.fillna(0))
-
-        for l1_ratio in [0.1, 0.5, 0.9]:
-            exp_name = f"elasticnet_l1r{l1_ratio}"
-            print(f"\n  --- {exp_name} ---")
-
-            model = ElasticNet(
-                alpha=0.1,
-                l1_ratio=l1_ratio,
-                max_iter=2000,
-                random_state=123,
-            )
-            model.fit(X_train_scaled, y_train)
-            preds = model.predict(X_test_scaled)
-
-            eval_result = extended_metrics(y_test, preds, y_train)
-
-            # Feature importance (absolute coefficients)
-            coef_imp = pd.DataFrame(
-                {
-                    "feature": list(X_train.columns),
-                    "importance": np.abs(model.coef_),
-                }
-            ).sort_values("importance", ascending=False)
-
-            n_nonzero = int((model.coef_ != 0).sum())
-            print(f"  Non-zero coefficients: {n_nonzero}/{len(model.coef_)}")
-
-            metrics = {
-                "experiment": exp_name,
-                "horizon": h,
-                "target_col": target_col,
-                "holdout_season": HOLDOUT_SEASON,
-                "train_seasons": train_seasons,
-                "n_train": len(X_train),
-                "n_test": len(X_test),
-                "n_features": len(X_train.columns),
-                "l1_ratio": l1_ratio,
-                "alpha": 0.1,
-                "n_nonzero_coefs": n_nonzero,
-                "top_features": coef_imp.head(20).to_dict(orient="records"),
-                "holdout": eval_result,
-            }
-
-            out_dir = OUT_ROOT / f"gw{h}" / exp_name
-            save_experiment(out_dir, metrics, model=model)
-            coef_imp.to_csv(out_dir / "feature_importance.csv", index=False)
-            print_horizon_result(exp_name, h, metrics)
-
-            results.append(
-                {
-                    "experiment": exp_name,
-                    "horizon": h,
-                    **eval_result["model"],
-                }
-            )
-
-        # ----- 5c: Simple GBM Average (3 seeds) -----
+        # ----- 5b: Simple GBM Average (3 seeds) -----
         exp_name = "gbm_avg_3seeds"
         print(f"\n  --- {exp_name} ---")
 
@@ -1078,8 +848,7 @@ def generate_final_summary():
     # ------------------------------------------------------------------
     print("\n")
     print("=" * 75)
-    print("  FF-9b MULTI-HORIZON EXPERIMENT SUMMARY")
-    print("  57 model configs × 5 experiments × 3 horizons")
+    print("  MULTI-HORIZON EXPERIMENT SUMMARY")
     print("=" * 75)
 
     print("\n  SCORING WEIGHTS: MAE 40% | Spearman ρ 25% | Haul MAE 20% | R² 15%")
@@ -1162,7 +931,6 @@ def generate_final_summary():
 EXPERIMENT_RUNNERS = {
     1: run_experiment_1,
     2: run_experiment_2,
-    3: run_experiment_3,
     4: run_experiment_4,
     5: run_experiment_5,
 }

@@ -1,4 +1,5 @@
 # ml/pipelines/fpl/build_gw_windows.py
+
 from pathlib import Path
 
 import pandas as pd
@@ -7,7 +8,7 @@ from ml.config.seasons import SEASONS_ALL
 from ml.utils.io import find_latest_snapshot, safe_read_csv
 
 SNAPSHOT_ROOT = Path("data/raw/fpl")
-OUT_DIR = Path("data/processed/mappings")
+OUT_DIR = Path("data/processed/fpl")
 
 
 def run_one(season: str) -> Path:
@@ -15,12 +16,11 @@ def run_one(season: str) -> Path:
 
     gws_dir = snap / season / "gws"
     if not gws_dir.exists():
-        raise FileNotFoundError(f"Missing {gws_dir}")
+        raise FileNotFoundError(f"missing {gws_dir}")
 
     rows = []
     for f in sorted(gws_dir.glob("gw*.csv")):
         gw = int(f.stem.replace("gw", ""))
-
         df = safe_read_csv(f)
         if "kickoff_time" not in df.columns:
             continue

@@ -5,7 +5,7 @@ import ErrorBoundary from "./components/feedback/ErrorBoundary";
 import Loading from "./components/feedback/Loading";
 
 const Dashboard = lazy(() => import("./pages/Dashboard"));
-const OptimalXI = lazy(() => import("./pages/OptimalXI"));
+const OptimalXI = lazy(() => import("./pages/SeasonPlanner"));
 const MyTeam = lazy(() => import("./pages/MyTeam"));
 const TransferPlanner = lazy(() => import("./pages/TransferPlanner"));
 const FixtureTicker = lazy(() => import("./pages/FixtureTicker"));
@@ -13,7 +13,6 @@ const PlayerComparison = lazy(() => import("./pages/PlayerComparison"));
 const NewsSentiment = lazy(() => import("./pages/NewsSentiment"));
 const Watchlist = lazy(() => import("./pages/Watchlist"));
 const ModelInsights = lazy(() => import("./pages/ModelInsights"));
-const SeasonPlanner = lazy(() => import("./pages/SeasonPlanner"));
 const PlayerDetail = lazy(() => import("./pages/PlayerDetail"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
@@ -33,7 +32,6 @@ export default function App() {
               <Route path="/news" element={<NewsSentiment />} />
               <Route path="/watchlist" element={<Watchlist />} />
               <Route path="/insights" element={<ModelInsights />} />
-              <Route path="/season-planner" element={<SeasonPlanner />} />
               <Route path="/player/:id" element={<PlayerDetail />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
