@@ -1,13 +1,19 @@
 """
-Build injury features from FPL API status/news data.
+Build 28 injury features from the FPL API's status and news fields.
 
-All features here derive from the FPL API (not external sources).
-The ablation study tests these against a separate Guardian news stream.
+Two feature groups:
 
-Feature groups:
-- Structured: status encoding, chance_of_playing, temporal patterns
-- FPL news parsing: injury type classification, return estimation, sentiment
-  (regex on the FPL 'news' field — NOT the external NLP being tested)
+1. Structured (13 features): status encoded as integer, chance_of_playing
+   this/next round, binary flags (is_injured, is_doubtful, is_suspended),
+   temporal patterns (gws_since_last_injury, consecutive_gws_missed).
+
+2. News-extracted (15 features): regex on FPL's short news string to classify
+   injury type (hamstring, knee, illness, etc.), estimate return timeline,
+   and detect sentiment (returned to training vs ruled out).
+
+Important: the news parsing here uses simple regex on the FPL API 'news' field,
+NOT the Guardian newspaper articles. The Guardian pipeline (news/) is a separate
+data source tested independently in the ablation study (Config C).
 """
 
 import re
@@ -21,10 +27,10 @@ INPUT_PATH = Path("data/processed/injury/fpl_with_injury.csv")
 EXTENDED_FEATURES = Path("data/features/extended_features.csv")
 OUTPUT_DIR = Path("data/features")
 
-# Ordinal encoding: higher = worse availability
+# Ordinal encoding: higher = worse availability (n = not in squad)
 STATUS_MAP = {"a": 0, "d": 1, "i": 2, "u": 3, "s": 4, "n": 5}
 
-# First match wins — specific body parts before generic patterns
+# First match wins, so specific body parts come before generic "muscle"/"fitness"
 INJURY_PATTERNS = {
     "hamstring": r"hamstring",
     "knee": r"knee|acl|mcl|pcl|meniscus",
@@ -84,8 +90,8 @@ _POSITIVE_KEYWORDS = [
 _NEGATIVE_PATTERNS = [re.compile(r"\b" + re.escape(kw) + r"\b") for kw in _NEGATIVE_KEYWORDS]
 _POSITIVE_PATTERNS = [re.compile(r"\b" + re.escape(kw) + r"\b") for kw in _POSITIVE_KEYWORDS]
 
-_MAX_RETURN_WEEKS = 26
-_UNKNOWN_RETURN_WEEKS = 12.0
+_MAX_RETURN_WEEKS = 26        # ~half a season; cap to avoid outlier dates
+_UNKNOWN_RETURN_WEEKS = 12.0   # "unknown"/"indefinite" = assume ~3 months
 _DEFAULT_SHORT_TERM_WEEKS = 2.0
 
 _MONTHS = {
@@ -103,7 +109,7 @@ _MONTHS = {
     "dec": 12,
 }
 
-# Fill values for missing injury data (assumes fully available)
+# Fill values for missing injury data (assumes player is fully available)
 FILL_DEFAULTS = {
     "status_encoded": 0,
     "is_available": 1,
@@ -122,11 +128,9 @@ FILL_DEFAULTS = {
 }
 
 
-# -- Group B: Structured Features ---------------------------------------------
-
+# Structured features (13 cols: status encoding, chance fields, binary flags)
 
 def add_structured_features(df: pd.DataFrame) -> pd.DataFrame:
-    """Encode raw status/chance fields into numeric features."""
     print("Adding structured features...")
     df = df.copy()
 
@@ -135,7 +139,7 @@ def add_structured_features(df: pd.DataFrame) -> pd.DataFrame:
     df["is_injured"] = (df["status"] == "i").astype(int)
     df["is_doubtful"] = (df["status"] == "d").astype(int)
 
-    # 100 for available, 0 otherwise
+    # FPL API leaves chance fields null when player is available
     df["chance_this_round"] = df["chance_of_playing_this_round"].fillna(df["is_available"] * 100)
     df["chance_next_round"] = df["chance_of_playing_next_round"].fillna(df["is_available"] * 100)
 
@@ -145,7 +149,6 @@ def add_structured_features(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def add_temporal_features(df: pd.DataFrame) -> pd.DataFrame:
-    """Compute per-player temporal patterns from consecutive GW status history."""
     print("Adding temporal features...")
     df = df.copy()
     df = df.sort_values(["season", "element", "GW"])
@@ -196,11 +199,9 @@ def _injury_episode_count(status: pd.Series) -> pd.Series:
     return pd.Series(result, index=status.index)
 
 
-# -- Group C: NLP Features ----------------------------------------------------
-
+# NLP features (15 cols: injury type dummies, return timeline, sentiment)
 
 def extract_injury_type(news: str) -> str:
-    """Classify injury type from news text. Returns 'none' if no news."""
     if pd.isna(news) or news == "":
         return "none"
 
@@ -217,7 +218,6 @@ def extract_injury_type(news: str) -> str:
 
 
 def extract_return_weeks(news: str, snapshot_date=None) -> float:
-    """Estimate expected return time in weeks from news text."""
     if pd.isna(news) or news == "":
         return 0.0
 
@@ -226,14 +226,14 @@ def extract_return_weeks(news: str, snapshot_date=None) -> float:
     if re.search(r"unknown|indefinite", news_str, re.IGNORECASE):
         return _UNKNOWN_RETURN_WEEKS
 
-    # "Expected back DD MMM"
+    # "expected back DD MMM"
     match = re.search(r"[Ee]xpected back (\d{1,2})\s*([A-Za-z]{3,})", news_str)
     if match and snapshot_date:
         weeks = _parse_return_date(match, snapshot_date)
         if weeks is not None:
             return weeks
 
-    # Range before single to prevent partial match ("3-4 weeks" vs "4 weeks")
+    # Try range first to prevent partial match ("3-4 weeks" vs "4 weeks")
     match = re.search(r"(\d+)-(\d+)\s*weeks?", news_str, re.IGNORECASE)
     if match:
         avg = (float(match.group(1)) + float(match.group(2))) / 2
@@ -247,7 +247,7 @@ def extract_return_weeks(news: str, snapshot_date=None) -> float:
 
 
 def _parse_return_date(match: re.Match, snapshot_date) -> float | None:
-    """Convert a 'DD MMM' return date to weeks from snapshot_date."""
+    """convert a 'DD MMM' return date to weeks from snapshot_date."""
     day = int(match.group(1))
     month_str = match.group(2)[:3].lower()
 
@@ -284,7 +284,6 @@ def news_sentiment(news: str) -> float:
 
 
 def add_nlp_features(df: pd.DataFrame) -> pd.DataFrame:
-    """Extract NLP features from news text: injury type, return weeks, sentiment."""
     print("Adding NLP features...")
     df = df.copy()
 
@@ -305,17 +304,15 @@ def add_nlp_features(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-# -- Merge with Extended Features ----------------------------------------------
-
+# Merge with extended features
 
 def _merge_with_extended(df: pd.DataFrame) -> pd.DataFrame:
-    """Merge injury features with the main extended feature set."""
     from ml.pipelines.injury.download_historical import SEASONS as INJURY_SEASONS
 
     print("\nMerging with extended features...")
     extended_df = pd.read_csv(EXTENDED_FEATURES, low_memory=False)
 
-    # Deduplicate: injury_count_season is in FILL_DEFAULTS AND starts with "injury_"
+    # injury_count_season appears in FILL_DEFAULTS AND matches "injury_*" prefix
     injury_feature_set = dict.fromkeys(FILL_DEFAULTS.keys())
     injury_feature_set.update((c, None) for c in df.columns if c.startswith("injury_") and c != "injury_type")
 
@@ -328,7 +325,7 @@ def _merge_with_extended(df: pd.DataFrame) -> pd.DataFrame:
         col_df["GW"] = pd.to_numeric(col_df["GW"], errors="coerce")
         col_df["element"] = pd.to_numeric(col_df["element"], errors="coerce")
 
-    # Drop stale injury columns from previous runs
+    # Drop stale injury columns from prior runs to avoid _x/_y suffixes
     overlap = set(extended_df.columns) & set(injury_subset.columns) - set(merge_keys)
     if overlap:
         print(f"Dropping {len(overlap)} stale columns from base: {sorted(overlap)[:5]}...")
@@ -337,8 +334,9 @@ def _merge_with_extended(df: pd.DataFrame) -> pd.DataFrame:
     combined = extended_df.merge(injury_subset, on=merge_keys, how="left")
     combined = combined.reset_index(drop=True)
 
-    # Seasons without per-GW commits get NaN (not fabricated "available" defaults).
-    # LightGBM learns optimal split direction for NaN = "unknown".
+    # Pre-2018 seasons have no injury snapshots. We leave them as NaN rather
+    # than filling with "available" defaults, because LightGBM learns optimal
+    # split direction for NaN — treating missing as "unknown" rather than "healthy"
     has_injury = combined["season"].isin(INJURY_SEASONS).values
     all_injury_cols = list(
         dict.fromkeys(list(FILL_DEFAULTS.keys()) + [c for c in combined.columns if c.startswith("injury_")])
@@ -369,18 +367,16 @@ def _merge_with_extended(df: pd.DataFrame) -> pd.DataFrame:
     return combined
 
 
-# -- Main ----------------------------------------------------------------------
-
+# Main
 
 def run() -> None:
-    """Build all injury feature groups and merge with extended features."""
     print("=" * 60)
     print("BUILD INJURY FEATURES")
     print("=" * 60)
 
     print("\nLoading data...")
     df = pd.read_csv(INPUT_PATH, low_memory=False)
-    print(f"  {len(df):,} rows loaded")
+    print(f"{len(df):,} rows loaded")
 
     df = add_structured_features(df)
     df = add_temporal_features(df)
@@ -400,14 +396,14 @@ def run() -> None:
         "recovery_trajectory",
     ]
     df[structured_cols].to_csv(OUTPUT_DIR / "injury_features_structured.csv", index=False)
-    print(f"  Saved structured -> {OUTPUT_DIR / 'injury_features_structured.csv'}")
+    print(f"Saved structured -> {OUTPUT_DIR / 'injury_features_structured.csv'}")
 
     df = add_nlp_features(df)
 
     all_cols = structured_cols + ["injury_type", "expected_return_weeks", "news_sentiment"]
     all_cols.extend(c for c in df.columns if c.startswith("injury_") and c not in all_cols)
     df[[c for c in all_cols if c in df.columns]].to_csv(OUTPUT_DIR / "injury_features_all.csv", index=False)
-    print(f"  Saved all injury -> {OUTPUT_DIR / 'injury_features_all.csv'}")
+    print(f"Saved all injury -> {OUTPUT_DIR / 'injury_features_all.csv'}")
 
     combined = _merge_with_extended(df)
     combined.to_csv(OUTPUT_DIR / "extended_with_injury.csv", index=False)

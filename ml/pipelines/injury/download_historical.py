@@ -1,10 +1,11 @@
 """
 Download historical injury/availability snapshots from vaastav's FPL repository.
 
-Uses GitHub API to walk the commit history of players_raw.csv for each season, giving per-GW snapshots of player injury status. Each commit corresponds to a post-match data update, so snapshot N reflects the state AFTER GW N.
+Walks GitHub commit history of players_raw.csv for each season, giving per-GW
+snapshots of player injury status. Each commit is a post-match data update,
+so snapshot N reflects the state AFTER GW N.
 
-The downstream merge (merge_with_fpl.py) shifts these by +1 GW to prevent
-temporal leakage.
+The downstream merge (merge_with_fpl.py) shifts by +1 GW to prevent leakage.
 """
 
 import re
@@ -18,8 +19,8 @@ import requests
 REPO_OWNER = "vaastav"
 REPO_NAME = "Fantasy-Premier-League"
 
-# 2016-17 and 2017-18 were bulk-uploaded without per-GW commits.
-# 2019-20 COVID ghost commits (GW30-37) are harmlessly dropped during merge.
+# 2016-17 and 2017-18 excluded: bulk-uploaded without per-GW commits.
+# 2019-20 COVID ghost commits (GW30-37) get harmlessly dropped during merge.
 SEASONS = [
     "2018-19",
     "2019-20",
@@ -36,7 +37,7 @@ _REQUEST_DELAY = 0.5
 
 
 def get_commits_for_file(season: str, per_page: int = 100) -> list[dict]:
-    """Fetch all commits that modified players_raw.csv for a given season."""
+    """fetch all commits that modified players_raw.csv for a given season."""
     file_path = f"data/{season}/players_raw.csv"
     url = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/commits"
     all_commits = []
@@ -78,7 +79,7 @@ def get_commits_for_file(season: str, per_page: int = 100) -> list[dict]:
 
 
 def extract_gws_from_message(message: str) -> list[int]:
-    """Extract all gameweek numbers from a commit message."""
+    """extract all gameweek numbers from a commit message."""
     patterns = [
         r"[Gg][Ww]\s*(\d+)",
         r"[Gg]ameweek\s*(\d+)",
@@ -87,14 +88,14 @@ def extract_gws_from_message(message: str) -> list[int]:
     for pattern in patterns:
         for m in re.findall(pattern, message):
             gw = int(m)
-            if 1 <= gw <= 47:  # 47 for 2019-20 COVID restart
+            if 1 <= gw <= 47:  # 2019-20 had 47 GWs due to COVID restart
                 found.add(gw)
 
     return sorted(found)
 
 
 def download_file_at_commit(season: str, sha: str) -> pd.DataFrame | None:
-    """Download players_raw.csv at a specific commit SHA."""
+    """download players_raw.csv at a specific commit SHA."""
     url = f"https://raw.githubusercontent.com/{REPO_OWNER}/{REPO_NAME}/{sha}/data/{season}/players_raw.csv"
     response = requests.get(url)
     if response.status_code != 200:
@@ -109,7 +110,7 @@ def download_file_at_commit(season: str, sha: str) -> pd.DataFrame | None:
 
 
 def extract_injury_fields(df: pd.DataFrame, season: str, gw: int, commit_date: str) -> pd.DataFrame:
-    """Extract injury-related columns from a players_raw.csv snapshot."""
+    """extract injury-related columns from a players_raw.csv snapshot."""
     wanted = [
         "id",
         "first_name",
@@ -136,7 +137,7 @@ def extract_injury_fields(df: pd.DataFrame, season: str, gw: int, commit_date: s
 
 
 def build_gw_commit_mapping(seasons: list[str]) -> pd.DataFrame:
-    """Build a mapping of (season, GW) -> commit SHA from GitHub history."""
+    """build a mapping of (season, GW) -> commit SHA from GitHub history."""
     print("Building GW -> commit mapping...")
     all_mappings = []
 
@@ -167,7 +168,7 @@ def build_gw_commit_mapping(seasons: list[str]) -> pd.DataFrame:
 
 
 def download_all_snapshots(mapping_df: pd.DataFrame) -> pd.DataFrame:
-    """Download players_raw.csv for each mapped GW and extract injury fields."""
+    """download players_raw.csv for each mapped GW and extract injury fields."""
     print("\nDownloading historical snapshots...")
     SNAPSHOTS_DIR.mkdir(parents=True, exist_ok=True)
     all_injury_data = []
@@ -196,7 +197,7 @@ def download_all_snapshots(mapping_df: pd.DataFrame) -> pd.DataFrame:
 
 
 def validate_snapshots(injury_df: pd.DataFrame, mapping_df: pd.DataFrame) -> bool:
-    """Validate snapshot integrity: ordering, coverage, and commit timing."""
+    """Check chronological ordering, GW coverage gaps, and commit timing."""
     print("\nValidating snapshot integrity...")
     ok = True
 
@@ -250,7 +251,6 @@ def validate_snapshots(injury_df: pd.DataFrame, mapping_df: pd.DataFrame) -> boo
 
 
 def run() -> None:
-    """Download and validate all historical injury snapshots."""
     print("=" * 60)
     print("HISTORICAL INJURY DATA DOWNLOAD")
     print("=" * 60)
@@ -262,7 +262,7 @@ def run() -> None:
     mapping_file = OUTPUT_DIR / "gw_commit_mapping.csv"
 
     if mapping_file.exists():
-        print(f"Loading cached mapping from {mapping_file}")
+        print(f"loading cached mapping from {mapping_file}")
         mapping_df = pd.read_csv(mapping_file)
     else:
         mapping_df = build_gw_commit_mapping(SEASONS)
