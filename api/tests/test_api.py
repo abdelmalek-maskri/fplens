@@ -81,7 +81,7 @@ def _make_inference_result(players=None):
 
 def test_predictions_returns_list(client):
     fake_result = _make_inference_result()
-    with patch("api.routers.predictions.run_predictions", return_value=fake_result):
+    with patch("api.routers.predictions._get_inference_result", return_value=fake_result):
         r = client.get("/api/predictions")
     assert r.status_code == 200
     data = r.json()

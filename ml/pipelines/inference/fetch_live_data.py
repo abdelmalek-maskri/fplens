@@ -626,18 +626,170 @@ US_BASE_COLS = [
 US_ROLL_WINDOWS = [3, 5, 10]
 
 
-def enrich_with_understat(df: pd.DataFrame, current_gw: int, season: str = "2025-26") -> pd.DataFrame:
-    """Merge pre-computed Understat features into live player data.
+def _fetch_live_understat(season: str, fpl_elements: list[dict]) -> pd.DataFrame | None:
+    """Fetch current-season Understat data live and map to FPL element IDs.
 
-    Loads per-player-per-GW Understat stats and computes lag1 + rolling
-    features to match training. Uses GW < current_gw to prevent leakage.
+    Returns a DataFrame with columns [element, GW, us_xg, us_xa, ...] or None on failure.
     """
-    us_path = Path(f"data/processed/understat/understat_gw_{season}.csv")
-    if not us_path.exists():
-        logger.warning("Understat CSV not found at %s, skipping", us_path)
-        return df
+    try:
+        import asyncio
 
-    us = pd.read_csv(us_path, low_memory=False)
+        import aiohttp
+        from understat import Understat
+
+        from ml.utils.name_normalize import norm
+    except ImportError:
+        logger.info("understat/aiohttp not installed, skipping live fetch")
+        return None
+
+    year = int(season.split("-")[0])
+    US_MATCH_COLS = ["xG", "xA", "npxG", "xGChain", "xGBuildup", "shots", "key_passes", "time"]
+
+    async def _fetch():
+        connector = aiohttp.TCPConnector(limit=15)
+        timeout = aiohttp.ClientTimeout(total=None, sock_connect=30, sock_read=120)
+        async with aiohttp.ClientSession(connector=connector, timeout=timeout) as session:
+            us = Understat(session)
+
+            players = await us.get_league_players("EPL", year)
+            if not players:
+                return None
+
+            teams = await us.get_teams("EPL", year)
+            team_names = {t.get("title", t.get("name", "")) for t in teams}
+
+            fpl_lookup = {}
+            for p in fpl_elements:
+                full = norm(f"{p['first_name']} {p['second_name']}")
+                web = norm(p["web_name"])
+                fpl_lookup[full] = p["id"]
+                if len(web) >= 4:
+                    fpl_lookup.setdefault(web, p["id"])
+
+            us_to_fpl = {}
+            for up in players:
+                us_name = norm(up.get("player_name", ""))
+                us_id = int(up["id"])
+                if us_name in fpl_lookup:
+                    us_to_fpl[us_id] = fpl_lookup[us_name]
+                else:
+                    tokens = us_name.split()
+                    if len(tokens) >= 2:
+                        surname = tokens[-1]
+                        if len(surname) >= 4 and surname in fpl_lookup:
+                            us_to_fpl[us_id] = fpl_lookup[surname]
+
+            print(f"  Understat live: matched {len(us_to_fpl)}/{len(players)} players to FPL")
+
+            sem = asyncio.Semaphore(15)
+            matched_ids = list(us_to_fpl.keys())
+
+            async def fetch_one(pid):
+                async with sem:
+                    try:
+                        return await us.get_player_matches(pid)
+                    except Exception:
+                        return []
+
+            all_matches = await asyncio.gather(*(fetch_one(pid) for pid in matched_ids))
+
+            rows = []
+            for pid, matches in zip(matched_ids, all_matches):
+                fpl_id = us_to_fpl[pid]
+                for m in matches:
+                    try:
+                        if int(m.get("season", -1)) != year:
+                            continue
+                    except (ValueError, TypeError):
+                        continue
+                    if m.get("h_team") not in team_names or m.get("a_team") not in team_names:
+                        continue
+                    row = {"element": fpl_id}
+                    for col in US_MATCH_COLS:
+                        row[col] = float(m.get(col, 0) or 0)
+                    row["date"] = m.get("date", "")
+                    rows.append(row)
+
+            return rows
+
+    def _run_in_thread():
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            return loop.run_until_complete(_fetch())
+        finally:
+            loop.close()
+
+    try:
+        print("  Fetching live Understat data...")
+        from concurrent.futures import ThreadPoolExecutor as _TPE
+
+        with _TPE(max_workers=1) as executor:
+            rows = executor.submit(_run_in_thread).result(timeout=120)
+
+        if not rows:
+            return None
+
+        matches_df = pd.DataFrame(rows)
+
+        gw_windows_path = Path(f"data/processed/fpl/gw_windows_{season}.csv")
+        if gw_windows_path.exists():
+            gw_win = pd.read_csv(gw_windows_path)
+            gw_win["start_date"] = pd.to_datetime(gw_win["start_date"])
+            gw_win["end_date"] = pd.to_datetime(gw_win["end_date"])
+            matches_df["match_date"] = pd.to_datetime(matches_df["date"].str[:10])
+
+            gw_win = gw_win.sort_values("start_date").reset_index(drop=True)
+            left = gw_win["start_date"] - pd.Timedelta(days=1)
+            right = gw_win["end_date"] + pd.Timedelta(days=1)
+            intervals = pd.IntervalIndex.from_arrays(left, right, closed="both")
+            gw_numbers = gw_win["GW"].astype(int).values
+
+            idx = intervals.get_indexer(matches_df["match_date"])
+            matches_df["GW"] = pd.array([gw_numbers[i] if i >= 0 else pd.NA for i in idx], dtype="Int64")
+            matches_df = matches_df.dropna(subset=["GW"])
+        else:
+            logger.warning("GW windows not found at %s, cannot assign GWs", gw_windows_path)
+            return None
+
+        agg = matches_df.groupby(["element", "GW"], as_index=False)[US_MATCH_COLS].sum()
+        agg = agg.rename(columns={c: f"us_{c.lower()}" for c in US_MATCH_COLS})
+
+        print(f"  Understat live: {len(agg)} player-GW rows from {len(matches_df)} matches")
+        return agg
+
+    except Exception as e:
+        logger.warning("Live Understat fetch failed: %s", e, exc_info=True)
+        return None
+
+
+def enrich_with_understat(
+    df: pd.DataFrame,
+    current_gw: int,
+    season: str = "2025-26",
+    fpl_elements: list[dict] | None = None,
+) -> pd.DataFrame:
+    """Enrich live player data with Understat features.
+
+    Tries live Understat API fetch first; falls back to pre-computed CSV.
+    Computes lag1 + rolling features to match training.
+    """
+    us = None
+
+    if fpl_elements:
+        live_us = _fetch_live_understat(season, fpl_elements)
+        if live_us is not None and not live_us.empty:
+            us = live_us
+            print("  Using live Understat data")
+
+    if us is None:
+        us_path = Path(f"data/processed/understat/understat_gw_{season}.csv")
+        if not us_path.exists():
+            logger.warning("Understat CSV not found at %s, skipping", us_path)
+            return df
+        us = pd.read_csv(us_path, low_memory=False)
+        print("  Using pre-computed Understat CSV")
+
     us["GW"] = pd.to_numeric(us["GW"], errors="coerce")
     us["element"] = pd.to_numeric(us["element"], errors="coerce")
     for col in US_BASE_COLS:
@@ -648,17 +800,13 @@ def enrich_with_understat(df: pd.DataFrame, current_gw: int, season: str = "2025
         logger.warning("No Understat data before GW %d, skipping", current_gw)
         return df
 
-    # Reconstruct full GW series per player including a synthetic row for
-    # current_gw (with NaN base values). After shift+rolling, selecting
-    # the current_gw row gives lag1 = GW N-1's value, matching training.
-    all_gws = range(1, current_gw + 1)  # include current_gw
+    all_gws = range(1, current_gw + 1)
     elements = us["element"].unique()
     idx = pd.MultiIndex.from_product([elements, all_gws], names=["element", "GW"])
     full = pd.DataFrame(index=idx).reset_index()
     full = full.merge(us[["element", "GW"] + US_BASE_COLS], on=["element", "GW"], how="left")
     full = full.sort_values(["element", "GW"])
 
-    # Match training: shift(1) for lag, shift(1).rolling(w, min_periods=1).mean() for roll
     g = full.groupby("element", sort=False)
     for col in US_BASE_COLS:
         full[f"{col}_lag1"] = g[col].shift(1)
@@ -667,12 +815,10 @@ def enrich_with_understat(df: pd.DataFrame, current_gw: int, season: str = "2025
                 lambda x, _w=w: x.shift(1).rolling(window=_w, min_periods=1).mean()
             )
 
-    # Select current_gw row — lag1 now correctly reflects GW N-1
     latest = full[full["GW"] == current_gw].copy()
     feat_cols = [c for c in latest.columns if c.endswith(("_lag1", "_roll3", "_roll5", "_roll10"))]
     feat = latest[["element"] + feat_cols]
 
-    # Merge into live df
     df = df.copy()
     df["element"] = pd.to_numeric(df["element"], errors="coerce")
     existing_us = [c for c in df.columns if c.startswith("us_")]
@@ -681,12 +827,115 @@ def enrich_with_understat(df: pd.DataFrame, current_gw: int, season: str = "2025
 
     df = df.merge(feat, on="element", how="left")
 
-    # Fill NaN for players not in Understat (e.g. new signings)
     us_cols = [c for c in df.columns if c.startswith("us_")]
     df[us_cols] = df[us_cols].fillna(0)
 
-    matched = (df["us_xg_lag1"] > 0).sum()
+    matched = (df["us_xg_roll5"] > 0).sum()
     print(f"  Understat: {matched}/{len(df)} players enriched")
+
+    return df
+
+
+def enrich_with_news(df: pd.DataFrame, bootstrap_data: dict) -> pd.DataFrame:
+    """Add live Guardian news features (excluding news_sentiment which is
+    already created by add_injury_features from FPL injury news text)."""
+    NEWS_COLS = [
+        "news_mentioned",
+        "news_mention_count",
+        "news_title_mentions",
+        "news_avg_relevance",
+        "news_sentiment_pos",
+        "news_sentiment_neg",
+        "news_injury_context",
+    ]
+
+    try:
+        from ml.pipelines.inference.news import fetch_recent_news
+    except ImportError:
+        logger.info("News module not available, skipping")
+        for col in NEWS_COLS:
+            if col not in df.columns:
+                df[col] = 0
+        return df
+
+    try:
+        result = fetch_recent_news(bootstrap_data, days=7)
+        articles = result.get("articles", [])
+
+        if not articles:
+            print("  News: no articles found, zero-filling")
+            for col in NEWS_COLS:
+                if col not in df.columns:
+                    df[col] = 0
+            return df
+
+        player_features = {}
+        for article in articles:
+            for player in article.get("players", []):
+                eid = player["element"]
+                if eid not in player_features:
+                    player_features[eid] = {
+                        "mention_count": 0,
+                        "title_mentions": 0,
+                        "relevances": [],
+                        "sentiments_pos": [],
+                        "sentiments_neg": [],
+                        "injury_contexts": 0,
+                        "sentiments_raw": [],
+                    }
+                pf = player_features[eid]
+                pf["mention_count"] += 1
+                headline = article.get("headline", "").lower()
+                web_name = player.get("web_name", "")
+                in_title = len(web_name) >= 4 and bool(re.search(r"\b" + re.escape(web_name.lower()) + r"\b", headline))
+                if in_title:
+                    pf["title_mentions"] += 1
+                sent = article.get("sentiment", 0.0)
+                pf["sentiments_raw"].append(sent)
+                pf["sentiments_pos"].append(max(sent, 0))
+                pf["sentiments_neg"].append(abs(min(sent, 0)))
+                pf["relevances"].append(3.0 if in_title else 1.0)
+                if article.get("injury_flag", False):
+                    pf["injury_contexts"] += 1
+
+        rows = []
+        for eid, pf in player_features.items():
+            n = pf["mention_count"]
+            rows.append(
+                {
+                    "element": eid,
+                    "news_mentioned": 1,
+                    "news_mention_count": n,
+                    "news_title_mentions": pf["title_mentions"],
+                    "news_avg_relevance": sum(pf["relevances"]) / n if n else 0,
+                    "news_sentiment_pos": sum(pf["sentiments_pos"]) / n if n else 0,
+                    "news_sentiment_neg": sum(pf["sentiments_neg"]) / n if n else 0,
+                    "news_injury_context": min(pf["injury_contexts"], 1),
+                }
+            )
+
+        news_df = pd.DataFrame(rows)
+
+        existing = [c for c in df.columns if c.startswith("news_") and c in NEWS_COLS]
+        if existing:
+            df = df.drop(columns=existing)
+
+        df = df.merge(news_df, on="element", how="left")
+
+        for col in NEWS_COLS:
+            if col in df.columns:
+                df[col] = df[col].fillna(0)
+            else:
+                df[col] = 0
+
+        mentioned = (df["news_mentioned"] > 0).sum()
+        print(f"  News: {mentioned}/{len(df)} players with mentions from {len(articles)} articles")
+
+    except Exception as e:
+        logger.warning("News enrichment failed: %s", e, exc_info=True)
+        for col in NEWS_COLS:
+            if col not in df.columns:
+                df[col] = 0
 
     return df
 
@@ -840,7 +1089,10 @@ def fetch_current_gw_data(include_history: bool = True, include_understat: bool 
 
     if include_understat:
         print("Adding Understat features...")
-        df = enrich_with_understat(df, current_gw, season=season)
+        df = enrich_with_understat(df, current_gw, season=season, fpl_elements=elements)
+
+    print("Adding news features...")
+    df = enrich_with_news(df, bootstrap)
 
     print(f"Final shape: {df.shape}")
 

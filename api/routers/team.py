@@ -52,7 +52,7 @@ def get_team(
 
         model = request.app.state.model
         result = cache.get_or_fetch(
-            "predictions",
+            "predictions_config_d",
             lambda: run_predictions(model=model, save_output=False),
         )
         predictions_df = result["predictions"]
@@ -113,7 +113,7 @@ def _build_player_detail(element_id: int, request: Request) -> dict:
     model = request.app.state.model
     cache = request.app.state.cache
     inference = cache.get_or_fetch(
-        "predictions",
+        "predictions_config_d",
         lambda: run_predictions(model=model, save_output=False),
     )
     predictions_df = inference["predictions"]
