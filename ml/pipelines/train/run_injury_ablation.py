@@ -1,5 +1,5 @@
 """
-Injury & News Ablation Study — systematic feature group comparison.
+Injury & News Ablation Study, systematic feature group comparison.
 
 Trains the same stacked ensemble architecture on different feature sets
 to isolate the contribution of injury data and Guardian news features.
@@ -40,7 +40,7 @@ from ml.pipelines.train.train_stacked_with_injury import (
 from ml.utils.eval_metrics import full_evaluation, print_final_summary
 from ml.utils.statistical_tests import print_comparison
 
-OUT_DIR = Path("outputs/experiments/ablation_injury")
+OUT_DIR = Path("outputs/experiments/ablation")
 
 CONFIGS = {
     "A": {
@@ -68,8 +68,6 @@ def train_config(config_key: str, config: dict, out_dir: Path) -> dict:
     data_path = config["data"]
     config_out_dir = out_dir / f"config_{config_key}"
 
-    # -- Banner (matches train_stacked_with_injury.py) --
-
     print(f"\n{'=' * 70}")
     print(f"ABLATION CONFIG {config_key}: {name}")
     print("=" * 70)
@@ -78,8 +76,7 @@ def train_config(config_key: str, config: dict, out_dir: Path) -> dict:
     print(f"Input:          {data_path}")
     print()
 
-    # -- Load data --
-
+    # Load data
     print("Loading data...")
     df = pd.read_csv(data_path, low_memory=False)
 
@@ -96,8 +93,7 @@ def train_config(config_key: str, config: dict, out_dir: Path) -> dict:
     print(f"Total rows:    {len(df):,}")
     print(f"Total columns: {len(df.columns)}")
 
-    # -- Feature group breakdown --
-
+    # Feature group breakdown
     injury_structured = [c for c in df.columns if c in FILL_DEFAULTS]
     injury_nlp = [c for c in df.columns if c.startswith("injury_") and c not in injury_structured]
     news_cols = [c for c in df.columns if c in NEWS_FEATURE_COLS]
@@ -105,12 +101,11 @@ def train_config(config_key: str, config: dict, out_dir: Path) -> dict:
     baseline_cols = [c for c in df.columns if c not in non_feature]
 
     print("\nFeature groups:")
-    print(f"  Baseline features:           {len(baseline_cols)}")
-    print(f"  Injury structured + temporal: {len(injury_structured)}")
-    print(f"  Injury NLP (type dummies):    {len(injury_nlp)}")
-    print(f"  News (Guardian):              {len(news_cols)}")
-    print(
-        f"  Total:                        {len(baseline_cols) + len(injury_structured) + len(injury_nlp) + len(news_cols)}"
+    print(f"Baseline features:           {len(baseline_cols)}")
+    print(f"Injury structured + temporal: {len(injury_structured)}")
+    print(f"Injury NLP (type dummies):    {len(injury_nlp)}")
+    print(f"News (Guardian):              {len(news_cols)}")
+    print(f"Total:                        {len(baseline_cols) + len(injury_structured) + len(injury_nlp) + len(news_cols)}"
     )
 
     if "status_encoded" in df.columns:
@@ -119,8 +114,7 @@ def train_config(config_key: str, config: dict, out_dir: Path) -> dict:
         print(f"\nSeasons with real injury data: {injury_seasons}")
         print(f"Seasons with NaN (pre-injury): {nan_seasons}")
 
-    # -- Split --
-
+    # Train/test split
     train_df = df[df["season"].isin(train_seasons)]
     test_df = df[df["season"] == HOLDOUT_SEASON]
 
@@ -138,8 +132,7 @@ def train_config(config_key: str, config: dict, out_dir: Path) -> dict:
     print(f"\nFeatures: {len(X_train.columns)}")
     print(f"Train:    {len(train_df):,}, Test: {len(test_df):,}")
 
-    # -- Train --
-
+    # Training
     print(f"\nTraining stacked ensemble (Config {config_key})...")
     ensemble = StackedEnsembleInjury(n_inner_folds=N_INNER_FOLDS)
     ensemble.fit(X_train, y_train, cat_cols)
@@ -147,8 +140,7 @@ def train_config(config_key: str, config: dict, out_dir: Path) -> dict:
     print("Generating predictions...")
     stacked_pred, all_preds = ensemble.predict(X_test)
 
-    # -- Per-method holdout results table --
-
+    # Per-method holdout results
     results = evaluate_all_predictions(y_test, y_train, all_preds)
     best_method = min(results.keys(), key=lambda k: results[k]["mae"])
 
@@ -164,8 +156,6 @@ def train_config(config_key: str, config: dict, out_dir: Path) -> dict:
 
     print(f"\nBest method: {best_method}")
 
-    # -- print_final_summary --
-
     holdout_eval = full_evaluation(y_test, stacked_pred, y_train)
 
     print_final_summary(
@@ -178,8 +168,7 @@ def train_config(config_key: str, config: dict, out_dir: Path) -> dict:
         output_dir=str(config_out_dir),
     )
 
-    # -- Comprehensive evaluation --
-
+    # Comprehensive evaluation (stratified + calibration + business metrics)
     positions = test_df["position"].values if "position" in test_df.columns else None
     gameweek_ids = test_df["GW"].values if "GW" in test_df.columns else None
 
@@ -195,8 +184,7 @@ def train_config(config_key: str, config: dict, out_dir: Path) -> dict:
     )
     evaluator.print_summary(comprehensive, f"Ablation Config {config_key}: {name}")
 
-    # -- Save outputs --
-
+    # Save outputs
     meta_coefs = ensemble.meta_info.get("coefficients", {})
 
     summary = {
@@ -254,18 +242,15 @@ def train_config(config_key: str, config: dict, out_dir: Path) -> dict:
     }
 
 
-# -- Cross-config comparison --
-
+# Cross-config comparison
 
 def print_comparison_table(results: dict) -> None:
-    """Print ablation comparison table (runs after all configs are trained)."""
     configs = sorted(results.keys())
 
     print(f"\n\n{'=' * 70}")
     print("ABLATION COMPARISON")
     print(f"{'=' * 70}")
 
-    # Main metrics
     print(f"\n  {'Config':<6} {'Description':<30} {'Feats':<8} {'MAE':<10} {'RMSE':<10} {'R²':<10} {'Spearman'}")
     print(f"  {'-' * 6} {'-' * 30} {'-' * 8} {'-' * 10} {'-' * 10} {'-' * 10} {'-' * 10}")
 
@@ -277,7 +262,7 @@ def print_comparison_table(results: dict) -> None:
         rho = r["comprehensive"]["calibration"]["spearman_rho"]
         print(f"  {key:<6} {r['name']:<30} {r['n_features']:<8} {mae:<10.4f} {rmse:<10.4f} {r2:<10.4f} {rho:.4f}")
 
-    # Stratified MAE breakdown
+    # MAE by position and play status
     print(
         f"\n  {'Config':<6} {'Overall':<10} {'Played':<10} {'Not Play':<10} {'GK':<10} {'DEF':<10} {'MID':<10} {'FWD':<10} {'High Ret'}"
     )
@@ -297,7 +282,8 @@ def print_comparison_table(results: dict) -> None:
             f"{s.get('mae_high_return', 0):<10.4f}"
         )
 
-    # Per-base-learner holdout MAE (compensatory masquerade check)
+    # Per-base-learner MAE across configs (detects compensatory masking:
+    # one learner getting worse while another compensates)
     if len(configs) >= 2:
         print(f"\n  {'Base Learner':<15}", end="")
         for key in configs:
@@ -327,7 +313,7 @@ def print_comparison_table(results: dict) -> None:
                 print(f" {delta:+.4f}", end="")
             print()
 
-    # Meta-learner coefficients
+    # Meta-learner coefficients (shows how Ridge weights each base model)
     if len(configs) >= 2:
         print(f"\n  {'Meta Coef':<15}", end="")
         for key in configs:
@@ -346,7 +332,6 @@ def print_comparison_table(results: dict) -> None:
                 print(f" {c:<12.4f}", end="")
             print()
 
-    # Calibration comparison
     print(f"\n{'Calibration':<25}", end="")
     for key in configs:
         print(f" {'Config ' + key:<12}", end="")
@@ -368,7 +353,6 @@ def print_comparison_table(results: dict) -> None:
             print(f" {val:<12.4f}", end="")
         print()
 
-    # Business metrics comparison
     if "business" in results[configs[0]]["comprehensive"]:
         print(f"\n{'Captain Picks':<25}", end="")
         for key in configs:
@@ -393,7 +377,6 @@ def print_comparison_table(results: dict) -> None:
 
 
 def print_statistical_tests(results: dict) -> dict:
-    """Run pairwise statistical tests and print results."""
     configs = sorted(results.keys())
     if len(configs) < 2:
         print("\nNeed at least 2 configs for statistical tests.")
@@ -416,7 +399,6 @@ def print_statistical_tests(results: dict) -> dict:
             pred_b=results[key]["y_pred"],
         )
 
-    # Pairwise between non-baseline configs
     for i, key_i in enumerate(configs[1:], 1):
         for key_j in configs[i + 1 :]:
             pair_name = f"{key_i}_vs_{key_j}"
@@ -428,7 +410,8 @@ def print_statistical_tests(results: dict) -> dict:
                 pred_b=results[key_j]["y_pred"],
             )
 
-    # Interaction effect (when all 4 configs available)
+    # Interaction effect: does combining injury+news beat the sum of their
+    # individual contributions? Positive = complementary, negative = redundant
     if all(k in results for k in ["A", "B", "C", "D"]):
         mae_a = results["A"]["holdout_eval"]["model"]["mae"]
         mae_b = results["B"]["holdout_eval"]["model"]["mae"]
@@ -465,7 +448,6 @@ def print_statistical_tests(results: dict) -> dict:
 
 
 def run(config_keys: list[str] | None = None) -> None:
-    """Run ablation study for specified configs (default: all available)."""
     if config_keys is None:
         config_keys = [k for k in CONFIGS if CONFIGS[k]["data"].exists()]
 
@@ -492,14 +474,12 @@ def run(config_keys: list[str] | None = None) -> None:
     for key in config_keys:
         results[key] = train_config(key, CONFIGS[key], OUT_DIR)
 
-    # Cross-config comparison (only if multiple configs)
     if len(results) >= 2:
         print_comparison_table(results)
         test_results = print_statistical_tests(results)
     else:
         test_results = {}
 
-    # Save ablation summary
     ablation_summary = {
         "configs_run": config_keys,
         "holdout_season": HOLDOUT_SEASON,
