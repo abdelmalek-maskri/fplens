@@ -11,7 +11,6 @@ const PAGE_TITLES = {
   "/news": "News & Sentiment",
   "/watchlist": "Watchlist",
   "/insights": "Model Insights",
-  "/season-planner": "Season Planner",
 };
 
 function formatDeadlineShort(iso) {
