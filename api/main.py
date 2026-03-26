@@ -95,7 +95,12 @@ async def lifespan(app: FastAPI):
 
     print("Loading horizon models (GW+2, GW+3)...")
     app.state.horizon_models = load_horizon_models()
-    app.state.cache = FPLDataCache(ttl_minutes=15)
+    app.state.cache = FPLDataCache(ttl_minutes=240)
+
+    # No pre-warm — the first request triggers data fetch via _get_live_data()
+    # in predictions.py. The cache dedup lock ensures concurrent requests wait
+    # for the same fetch rather than starting duplicates.
+
     yield
     print("Shutting down...")
 

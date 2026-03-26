@@ -1,17 +1,14 @@
 """
-Stacked Ensemble WITH Injury Features — head-to-head comparison.
+Production stacked ensemble class used by all ablation configs (A/B/C/D).
 
-Same base learners and hyperparameters as train_stacked_ensemble.py,
-but trained on extended_with_injury.csv and with a tuned meta-learner.
+The class name is StackedEnsembleInjury for historical reasons — it was
+originally written for Config B (injury features). It is now the standard
+ensemble class used across all configs. Renaming would break pickle
+deserialization of saved models.
 
-Usage:
-    python -m ml.pipelines.train.train_stacked_with_injury
+Training is done via run_injury_ablation.py, not this file directly.
 """
 
-import json
-from pathlib import Path
-
-import joblib
 import numpy as np
 import pandas as pd
 from lightgbm import LGBMClassifier, LGBMRegressor
@@ -22,30 +19,11 @@ from sklearn.metrics import mean_absolute_error
 from sklearn.model_selection import GroupKFold
 from xgboost import XGBRegressor
 
-from ml.config.eval_config import (
-    CAT_COLS,
-    CV_SEASONS,
-    DROP_COLS,
-    HOLDOUT_SEASON,
-    TARGET_COL,
-)
-from ml.evaluation.comprehensive_metrics import (
-    ComprehensiveEvaluator,
-)
+from ml.config.eval_config import CAT_COLS, DROP_COLS, TARGET_COL
 from ml.pipelines.injury.build_injury_features import FILL_DEFAULTS
-from ml.utils.eval_metrics import full_evaluation, print_final_summary
-
-# -- Paths ---
-
-IN_PATH = Path("data/features/extended_with_injury.csv")
-OUT_DIR = Path("outputs/experiments/stacked_ensemble_injury")
-
-PREV_SUMMARY = Path("outputs/experiments/stacked_ensemble/summary.json")
-PREV_COMPREHENSIVE = Path("outputs/metrics/comprehensive/stacked_ensemble_comprehensive.json")
+from ml.utils.eval_metrics import full_evaluation
 
 N_INNER_FOLDS = 3
-
-# -- Base learners (identical to train_stacked_ensemble.py) ---
 
 
 def build_lgbm() -> LGBMRegressor:
@@ -115,9 +93,6 @@ def build_played_classifier() -> LGBMClassifier:
     )
 
 
-# -- Data helpers ---
-
-
 def prepare_xy(df: pd.DataFrame):
     y = df[TARGET_COL].values
     drop = set([TARGET_COL] + DROP_COLS)
@@ -148,9 +123,6 @@ def to_numeric(X: pd.DataFrame) -> pd.DataFrame:
 
     X_num = X_num.fillna(0)
     return X_num
-
-
-# -- Stacked ensemble ---
 
 
 class StackedEnsembleInjury:
@@ -214,7 +186,7 @@ class StackedEnsembleInjury:
         candidates["inv_mae"] = {
             "model": inv_w,
             "pred": oof_predictions @ inv_w,
-            "type": "nnls",  # same predict logic (weights @ preds)
+            "type": "nnls",
             "coefs": inv_w,
             "detail": "1/MAE weights",
         }
@@ -341,9 +313,6 @@ class StackedEnsembleInjury:
         return stacked_pred, base_preds
 
 
-# -- Evaluation ---
-
-
 def evaluate_all_predictions(y_true: np.ndarray, y_train: np.ndarray, predictions: dict) -> dict:
     results = {}
     for name, preds in predictions.items():
@@ -354,292 +323,3 @@ def evaluate_all_predictions(y_true: np.ndarray, y_train: np.ndarray, prediction
             "improve_vs_mean_mae": eval_result["improvements"]["vs_mean"]["mae_improve"],
         }
     return results
-
-
-def load_previous_results() -> tuple[dict | None, dict | None]:
-    prev_summary = None
-    prev_comprehensive = None
-    if PREV_SUMMARY.exists():
-        prev_summary = json.loads(PREV_SUMMARY.read_text())
-    if PREV_COMPREHENSIVE.exists():
-        prev_comprehensive = json.loads(PREV_COMPREHENSIVE.read_text())
-    return prev_summary, prev_comprehensive
-
-
-def print_head_to_head(new_results: dict, new_comprehensive: dict, prev_summary: dict, prev_comprehensive: dict):
-    print("\n")
-    print("=" * 70)
-    print("  HEAD-TO-HEAD: Stacked Ensemble WITHOUT vs WITH Injury Features")
-    print("=" * 70)
-
-    old = prev_summary["holdout"]["model"]
-    new = new_results["stacked"]
-
-    print(f"\n  {'Metric':<25} {'WITHOUT injury':<18} {'WITH injury':<18} {'Delta':<12} {'Change'}")
-    print(f"  {'-' * 25} {'-' * 18} {'-' * 18} {'-' * 12} {'-' * 10}")
-
-    for metric, fmt in [("mae", ".4f"), ("rmse", ".4f"), ("r2", ".4f")]:
-        old_val = old[metric]
-        new_val = new[metric]
-        delta = new_val - old_val
-        pct = delta / old_val * 100
-
-        # For MAE/RMSE lower is better; for R² higher is better
-        if metric in ("mae", "rmse"):
-            arrow = "better" if delta < 0 else "worse"
-        else:
-            arrow = "better" if delta > 0 else "worse"
-
-        print(f"  {metric.upper():<25} {old_val:<18{fmt}} {new_val:<18{fmt}} {delta:<+12{fmt}} {pct:+.2f}% ({arrow})")
-
-    print(f"\n  {'Base Learner':<25} {'WITHOUT':<18} {'WITH':<18} {'MAE Delta'}")
-    print(f"  {'-' * 25} {'-' * 18} {'-' * 18} {'-' * 12}")
-
-    for method in ["lgbm", "lgbm_v2", "rf", "ridge", "xgb", "played_prob", "mean", "median", "stacked"]:
-        if method in prev_summary["all_methods"] and method in new_results:
-            old_mae = prev_summary["all_methods"][method]["mae"]
-            new_mae = new_results[method]["mae"]
-            delta = new_mae - old_mae
-            marker = " <-- best" if method == "stacked" else ""
-            print(f"  {method:<25} {old_mae:<18.4f} {new_mae:<18.4f} {delta:+.4f}{marker}")
-
-    print(f"\n  {'Meta Coefficient':<25} {'WITHOUT':<18} {'WITH'}")
-    print(f"  {'-' * 25} {'-' * 18} {'-' * 18}")
-
-    old_coefs = prev_summary.get("meta_coefficients", {})
-    new_coefs = new_results.get("meta_coefficients", {})
-
-    for name in ["lgbm", "lgbm_v2", "rf", "ridge", "played_prob", "xgb"]:
-        old_c = old_coefs.get(name, 0)
-        new_c = new_coefs.get(name, 0)
-        print(f"  {name:<25} {old_c:<18.4f} {new_c:.4f}")
-
-    if prev_comprehensive and new_comprehensive:
-        old_s = prev_comprehensive["stratified"]
-        new_s = new_comprehensive["stratified"]
-
-        print(f"\n  {'Stratified MAE':<25} {'WITHOUT':<18} {'WITH':<18} {'Delta'}")
-        print(f"  {'-' * 25} {'-' * 18} {'-' * 18} {'-' * 12}")
-
-        for key, label in [
-            ("mae_played", "Played"),
-            ("mae_not_played", "Not Played"),
-            ("mae_gk", "GK"),
-            ("mae_def", "DEF"),
-            ("mae_mid", "MID"),
-            ("mae_fwd", "FWD"),
-            ("mae_high_return", "High Return (>=5pts)"),
-        ]:
-            old_val = old_s.get(key)
-            new_val = new_s.get(key)
-            if old_val is not None and new_val is not None:
-                delta = new_val - old_val
-                print(f"  {label:<25} {old_val:<18.4f} {new_val:<18.4f} {delta:+.4f}")
-
-        old_c = prev_comprehensive["calibration"]
-        new_c = new_comprehensive["calibration"]
-
-        print(f"\n  {'Calibration':<25} {'WITHOUT':<18} {'WITH':<18} {'Delta'}")
-        print(f"  {'-' * 25} {'-' * 18} {'-' * 18} {'-' * 12}")
-
-        for key, label in [
-            ("correlation", "Pearson r"),
-            ("spearman_rho", "Spearman rho"),
-            ("mean_predicted", "Mean Predicted"),
-            ("mean_actual", "Mean Actual"),
-        ]:
-            old_val = old_c[key]
-            new_val = new_c[key]
-            delta = new_val - old_val
-            print(f"  {label:<25} {old_val:<18.4f} {new_val:<18.4f} {delta:+.4f}")
-
-        if "business" in prev_comprehensive and "business" in new_comprehensive:
-            old_b = prev_comprehensive["business"]
-            new_b = new_comprehensive["business"]
-
-            print(f"\n  {'Captain Picks':<25} {'WITHOUT':<18} {'WITH':<18} {'Delta'}")
-            print(f"  {'-' * 25} {'-' * 18} {'-' * 18} {'-' * 12}")
-
-            for key, label in [
-                ("top1_accuracy", "Top-1 Accuracy"),
-                ("top3_accuracy", "Top-3 Accuracy"),
-                ("top5_accuracy", "Top-5 Accuracy"),
-                ("captain_efficiency", "Captain Efficiency"),
-            ]:
-                old_val = old_b[key]
-                new_val = new_b[key]
-                delta = new_val - old_val
-                print(f"  {label:<25} {old_val * 100:<17.1f}% {new_val * 100:<17.1f}% {delta * 100:+.1f}pp")
-
-    mae_delta = new["mae"] - old["mae"]
-    pct = mae_delta / old["mae"] * 100
-
-    print(f"\n  {'=' * 70}")
-    if mae_delta < 0:
-        print("  VERDICT: Injury features IMPROVE the stacked ensemble")
-        print(f"           MAE: {old['mae']:.4f} -> {new['mae']:.4f} ({pct:+.2f}%)")
-        print(f"           Absolute improvement: {abs(mae_delta):.4f}")
-    elif mae_delta == 0:
-        print(f"  VERDICT: No difference (MAE identical at {new['mae']:.4f})")
-    else:
-        print("  VERDICT: Injury features did NOT improve the stacked ensemble")
-        print(f"           MAE: {old['mae']:.4f} -> {new['mae']:.4f} ({pct:+.2f}%)")
-    print(f"  {'=' * 70}\n")
-
-
-# -- Main ---
-
-
-def run():
-    print("=" * 70)
-    print("STACKED ENSEMBLE WITH INJURY FEATURES")
-    print("=" * 70)
-    print(f"Holdout season: {HOLDOUT_SEASON}")
-    print(f"Train seasons:  {CV_SEASONS}")
-    print(f"Input:          {IN_PATH}")
-    print()
-
-    print("Loading data...")
-    df = pd.read_csv(IN_PATH, low_memory=False)
-
-    for c in CAT_COLS:
-        if c in df.columns:
-            df[c] = df[c].astype("category")
-
-    available = set(df["season"].dropna().unique())
-    train_seasons = [s for s in CV_SEASONS if s in available]
-
-    if HOLDOUT_SEASON not in available:
-        raise ValueError(f"Holdout season {HOLDOUT_SEASON} not in data")
-
-    print(f"Total rows:    {len(df):,}")
-    print(f"Total columns: {len(df.columns)}")
-
-    injury_structured = [c for c in df.columns if c in FILL_DEFAULTS]
-    injury_nlp = [c for c in df.columns if c.startswith("injury_") and c not in injury_structured]
-    baseline_cols = [
-        c for c in df.columns if c not in injury_structured + injury_nlp and c not in [TARGET_COL] + DROP_COLS + ["GW"]
-    ]
-
-    print("\nFeature groups:")
-    print(f"  Baseline features:           {len(baseline_cols)}")
-    print(f"  Injury structured + temporal: {len(injury_structured)}")
-    print(f"  Injury NLP (type dummies):    {len(injury_nlp)}")
-    print(f"  Total:                        {len(baseline_cols) + len(injury_structured) + len(injury_nlp)}")
-
-    injury_seasons_in_data = (
-        df[df["status_encoded"].notna()]["season"].unique() if "status_encoded" in df.columns else []
-    )
-    nan_seasons = df[df["status_encoded"].isna()]["season"].unique() if "status_encoded" in df.columns else []
-    print(f"\n  Seasons with real injury data: {sorted(injury_seasons_in_data)}")
-    print(f"  Seasons with NaN (pre-injury): {sorted(nan_seasons)}")
-
-    train_df = df[df["season"].isin(train_seasons)]
-    test_df = df[df["season"] == HOLDOUT_SEASON]
-
-    X_train, y_train = prepare_xy(train_df)
-    X_test, y_test = prepare_xy(test_df)
-    X_test = X_test[X_train.columns]
-
-    for c in CAT_COLS:
-        if c in X_train.columns:
-            X_train[c] = X_train[c].astype("category")
-            X_test[c] = X_test[c].astype("category")
-
-    cat_cols = [c for c in CAT_COLS if c in X_train.columns]
-
-    print(f"\nFeatures: {len(X_train.columns)}")
-    print(f"Train:    {len(train_df):,}, Test: {len(test_df):,}")
-
-    print("\nTraining stacked ensemble with injury features...")
-    ensemble = StackedEnsembleInjury(n_inner_folds=N_INNER_FOLDS)
-    ensemble.fit(X_train, y_train, cat_cols)
-
-    print("Generating predictions...")
-    stacked_pred, all_preds = ensemble.predict(X_test)
-
-    results = evaluate_all_predictions(y_test, y_train, all_preds)
-    best_method = min(results.keys(), key=lambda k: results[k]["mae"])
-
-    print(f"\n{'=' * 60}")
-    print("HOLDOUT RESULTS (all methods)")
-    print(f"{'=' * 60}")
-    print(f"\n{'Method':<15} {'MAE':<10} {'RMSE':<10} {'R²':<10}")
-    print("-" * 45)
-    for method in sorted(results.keys(), key=lambda x: results[x]["mae"]):
-        r = results[method]
-        marker = " *" if method == best_method else ""
-        print(f"{method:<15} {r['mae']:.4f}     {r['rmse']:.4f}     {r['r2']:.4f}{marker}")
-
-    print(f"\nBest method: {best_method}")
-
-    holdout_eval = full_evaluation(y_test, stacked_pred, y_train)
-
-    print_final_summary(
-        model_name="stacked_ensemble_with_injury",
-        holdout_season=HOLDOUT_SEASON,
-        train_seasons=train_seasons,
-        n_train=len(train_df),
-        n_test=len(test_df),
-        eval_result=holdout_eval,
-        output_dir=str(OUT_DIR),
-    )
-
-    positions = test_df["position"].values if "position" in test_df.columns else None
-    gameweek_ids = test_df["GW"].values if "GW" in test_df.columns else None
-
-    evaluator = ComprehensiveEvaluator(OUT_DIR)
-    comprehensive = evaluator.evaluate_holdout(
-        y_true=y_test,
-        y_pred=stacked_pred,
-        positions=positions,
-        gameweek_ids=gameweek_ids,
-        experiment_name="stacked_ensemble_injury",
-    )
-    evaluator.print_summary(comprehensive, "Stacked Ensemble + Injury")
-
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
-
-    meta_coefs = ensemble.meta_info.get("coefficients", {})
-
-    metrics = {
-        "model_name": "stacked_ensemble_with_injury",
-        "holdout_season": HOLDOUT_SEASON,
-        "train_seasons": train_seasons,
-        "rows_train": int(len(train_df)),
-        "rows_test": int(len(test_df)),
-        "n_features": len(X_train.columns),
-        "n_base_models": len(ensemble.base_names),
-        "base_models": ensemble.base_names,
-        "meta_learner": ensemble.meta_info,
-        "meta_coefficients": meta_coefs,
-        "feature_groups": {
-            "baseline": len(baseline_cols),
-            "injury_structured": len(injury_structured),
-            "injury_nlp": len(injury_nlp),
-        },
-        "holdout": holdout_eval,
-        "all_methods": results,
-        "best_method": best_method,
-    }
-
-    model_path = OUT_DIR / "model.joblib"
-    joblib.dump(ensemble, model_path)
-    (OUT_DIR / "summary.json").write_text(json.dumps(metrics, indent=2, default=str))
-
-    prev_summary, prev_comprehensive = load_previous_results()
-
-    if prev_summary:
-        results["meta_coefficients"] = meta_coefs
-        print_head_to_head(results, comprehensive, prev_summary, prev_comprehensive)
-    else:
-        print("\n  No previous stacked ensemble results found for comparison.")
-        print(f"  Expected at: {PREV_SUMMARY}")
-
-    print(f"\nOutputs saved to: {OUT_DIR}")
-    print("  model.joblib    — trained ensemble")
-    print("  summary.json    — full metrics")
-
-
-if __name__ == "__main__":
-    run()
