@@ -1083,6 +1083,9 @@ def fetch_current_gw_data(include_history: bool = True, include_understat: bool 
         print("Adding Understat features...")
         df = enrich_with_understat(df, current_gw, season=season, fpl_elements=elements)
 
+    print("Adding news features...")
+    df = enrich_with_news(df, bootstrap)
+
     print(f"Final shape: {df.shape}")
 
     return df
