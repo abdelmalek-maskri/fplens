@@ -24,12 +24,11 @@ from ml.pipelines.inference.predict import align_features, get_model_features
 # Model paths (selected via comprehensive 11-metric evaluation)
 # ---------------------------------------------------------------------------
 HORIZON_MODEL_PATHS = {
-    # GW+1: Config D: avg rank 2.82/13, MAE=1.016, ρ=0.684
-    # Already loaded as the main production model in api/main.py
-    # GW+2: CatBoost Tweedie vp1.8 : avg rank 2.82/7, MAE=1.060, ρ=0.638
-    2: Path("outputs/experiments/multi_horizon/gw2/catboost_tweedie_vp1.8/model.joblib"),
-    # GW+3: CatBoost Tweedie vp1.2 : avg rank 3.09/7, MAE=1.104, ρ=0.628
-    3: Path("outputs/experiments/multi_horizon/gw3/catboost_tweedie_vp1.2/model.joblib"),
+    # GW+1: Config D stacked ensemble (loaded as production model in api/main.py)
+    # GW+2: LGB Reduced — best composite (MAE=1.103, ρ=0.649, R²=0.245)
+    2: Path("outputs/experiments/multi_horizon/gw2/lgbm_reduced/model.joblib"),
+    # GW+3: LGB Reduced — best available with saved model (MAE=1.121, ρ=0.632, R²=0.234)
+    3: Path("outputs/experiments/multi_horizon/gw3/lgbm_reduced/model.joblib"),
 }
 
 
