@@ -1,21 +1,15 @@
-# ml/evaluation/deep_comparison.py
 """
 Deep Model Comparison: unified evaluation across all horizons.
 
-Produces per-horizon outputs in:
-    outputs/comparison/gw{h}/master_comparison.json
-    outputs/comparison/gw{h}/master_comparison.csv
-    outputs/comparison/gw{h}/dm_tests.json
-    outputs/comparison/gw{h}/dm_significance_matrix.csv
-    outputs/comparison/gw{h}/error_analysis.json
-Plus cross-horizon summary:
-    outputs/comparison/cross_horizon_summary.csv
-    outputs/comparison/cross_horizon_summary.json
+Produces per-horizon outputs in outputs/comparison/gw{h}/:
+    master_comparison.json/csv, dm_tests.json,
+    dm_significance_matrix.csv, error_analysis.json
 
-Run all horizons:
-    python -m ml.evaluation.deep_comparison
-Run a single horizon:
-    python -m ml.evaluation.deep_comparison --horizon 1
+Plus cross-horizon summary in outputs/comparison/:
+    cross_horizon_summary.csv/json
+
+    python -m ml.evaluation.deep_comparison              # all horizons
+    python -m ml.evaluation.deep_comparison --horizon 1  # single
 """
 
 import argparse
@@ -45,8 +39,7 @@ from ml.evaluation.comprehensive_metrics import (
 )
 from ml.utils.statistical_tests import diebold_mariano, paired_bootstrap_ci
 
-# Model class imports needed for joblib.load() unpickling — these are used
-# implicitly, not referenced directly in code.
+# Needed for joblib.load() unpickling (not referenced directly)
 with contextlib.suppress(Exception):
     from ml.pipelines.train.train_stacked_ensemble import StackedEnsemble  # noqa: F401
 with contextlib.suppress(Exception):
@@ -61,9 +54,7 @@ FF9B_ROOT = Path("outputs/experiments/multi_horizon")
 FEATURES_CSV = "data/features/extended_features.csv"
 
 
-# ---------------------------------------------------------------------------
 # Model registry
-# ---------------------------------------------------------------------------
 
 
 @dataclass
@@ -75,7 +66,7 @@ class ModelSpec:
     model_type: str  # plain / stacked / stacked_injury / twohead / position / gbm_avg / catboost
 
 
-# GW+1: full comparison (production + ablation + ff9b)
+# GW+1 gets full comparison (production + ablation + FF-9b experiments)
 MODELS_GW1 = [
     ModelSpec(
         "baseline",
@@ -108,14 +99,14 @@ MODELS_GW1 = [
     ModelSpec(
         "config_A",
         "ablation",
-        "outputs/experiments/ablation_injury/config_A/model.joblib",
+        "outputs/experiments/ablation/config_A/model.joblib",
         "data/features/extended_features.csv",
         "stacked_injury",
     ),
     ModelSpec(
         "config_D",
         "ablation",
-        "outputs/experiments/ablation_injury/config_D/model.joblib",
+        "outputs/experiments/ablation/config_D/model.joblib",
         "data/features/extended_with_injury_and_news.csv",
         "stacked_injury",
     ),
@@ -179,7 +170,6 @@ MODELS_GW1 = [
 
 
 def _build_ff9b_models(horizon: int) -> list[ModelSpec]:
-    """Build model registry for GW+2 or GW+3 top candidates."""
     h = horizon
     root = str(FF9B_ROOT / f"gw{h}")
     candidates = [
@@ -201,17 +191,10 @@ HORIZON_MODELS = {
 }
 
 
-# ---------------------------------------------------------------------------
 # Data loading
-# ---------------------------------------------------------------------------
-
 
 def load_holdout(features_csv: str, target_col: str = TARGET_COL) -> tuple[pd.DataFrame, np.ndarray]:
-    """Load holdout data for a specific target column.
-
-    Drops rows where the target is NaN (important for GW+2/3 where
-    the last 1-2 gameweeks of the season have no target).
-    """
+    # Drop NaN targets; GW+2/3 lose the last 1-2 GWs of the season
     df = pd.read_csv(features_csv, low_memory=False)
     for c in CAT_COLS:
         if c in df.columns:
@@ -224,18 +207,13 @@ def load_holdout(features_csv: str, target_col: str = TARGET_COL) -> tuple[pd.Da
 
 
 def prepare_X(holdout_df: pd.DataFrame, target_col: str = TARGET_COL) -> pd.DataFrame:
-    """Drop target + identifiers to get feature matrix."""
     drop = set(DROP_COLS + [target_col])
     return holdout_df.drop(columns=[c for c in drop if c in holdout_df.columns])
 
 
-# ---------------------------------------------------------------------------
-# Model loading & prediction
-# ---------------------------------------------------------------------------
-
+# Model loading and prediction
 
 def load_and_predict(spec: ModelSpec, holdout_df: pd.DataFrame, target_col: str = TARGET_COL) -> np.ndarray:
-    """Load a model and generate holdout predictions."""
     X = prepare_X(holdout_df, target_col)
 
     if spec.model_type == "gbm_avg":
@@ -281,13 +259,15 @@ def load_and_predict(spec: ModelSpec, holdout_df: pd.DataFrame, target_col: str 
         X_aligned = _align(X, model)
         return model.predict(X_aligned, positions)
 
-    # plain LightGBM / CatBoost / other
+    # Plain LightGBM, CatBoost, or sklearn estimator
     X_aligned = _align(X, model)
     return model.predict(X_aligned)
 
 
 def _align(X: pd.DataFrame, model) -> pd.DataFrame:
-    """Align features to what the model expects."""
+    # Each ML library stores feature names under a different attribute:
+    # LightGBM: feature_name_, sklearn: feature_names_in_, CatBoost: feature_names_,
+    # our custom models: feature_cols. Stacked ensembles: dig into base_models.
     feature_names = None
     if hasattr(model, "feature_name_"):
         feature_names = list(model.feature_name_)
@@ -314,10 +294,7 @@ def _align(X: pd.DataFrame, model) -> pd.DataFrame:
     return X[feature_names]
 
 
-# ---------------------------------------------------------------------------
 # Evaluation
-# ---------------------------------------------------------------------------
-
 
 def evaluate_model(
     y_true: np.ndarray,
@@ -326,23 +303,19 @@ def evaluate_model(
     gw_ids: np.ndarray | None,
     teams: np.ndarray | None,
 ) -> dict:
-    """Compute all metrics for a single model."""
     result = {}
 
-    # Stratified metrics
+    # Core metrics (stratified by position and play status)
     strat = compute_stratified_metrics(y_true, y_pred, positions)
     result["stratified"] = asdict(strat)
-
-    # Calibration
     calib = compute_calibration_metrics(y_true, y_pred)
     result["calibration"] = asdict(calib)
-
-    # Business metrics
     if gw_ids is not None:
         biz = compute_business_metrics(y_true, y_pred, gw_ids)
         result["business"] = asdict(biz)
 
-    # Baselines
+    # Naive baselines (zero-prediction and mean-prediction)
+    # to quantify how much better the model is than guessing
     zero_mae = float(mean_absolute_error(y_true, np.zeros_like(y_true)))
     mean_pred = np.full_like(y_true, np.mean(y_true), dtype=float)
     mean_mae = float(mean_absolute_error(y_true, mean_pred))
@@ -353,7 +326,8 @@ def evaluate_model(
         "mae_vs_mean": mean_mae - result["stratified"]["mae_overall"],
     }
 
-    # High-value thresholds
+    # High-value player accuracy (5+, 8+, 10+ pts)
+    # these are the players FPL managers actually care about predicting
     for threshold in [5, 8, 10]:
         mask = y_true >= threshold
         n = int(mask.sum())
@@ -361,7 +335,7 @@ def evaluate_model(
             result[f"mae_gte_{threshold}pts"] = float(mean_absolute_error(y_true[mask], y_pred[mask]))
             result[f"n_gte_{threshold}pts"] = n
 
-    # Per-GW stability
+    # Per-GW stability (high CoV = model is inconsistent across weeks)
     if gw_ids is not None:
         gw_maes = []
         for gw in np.unique(gw_ids):
@@ -377,7 +351,7 @@ def evaluate_model(
             "per_gw": gw_maes,
         }
 
-    # Per-team MAE
+    # Per-team MAE (surfaces team-specific weaknesses)
     if teams is not None:
         team_maes = {}
         for team in np.unique(teams):
@@ -386,7 +360,7 @@ def evaluate_model(
                 team_maes[str(team)] = float(mean_absolute_error(y_true[mask], y_pred[mask]))
         result["per_team_mae"] = team_maes
 
-    # Residual stats
+    # Residual distribution (skew/kurtosis reveal systematic bias)
     residuals = y_true - y_pred
     result["residuals"] = {
         "mean": float(np.mean(residuals)),
@@ -398,16 +372,12 @@ def evaluate_model(
     return result
 
 
-# ---------------------------------------------------------------------------
 # Pairwise statistical tests
-# ---------------------------------------------------------------------------
-
 
 def run_pairwise_tests(
     all_predictions: dict[str, np.ndarray],
     y_true: np.ndarray,
 ) -> dict:
-    """Run DM tests and bootstrap CIs for all model pairs."""
     results = {}
     names = list(all_predictions.keys())
 
@@ -440,7 +410,6 @@ def run_pairwise_tests(
 
 
 def build_significance_matrix(pairwise_tests: dict, model_names: list[str]) -> pd.DataFrame:
-    """Build an NxN matrix of DM test p-values."""
     matrix = pd.DataFrame(1.0, index=model_names, columns=model_names)
 
     for key, result in pairwise_tests.items():
@@ -454,28 +423,21 @@ def build_significance_matrix(pairwise_tests: dict, model_names: list[str]) -> p
     return matrix
 
 
-# ---------------------------------------------------------------------------
 # Error correlation (ensemble diversity)
-# ---------------------------------------------------------------------------
-
 
 def compute_error_correlations(
     all_predictions: dict[str, np.ndarray],
     y_true: np.ndarray,
 ) -> pd.DataFrame:
-    """Compute pairwise correlation of absolute errors between models."""
+    # Low correlation between model errors = good ensemble diversity
     errors = {name: np.abs(y_true - preds) for name, preds in all_predictions.items()}
     error_df = pd.DataFrame(errors)
     return error_df.corr()
 
 
-# ---------------------------------------------------------------------------
 # SHAP comparison
-# ---------------------------------------------------------------------------
-
 
 def load_shap_comparison() -> dict:
-    """Load SHAP global importance for all models that have it."""
     shap_dir = Path("outputs/analysis/shap")
     result = {}
 
@@ -493,10 +455,7 @@ def load_shap_comparison() -> dict:
     return result
 
 
-# ---------------------------------------------------------------------------
 # Save outputs for a single horizon
-# ---------------------------------------------------------------------------
-
 
 def _save_horizon_outputs(
     out_dir: Path,
@@ -505,13 +464,11 @@ def _save_horizon_outputs(
     canonical_y_true: np.ndarray,
     horizon: int,
 ) -> pd.DataFrame:
-    """Save all output files for one horizon. Returns the CSV DataFrame."""
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    # Master comparison JSON
+    # Master comparison (full JSON + flat CSV for quick scanning)
     (out_dir / "master_comparison.json").write_text(json.dumps(all_metrics, indent=2, default=str))
 
-    # Master comparison CSV (flat table)
     rows = []
     for name, m in all_metrics.items():
         row = {
@@ -545,7 +502,7 @@ def _save_horizon_outputs(
     csv_df = pd.DataFrame(rows).sort_values("mae")
     csv_df.to_csv(out_dir / "master_comparison.csv", index=False)
 
-    # DM tests
+    # Diebold-Mariano pairwise significance tests
     if len(all_predictions) >= 2:
         pairwise = run_pairwise_tests(all_predictions, canonical_y_true)
         n_sig = sum(1 for v in pairwise.values() if v["significant_005"])
@@ -555,13 +512,11 @@ def _save_horizon_outputs(
         (out_dir / "dm_tests.json").write_text(json.dumps(pairwise, indent=2, default=str))
         sig_matrix.to_csv(out_dir / "dm_significance_matrix.csv")
 
-        # Error correlations
         error_corr = compute_error_correlations(all_predictions, canonical_y_true)
     else:
         pairwise = {}
         error_corr = pd.DataFrame()
 
-    # Error analysis
     error_analysis = {"error_correlations": error_corr.to_dict() if not error_corr.empty else {}}
     for name, m in all_metrics.items():
         error_analysis[name] = {
@@ -576,7 +531,7 @@ def _save_horizon_outputs(
 
     (out_dir / "error_analysis.json").write_text(json.dumps(error_analysis, indent=2, default=str))
 
-    # SHAP (only for GW+1 — SHAP models are horizon-specific)
+    # SHAP analysis only exists for GW+1 models
     if horizon == 1:
         shap_comparison = load_shap_comparison()
         (out_dir / "shap_comparison.json").write_text(json.dumps(shap_comparison, indent=2, default=str))
@@ -586,13 +541,9 @@ def _save_horizon_outputs(
     return csv_df
 
 
-# ---------------------------------------------------------------------------
 # Main orchestrator
-# ---------------------------------------------------------------------------
-
 
 def run_horizon(horizon: int, models: list[ModelSpec], out_dir: Path):
-    """Run full evaluation for a single horizon."""
     target_col = HORIZON_TARGETS[horizon]
 
     print(f"\n{'=' * 65}")
@@ -614,7 +565,7 @@ def run_horizon(horizon: int, models: list[ModelSpec], out_dir: Path):
             print(f"  SKIP: model not found at {spec.model_path}")
             continue
 
-        # Load holdout data (cached by CSV + target)
+        # Cache holdout data by (CSV, target) since multiple models share the same file
         cache_key = f"{spec.features_csv}::{target_col}"
         if cache_key not in data_cache:
             print(f"  Loading {spec.features_csv} (target={target_col})...")
@@ -623,14 +574,13 @@ def run_horizon(horizon: int, models: list[ModelSpec], out_dir: Path):
         else:
             holdout_df, y_true = data_cache[cache_key]
 
-        # Store canonical metadata from first model
+        # First model sets the canonical y_true for pairwise DM tests
         if canonical_y_true is None:
             canonical_y_true = y_true
             canonical_positions = holdout_df["position"].values if "position" in holdout_df.columns else None
             canonical_gw_ids = holdout_df["GW"].values if "GW" in holdout_df.columns else None
             canonical_teams = holdout_df["team"].values if "team" in holdout_df.columns else None
 
-        # Predict
         try:
             y_pred = load_and_predict(spec, holdout_df, target_col)
             print(f"  Predictions: {len(y_pred)} rows, range [{y_pred.min():.2f}, {y_pred.max():.2f}]")
@@ -638,7 +588,8 @@ def run_horizon(horizon: int, models: list[ModelSpec], out_dir: Path):
             print(f"  ERROR predicting: {e}")
             continue
 
-        # Verify y_true alignment
+        # Models trained on different CSVs may have different holdout rows;
+        # only include in pairwise DM tests if y_true vectors match exactly
         holdout_aligned = len(y_true) == len(canonical_y_true) and np.allclose(y_true, canonical_y_true, equal_nan=True)
         if not holdout_aligned:
             print(
@@ -658,7 +609,6 @@ def run_horizon(horizon: int, models: list[ModelSpec], out_dir: Path):
         if holdout_aligned:
             all_predictions[spec.name] = y_pred
 
-        # Evaluate
         print("  Computing metrics...")
         metrics = evaluate_model(
             model_y_true,
@@ -679,14 +629,12 @@ def run_horizon(horizon: int, models: list[ModelSpec], out_dir: Path):
         print("  No models evaluated — skipping output.")
         return
 
-    # Save outputs
     print(f"\n{'=' * 65}")
     print(f"  SAVING GW+{horizon} OUTPUTS")
     print(f"{'=' * 65}")
 
     csv_df = _save_horizon_outputs(out_dir, all_metrics, all_predictions, canonical_y_true, horizon)
 
-    # Print summary
     print(f"\n{'Model':<25s} {'MAE':>7s} {'RMSE':>7s} {'ρ':>7s} {'Capt%':>7s} {'Family':>12s}")
     print(f"{'-' * 25} {'-' * 7} {'-' * 7} {'-' * 7} {'-' * 7} {'-' * 12}")
     for _, row in csv_df.iterrows():
@@ -702,7 +650,6 @@ def run_horizon(horizon: int, models: list[ModelSpec], out_dir: Path):
 
 
 def generate_cross_horizon_summary():
-    """Combine per-horizon results into a single cross-horizon table."""
     rows = []
     for h in [1, 2, 3]:
         csv_path = OUT_DIR / f"gw{h}" / "master_comparison.csv"
@@ -718,7 +665,6 @@ def generate_cross_horizon_summary():
     combined = pd.concat(rows, ignore_index=True)
     combined.to_csv(OUT_DIR / "cross_horizon_summary.csv", index=False)
 
-    # Best per horizon
     best = {}
     for h in [1, 2, 3]:
         sub = combined[combined.horizon == h]
