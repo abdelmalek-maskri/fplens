@@ -739,19 +739,15 @@ def _fetch_live_understat(season: str, fpl_elements: list[dict]) -> pd.DataFrame
             gw_win["end_date"] = pd.to_datetime(gw_win["end_date"])
             matches_df["match_date"] = pd.to_datetime(matches_df["date"].str[:10])
 
-            def assign_gw(match_date):
-                for _, gw_row in gw_win.iterrows():
-                    if (
-                        gw_row["start_date"] - pd.Timedelta(days=1)
-                        <= match_date
-                        <= gw_row["end_date"] + pd.Timedelta(days=1)
-                    ):
-                        return int(gw_row["GW"])
-                return None
+            gw_win = gw_win.sort_values("start_date").reset_index(drop=True)
+            left = gw_win["start_date"] - pd.Timedelta(days=1)
+            right = gw_win["end_date"] + pd.Timedelta(days=1)
+            intervals = pd.IntervalIndex.from_arrays(left, right, closed="both")
+            gw_numbers = gw_win["GW"].astype(int).values
 
-            matches_df["GW"] = matches_df["match_date"].apply(assign_gw)
+            idx = intervals.get_indexer(matches_df["match_date"])
+            matches_df["GW"] = pd.array([gw_numbers[i] if i >= 0 else pd.NA for i in idx], dtype="Int64")
             matches_df = matches_df.dropna(subset=["GW"])
-            matches_df["GW"] = matches_df["GW"].astype(int)
         else:
             logger.warning("GW windows not found at %s, cannot assign GWs", gw_windows_path)
             return None
@@ -891,13 +887,14 @@ def enrich_with_news(df: pd.DataFrame, bootstrap_data: dict) -> pd.DataFrame:
                 pf["mention_count"] += 1
                 headline = article.get("headline", "").lower()
                 web_name = player.get("web_name", "")
-                if len(web_name) >= 4 and re.search(r"\b" + re.escape(web_name.lower()) + r"\b", headline):
+                in_title = len(web_name) >= 4 and bool(re.search(r"\b" + re.escape(web_name.lower()) + r"\b", headline))
+                if in_title:
                     pf["title_mentions"] += 1
                 sent = article.get("sentiment", 0.0)
                 pf["sentiments_raw"].append(sent)
                 pf["sentiments_pos"].append(max(sent, 0))
                 pf["sentiments_neg"].append(abs(min(sent, 0)))
-                pf["relevances"].append(3.0 if pf["title_mentions"] > 0 else 1.0)
+                pf["relevances"].append(3.0 if in_title else 1.0)
                 if article.get("injury_flag", False):
                     pf["injury_contexts"] += 1
 
