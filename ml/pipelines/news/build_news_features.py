@@ -47,7 +47,7 @@ def compute_gw_boundaries(season: str) -> pd.DataFrame:
     """Compute GW start times from fixture data.
     Returns DataFrame with columns: GW, gw_start, gw_end
     """
-    fixtures_path = MAPPINGS_DIR / f"fpl_fixtures_{season}.csv"
+    fixtures_path = Path(f"data/processed/fpl/fpl_fixtures_{season}.csv")
     gw_map_path = MAPPINGS_DIR / f"fixture_to_gw_{season}.csv"
 
     if not fixtures_path.exists() or not gw_map_path.exists():
@@ -167,8 +167,8 @@ def run() -> None:
 
     features_df = pd.concat(all_features, ignore_index=True)
 
-    # Fill to complete grid: every (season, GW, element) gets a row
-    # Players not mentioned get 0 for all features
+    # Expand to full (season, GW, element) grid so players with no
+    # mentions get explicit 0s rather than being absent from the data
     print("\nExpanding to full player-GW grid...")
     fpl = pd.read_csv(
         FPL_DATA_PATH,

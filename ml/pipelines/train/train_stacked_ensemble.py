@@ -1,4 +1,3 @@
-# ml/pipelines/train/train_extended_ensemble.py
 """
 Stacked Ensemble with Extended Features
 
@@ -298,8 +297,9 @@ def run():
     # Evaluate
     results = evaluate_all_predictions(y_test, y_train, all_preds)
 
-    # Find best
-    best_method = min(results.keys(), key=lambda k: results[k]["mae"])
+    # played_prob is a probability (0-1), not a points prediction; exclude from ranking
+    candidate_methods = {k: v for k, v in results.items() if k != "played_prob"}
+    best_method = min(candidate_methods.keys(), key=lambda k: candidate_methods[k]["mae"])
 
     # Print results
     print(f"\n{'=' * 60}")
@@ -338,13 +338,11 @@ def run():
         "best_method": best_method,
     }
 
-    model_path = Path("outputs/models/stacked_ensemble.joblib")
-    model_path.parent.mkdir(parents=True, exist_ok=True)
-    joblib.dump(ensemble, model_path)
-    (OUT_DIR / "summary.json").write_text(json.dumps(metrics, indent=2, default=str))
+    joblib.dump(ensemble, OUT_DIR / "model.joblib")
+    (OUT_DIR / "metrics.json").write_text(json.dumps(metrics, indent=2, default=str))
 
     print_final_summary(
-        model_name="stacked_ensemble_v1",
+        model_name="stacked_ensemble",
         holdout_season=HOLDOUT_SEASON,
         train_seasons=train_seasons,
         n_train=len(train_df),
@@ -352,6 +350,19 @@ def run():
         eval_result=holdout_eval,
         output_dir=str(OUT_DIR),
     )
+
+    print("\nRunning comprehensive evaluation...")
+    from ml.evaluation.comprehensive_metrics import ComprehensiveEvaluator
+
+    evaluator = ComprehensiveEvaluator(OUT_DIR)
+    evaluator.evaluate_holdout(
+        y_true=y_test,
+        y_pred=all_preds[best_method],
+        positions=test_df["position"].values if "position" in test_df.columns else None,
+        gameweek_ids=test_df["GW"].values if "GW" in test_df.columns else None,
+        experiment_name="stacked_ensemble",
+    )
+    print(f"All outputs saved to: {OUT_DIR}/")
 
 
 if __name__ == "__main__":

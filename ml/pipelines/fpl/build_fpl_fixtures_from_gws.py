@@ -11,7 +11,7 @@ SNAPSHOT_ROOT = Path("data/raw/fpl")
 
 
 def build_element_to_team_map(season_dir: Path) -> pd.Series:
-    # Build mapping: element_id -> team_id (FPL team integer)
+    # build mapping: element_id -> team_id
     players_path = season_dir / "players_raw.csv"
     players = safe_read_csv(players_path)
 
@@ -40,8 +40,7 @@ def build_element_to_team_map(season_dir: Path) -> pd.Series:
     return m.set_index(elem_col)[team_col]
 
 
-def _coerce_was_home(s: pd.Series) -> pd.Series:
-
+def convert_was_home_to_boolean(s: pd.Series) -> pd.Series:
     # Vaastav gw files store was_home inconsistently across seasons,normalize to boolean.
     if s.dtype == bool:
         return s.fillna(False)
@@ -60,12 +59,12 @@ def run_one(season: str, snapshot: Path) -> Path:
     if not gws_dir.exists():
         raise FileNotFoundError(f"Missing gws dir: {gws_dir}")
 
-    out = Path(f"data/processed/mappings/fpl_fixtures_{season}.csv")
+    out = Path(f"data/processed/fpl/fpl_fixtures_{season}.csv")
     out.parent.mkdir(parents=True, exist_ok=True)
     gw_files = sorted(gws_dir.glob("gw*.csv"))
 
     if not gw_files:
-        raise FileNotFoundError(f"No gw*.csv files found in {gws_dir}")
+        raise FileNotFoundError(f"no gw*.csv files found in {gws_dir}")
 
     # always build element->team from players_raw
     element_to_team = build_element_to_team_map(season_dir)
@@ -82,7 +81,7 @@ def run_one(season: str, snapshot: Path) -> Path:
             raise ValueError(f"{f} missing {missing}. cols={list(df.columns)}")
 
         df["kickoff_time"] = pd.to_datetime(df["kickoff_time"], errors="coerce", utc=True)
-        df["was_home"] = _coerce_was_home(df["was_home"])
+        df["was_home"] = convert_was_home_to_boolean(df["was_home"])
         df["fixture"] = pd.to_numeric(df["fixture"], errors="coerce")
         df["element"] = pd.to_numeric(df["element"], errors="coerce")
         df["opponent_team"] = pd.to_numeric(df["opponent_team"], errors="coerce")
@@ -157,7 +156,7 @@ def run_one(season: str, snapshot: Path) -> Path:
     fx = fx.sort_values(["fixture", "kickoff_time"]).drop_duplicates(subset=["fixture"], keep="first")
     fx = fx.sort_values(["kickoff_time", "fixture"]).reset_index(drop=True)
     fx.to_csv(out, index=False)
-    print(f"Saved: {out}")
+    print(f"saved: {out}")
     print("rows:", len(fx))
     print(fx.head(8).to_string(index=False))
     return out

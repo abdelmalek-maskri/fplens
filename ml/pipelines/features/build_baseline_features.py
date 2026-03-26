@@ -1,4 +1,4 @@
-# ml/pipelines/features/build_baseline_features.py (13)
+# ml/pipelines/features/build_baseline_features.py
 
 from pathlib import Path
 
@@ -7,6 +7,8 @@ import pandas as pd
 IN_PATH = Path("data/processed/merged/fpl_with_target.csv")
 OUT_PATH = Path("data/features/baseline_features.csv")
 ROLL_WINDOWS = [3, 5]
+
+# core numeric columns used to construct lag and rolling features
 BASE_NUM_COLS = [
     "total_points",
     "minutes",
@@ -25,23 +27,24 @@ BASE_NUM_COLS = [
 
 
 def run() -> None:
-    print("Loading fpl_with_target...")
+    print("loading fpl_with_target...")
     df = pd.read_csv(IN_PATH, low_memory=False)
 
-    # Ordering keys
+    # ensure ordering keys are numeric for reliable grouping and sorting
     df["GW"] = pd.to_numeric(df["GW"], errors="coerce")
     df["element"] = pd.to_numeric(df["element"], errors="coerce")
 
-    # Stable categoricals
+    # cast stable categorical columns to string for consistency
     if "team" in df.columns:
         df["team"] = df["team"].astype(str)
     if "position" in df.columns:
         df["position"] = df["position"].astype(str)
 
+    # sort by season, player, and gameweek so historical features are built in time order
     df = df.sort_values(["season", "element", "GW"]).reset_index(drop=True)
     g = df.groupby(["season", "element"], sort=False)
 
-    # Add Understat numeric columns automatically (e.g. us_xg, us_xa, ...)
+    # include available Understat numeric columns automatically
     us_cols = [c for c in df.columns if c.startswith("us_")]
     num_cols = []
     for c in BASE_NUM_COLS + us_cols:
@@ -49,31 +52,32 @@ def run() -> None:
             df[c] = pd.to_numeric(df[c], errors="coerce")
             num_cols.append(c)
 
-    # Lag-1 features
+    # Lag-1 features: value from the previous gameweek only
     for col in num_cols:
         df[f"{col}_lag1"] = g[col].shift(1)
 
-    # Rolling mean features (history only)
+    # Rolling means based only on prior gameweeks to avoid target leakage
     for w in ROLL_WINDOWS:
         for col in num_cols:
             df[f"{col}_roll{w}"] = g[col].transform(lambda x, _w=w: x.shift(1).rolling(window=_w, min_periods=1).mean())
 
-    # Played last GW
+    # Indicator for whether the player appeared in the previous gameweek
     if "minutes_lag1" in df.columns:
         df["played_lag1"] = (df["minutes_lag1"] > 0).astype(int)
     else:
         df["played_lag1"] = 0
 
-    # Require at least 1 previous GW per (season, element)
+    # Require at least one previous observation per player-season
     before = len(df)
     if "total_points_lag1" in df.columns:
         df = df.dropna(subset=["total_points_lag1"]).copy()
     after = len(df)
 
-    # Remove accidental duplicate columns
+    # Remove duplicate columns introduced during intermediate processing
     df = df.loc[:, ~df.columns.duplicated()].copy()
     df = df.drop(columns=[c for c in df.columns if c.startswith("played_lag1.")], errors="ignore")
 
+    # Retain identifier, context, target, and engineered baseline feature columns
     keep = [
         "season",
         "GW",

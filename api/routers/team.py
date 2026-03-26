@@ -30,8 +30,8 @@ _ENRICH_FIELDS = {
 
 @router.get("/team/{fpl_id}")
 def get_team(
-    fpl_id: int = Path(..., ge=1, le=15_000_000),
     request: Request,
+    fpl_id: int = Path(..., ge=1, le=15_000_000),
 ):
     """Fetch user's FPL team picks and merge with predictions."""
     cache = request.app.state.cache
@@ -88,8 +88,8 @@ def get_team(
 
 @router.get("/player/{element_id}")
 def get_player(
-    element_id: int = Path(..., ge=1),
     request: Request,
+    element_id: int = Path(..., ge=1),
 ):
     """Full player profile: predictions, GW history, fixtures, SHAP breakdown."""
     cache = request.app.state.cache

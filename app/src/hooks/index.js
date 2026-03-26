@@ -1,6 +1,5 @@
 export { usePredictions } from "./usePredictions";
 export { useTeam } from "./useTeam";
-export { useBestXI } from "./useBestXI";
 export { useFixtures } from "./useFixtures";
 export { useNews } from "./useNews";
 export { useWatchlist } from "./useWatchlist";

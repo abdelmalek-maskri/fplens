@@ -39,11 +39,11 @@ NEWS_SEASONS = [
     "2024-25",
 ]
 
-# -- Name matching ---------------------------------------------------------
+# Name matching
 
 
 def normalize_name(name: str) -> str:
-    """Normalize player name: 'Aaron_Cresswell_402' -> 'aaron cresswell'."""
+    """normalize player name: 'Aaron_Cresswell_402' -> 'aaron cresswell'"""
     clean = name.replace("_", " ").strip().lower()
     # Strip trailing numeric suffix (element ID baked into older seasons)
     parts = clean.split()
@@ -53,7 +53,7 @@ def normalize_name(name: str) -> str:
 
 
 def generate_name_variants(full_name: str) -> list[str]:
-    """Generate matching variants for a player name.
+    """generate matching variants for a player name:
     'mohamed salah' -> ['mohamed salah', 'salah', 'm. salah', 'm salah']
     """
     parts = full_name.split()
@@ -74,11 +74,15 @@ def generate_name_variants(full_name: str) -> list[str]:
 
 
 def build_knowledge_base(seasons: list[str]) -> dict[str, dict[str, int]]:
-    """Build per-season name -> element lookup from FPL data.
-    Returns {season: {name_variant: element_id}}.
-    Only unambiguous variants (1 player per variant per season) are kept.
+    """build a per-season lookup from name variants to FPL element IDs.
+    For each player, generates multiple name variants (full name, surname,
+    first name) that might appear in newspaper text. Ambiguous variants
+    that map to multiple players in the same season (e.g. "silva" matching
+    Bernardo, Thiago, and David Silva) are dropped to avoid false links.
+
+    Returns {season: {name_variant: element_id}} with only unambiguous entries.
     """
-    print("Building player knowledge base...")
+    print("building player knowledge base...")
     df = pd.read_csv(
         FPL_DATA_PATH,
         usecols=["season", "name", "element"],
@@ -122,7 +126,7 @@ def match_entity_to_player(entity_text: str, lookup: dict[str, int]) -> int | No
     return None
 
 
-# -- Article processing ----------------------------------------------------
+# Article processing
 
 
 def find_player_mentions(
@@ -146,7 +150,7 @@ def find_player_mentions(
         matches[element]["in_title"] = matches[element]["in_title"] or is_title
         matches[element]["count"] += 1
 
-    # 1. spaCy NER on body (PERSON entities only)
+    # spaCy NER on title + body (PERSON entities only)
     combined = f"{title}. {body[:5000]}"
     doc = nlp(combined)
     title_end = len(title) + 2
@@ -166,14 +170,14 @@ def find_player_mentions(
         else:
             record(element, BODY_WEIGHT, False)
 
-    # 2. Regex on TITLE for ALL variants (short title = low FP risk,
-    #    catches names spaCy misclassifies as ORG/GPE)
+    # Regex fallback on title for all variants (titles are short enough
+    # that false-positive risk is low, and catches names spaCy misclassifies)
     for variant, element in lookup.items():
         pattern = re.compile(r"\b" + re.escape(variant) + r"\b", re.IGNORECASE)
         if pattern.search(title):
             record(element, TITLE_WEIGHT, True)
 
-    # 3. Regex on BODY for full names only (2+ words), skip already-found
+    # Body regex only for multi-word names (single words = too many false positives)
     for variant, element in lookup.items():
         if " " not in variant:
             continue
@@ -192,7 +196,7 @@ def compute_article_sentiment(
     text: str,
     sentiment_pipe,
 ) -> tuple[float, float]:
-    """Compute positive and negative sentiment probabilities via RoBERTa."""
+    """compute positive and negative sentiment probabilities via RoBERTa."""
     if not text:
         return 0.0, 0.0
     try:
@@ -203,21 +207,21 @@ def compute_article_sentiment(
         return 0.0, 0.0
 
 
-# -- Main ------------------------------------------------------------------
+# Main
 
 
 def run(seasons: list[str] | None = None) -> None:
-    """Link articles to players and compute article features."""
+    """link articles to players and compute article features."""
     print("=" * 60)
     print("LINK ARTICLES TO PLAYERS")
     print("=" * 60)
 
     target_seasons = seasons or NEWS_SEASONS
 
-    print("\nLoading spaCy model...")
+    print("\nloading spaCy model...")
     nlp = spacy.load("en_core_web_sm", disable=["tagger", "parser", "lemmatizer"])
 
-    print("Loading sentiment model (first run downloads ~500MB)...")
+    print("loading sentiment model...")
     sentiment_pipe = hf_pipeline(
         "sentiment-analysis",
         model="cardiffnlp/twitter-roberta-base-sentiment-latest",
@@ -235,7 +239,7 @@ def run(seasons: list[str] | None = None) -> None:
     for season in target_seasons:
         raw_path = RAW_NEWS_DIR / f"guardian_{season}.json"
         if not raw_path.exists():
-            print(f"\n  {season}: no cached articles — run fetch_guardian first")
+            print(f"\n{season}: no cached articles, run fetch_guardian first")
             continue
 
         articles = json.loads(raw_path.read_text())
@@ -280,7 +284,7 @@ def run(seasons: list[str] | None = None) -> None:
                 season_links += 1
 
             if (i + 1) % 200 == 0:
-                print(f"    {i + 1}/{len(articles)} — {season_links} links")
+                print(f"{i + 1}/{len(articles)} — {season_links} links")
 
         total_articles += len(articles)
         total_links += season_links

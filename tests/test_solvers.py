@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from api.solvers import solve_best_xi, solve_best_squad, suggest_transfers
+from api.solvers import solve_best_squad, suggest_transfers
 
 
 def _make_pool(n=100):
@@ -20,40 +20,6 @@ def _make_pool(n=100):
         "chance_of_playing": [100.0] * n,
         "form": [3.0] * n,
     })
-
-
-class TestSolveBestXI:
-    def test_returns_11_starters(self):
-        result = solve_best_xi(_make_pool())
-        assert len(result["starters"]) == 11
-
-    def test_valid_formation(self):
-        result = solve_best_xi(_make_pool())
-        formation = result["formation"]
-        parts = [int(x) for x in formation.split("-")]
-        assert len(parts) == 3
-        assert parts[0] >= 3  # at least 3 DEF
-        assert parts[1] >= 2  # at least 2 MID
-        assert parts[2] >= 1  # at least 1 FWD
-        assert sum(parts) == 10  # 10 outfield = 11 - 1 GK
-
-    def test_captain_is_highest_predicted(self):
-        result = solve_best_xi(_make_pool())
-        starters = result["starters"]
-        captain = next(s for s in starters if s["element"] == result["captain_id"])
-        for s in starters:
-            assert s["predicted_points"] <= captain["predicted_points"]
-
-    def test_vice_differs_from_captain(self):
-        result = solve_best_xi(_make_pool())
-        assert result["captain_id"] != result["vice_id"]
-
-    def test_total_with_captain_includes_double(self):
-        result = solve_best_xi(_make_pool())
-        captain = next(s for s in result["starters"] if s["element"] == result["captain_id"])
-        assert result["total_with_captain"] == pytest.approx(
-            result["total_points"] + captain["predicted_points"], abs=0.01
-        )
 
 
 class TestSolveBestSquad:

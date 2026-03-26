@@ -222,7 +222,7 @@ export default function MyTeam() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button onClick={() => navigate("/optimal-xi")} className="btn-ghost text-sm">
-            Optimal XI
+            Best Squad
           </button>
           <button onClick={() => navigate("/transfers")} className="btn-ghost text-sm">
             Plan Transfers

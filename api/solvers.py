@@ -45,7 +45,7 @@ def _existing_cols(df: pd.DataFrame) -> list[str]:
     return [c for c in OUTPUT_COLS if c in df.columns]
 
 
-def solve_best_xi(df: pd.DataFrame) -> dict:
+def _solve_best_xi(df: pd.DataFrame) -> dict:
     """Pick optimal starting 11 from all available players.
     Greedy: try all 7 valid FPL formations, pick highest total predicted_points.
     Always 1 GK. Captain = highest predicted, vice = second highest.
@@ -158,7 +158,7 @@ def solve_best_squad(df: pd.DataFrame, budget: float = DEFAULT_BUDGET) -> dict:
 
     total_value = squad["value"].sum()
     total_points = squad["predicted_points"].sum()
-    xi_result = solve_best_xi(squad)
+    xi_result = _solve_best_xi(squad)
     cols = _existing_cols(squad)
 
     return {

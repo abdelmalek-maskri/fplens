@@ -1,8 +1,8 @@
 """
 Merge news features with extended feature sets for ablation configs C and D.
 Outputs:
-    data/features/extended_with_news.csv              (Config C: baseline + news)
-    data/features/extended_with_injury_and_news.csv   (Config D: baseline + injury + news)
+    data/features/extended_with_news.csv             (Config C: baseline + news)
+    data/features/extended_with_injury_and_news.csv  (Config D: baseline + injury + news)
 """
 
 from pathlib import Path
@@ -23,7 +23,7 @@ MERGE_KEYS = ["season", "GW", "element"]
 
 
 def merge_news(base_df: pd.DataFrame, news_df: pd.DataFrame) -> pd.DataFrame:
-    """Left-join news features onto a base feature set.
+    """left-join news features onto a base feature set.
     Seasons without Guardian data get NaN (LightGBM handles natively).
     Seasons with Guardian data but no mentions get 0.
     """
@@ -32,7 +32,7 @@ def merge_news(base_df: pd.DataFrame, news_df: pd.DataFrame) -> pd.DataFrame:
         col_df["GW"] = pd.to_numeric(col_df["GW"], errors="coerce")
         col_df["element"] = pd.to_numeric(col_df["element"], errors="coerce")
 
-    # Drop stale news columns from previous runs
+    # Drop stale news columns from prior runs to avoid _x/_y suffixes
     overlap = set(base_df.columns) & set(NEWS_FEATURE_COLS)
     if overlap:
         base_df = base_df.drop(columns=overlap)
@@ -43,8 +43,9 @@ def merge_news(base_df: pd.DataFrame, news_df: pd.DataFrame) -> pd.DataFrame:
 
     combined = base_df.merge(news_subset, on=MERGE_KEYS, how="left")
 
-    # Seasons with Guardian coverage: fill missing with 0 (no mention = no signal)
-    # Seasons without coverage: leave as NaN
+    # Seasons with Guardian coverage: fill missing with 0 (no mention = no signal).
+    # Pre-2018 seasons: leave as NaN so LightGBM treats them as "unknown"
+    # rather than incorrectly assuming zero media coverage.
     has_news = combined["season"].isin(NEWS_SEASONS).values
     for col in NEWS_FEATURE_COLS:
         if col in combined.columns:
@@ -62,7 +63,7 @@ def merge_news(base_df: pd.DataFrame, news_df: pd.DataFrame) -> pd.DataFrame:
 
 
 def run() -> None:
-    """Merge news features with extended feature sets."""
+    """merge news features with extended feature sets."""
     print("=" * 60)
     print("MERGE NEWS FEATURES")
     print("=" * 60)
@@ -75,7 +76,7 @@ def run() -> None:
     news_df = pd.read_csv(NEWS_PATH, low_memory=False)
     print(f"{len(news_df):,} rows, {len(NEWS_FEATURE_COLS)} features")
 
-    # Config C: baseline + news
+    # Config C: baseline + news (isolates Guardian contribution)
     if EXTENDED_PATH.exists():
         print("\nBuilding Config C (baseline + news)...")
         base_df = pd.read_csv(EXTENDED_PATH, low_memory=False)
@@ -86,7 +87,7 @@ def run() -> None:
     else:
         print(f"\nWARNING: {EXTENDED_PATH} not found, skipping Config C")
 
-    # Config D: baseline + injury + news
+    # Config D: baseline + injury + news (best ablation variant)
     if INJURY_PATH.exists():
         print("\nBuilding Config D (baseline + injury + news)...")
         injury_df = pd.read_csv(INJURY_PATH, low_memory=False)

@@ -4,11 +4,9 @@ export default function OverviewTab({
   ensembleWeights,
   datasetStats,
   twoheadMethods,
-  ablationConfigs,
 }) {
   const bestModel = modelVariants.find((m) => m.best);
   const bestMae = bestModel.mae;
-  const configD = ablationConfigs.find((c) => c.best);
 
   return (
     <div className="space-y-6">
@@ -51,9 +49,7 @@ export default function OverviewTab({
       <div className="overflow-x-auto">
         <div className="py-3 border-b border-surface-700">
           <span className="section-label">Architecture Comparison</span>
-          <span className="text-xs text-surface-500 ml-2">
-            ({bestModel.features} features, holdout 2024-25)
-          </span>
+          <span className="text-xs text-surface-500 ml-2">(holdout 2024-25)</span>
         </div>
         <table className="w-full">
           <thead className="bg-surface-800/30">
@@ -118,20 +114,6 @@ export default function OverviewTab({
             ))}
           </tbody>
         </table>
-
-        {configD && (
-          <div className="mt-3 p-3 rounded-md bg-info-500/5 border border-info-500/20">
-            <p className="text-sm text-surface-300">
-              <span className="font-semibold text-surface-100">Deployed model: Config D</span> —
-              Stacked Ensemble with injury + news features ({configD.features} features). MAE{" "}
-              <span className="font-data font-semibold text-info-400">
-                {configD.mae.toFixed(4)}
-              </span>
-              , Spearman ρ <span className="font-data">{configD.rho.toFixed(3)}</span>. See Ablation
-              Study tab for comparison.
-            </p>
-          </div>
-        )}
       </div>
 
       <div>
@@ -160,7 +142,7 @@ export default function OverviewTab({
       <div>
         <div className="py-3 border-b border-surface-700 mb-3">
           <span className="section-label">Two-Head: Hard vs Soft</span>
-          <span className="text-xs text-surface-500 ml-3">Classifier AUC: 0.882</span>
+          <span className="text-xs text-surface-500 ml-3">Classifier AUC: 0.896</span>
         </div>
         <table className="w-full">
           <thead className="bg-surface-800/30">

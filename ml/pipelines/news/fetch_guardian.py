@@ -34,7 +34,7 @@ SEASONS = {
     "2024-25": ("2024-08-01", "2025-05-31"),
 }
 
-# Filter out non-PL articles that slip through the tag
+# The football/premierleague tag catches non-PL articles (WSL, Championship, etc.)
 _EXCLUDE_PATTERNS = re.compile(
     r"\b("
     r"women'?s|wsl|nwsl|lionesses|super league|w-league|"
@@ -48,7 +48,7 @@ _EXCLUDE_PATTERNS = re.compile(
 
 
 def html_to_text(html: str) -> str:
-    """Convert HTML body to clean plain text."""
+    """convert HTML body to clean plain text."""
     if not html:
         return ""
     soup = BeautifulSoup(html, "html.parser")
@@ -59,7 +59,7 @@ def html_to_text(html: str) -> str:
 
 
 def extract_first_paragraph(text: str, num_sentences: int = 3) -> str:
-    """Extract first N sentences (inverted pyramid — key info first)."""
+    """extract first N sentences (inverted pyramid — key info first)."""
     if not text:
         return ""
     sentences = re.split(r"(?<=[.!?])\s+", text)
@@ -67,13 +67,13 @@ def extract_first_paragraph(text: str, num_sentences: int = 3) -> str:
 
 
 def is_pl_relevant(title: str, body: str) -> bool:
-    """Check if article is about Premier League"""
+    """check if article is about Premier League"""
     combined = f"{title} {body[:500]}"
     return not bool(_EXCLUDE_PATTERNS.search(combined))
 
 
 def fetch_page(from_date: str, to_date: str, page: int = 1) -> dict:
-    """Fetch one page of Guardian search results."""
+    """fetch one page of Guardian search results."""
     params = {
         "api-key": GUARDIAN_API_KEY,
         "tag": "football/premierleague",
@@ -90,7 +90,7 @@ def fetch_page(from_date: str, to_date: str, page: int = 1) -> dict:
 
 
 def scrape_season(season: str, from_date: str, to_date: str) -> list[dict]:
-    """Scrape all PL articles for one season. Skips if already cached."""
+    """scrape all PL articles for one season, skips if already cached"""
     out_path = RAW_DIR / f"guardian_{season}.json"
     if out_path.exists():
         existing = json.loads(out_path.read_text())
@@ -131,7 +131,7 @@ def scrape_season(season: str, from_date: str, to_date: str) -> list[dict]:
             )
 
         total_pages = data.get("pages", 1)
-        print(f"    page {page}/{total_pages} — {len(articles)} PL articles so far")
+        print(f"page {page}/{total_pages} — {len(articles)} PL articles so far")
 
         if page >= total_pages:
             break
@@ -144,7 +144,7 @@ def scrape_season(season: str, from_date: str, to_date: str) -> list[dict]:
 
 
 def run(seasons: list[str] | None = None) -> None:
-    """Scrape Guardian articles for all configured seasons."""
+    """scrape Guardian articles for all configured seasons."""
     print("=" * 60)
     print("FETCH GUARDIAN ARTICLES")
     print("=" * 60)

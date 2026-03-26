@@ -1,6 +1,6 @@
 # ml/utils/eval_metrics.py
 """
-Shared evaluation metrics for all models.
+Shared evaluation metrics for all models
 """
 
 import numpy as np
@@ -8,10 +8,7 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
 
 def compute_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
-    """
-    Compute standard regression metrics.
-    Returns dict with mae, rmse, r2.
-    """
+    """Compute standard regression metrics"""
     return {
         "mae": float(mean_absolute_error(y_true, y_pred)),
         "rmse": float(np.sqrt(mean_squared_error(y_true, y_pred))),
@@ -26,6 +23,7 @@ def compute_baselines(y_true: np.ndarray, y_train: np.ndarray) -> dict:
       - zero: predict 0 for everything
       - mean: predict training set mean for everything
     """
+
     zero_preds = np.zeros_like(y_true)
     mean_value = float(np.mean(y_train))
     mean_preds = np.full_like(y_true, mean_value, dtype=float)
@@ -59,9 +57,7 @@ def compute_improvements(model_metrics: dict, baselines: dict) -> dict:
 
 
 def full_evaluation(y_true: np.ndarray, y_pred: np.ndarray, y_train: np.ndarray) -> dict:
-    """
-    Complete evaluation: model metrics, baselines, and improvements.
-    """
+    """Complete evaluation: model metrics, baselines, and improvements"""
     model_metrics = compute_metrics(y_true, y_pred)
     baselines = compute_baselines(y_true, y_train)
     improvements = compute_improvements(model_metrics, baselines)
