@@ -41,7 +41,7 @@ def _get_live_data(request: Request) -> dict:
             "element_ids": list(live_df["element"]) if "element" in live_df.columns else [],
         }
 
-    return cache.get_or_fetch("live_data", fetch)
+    return cache.get_or_fetch("live_data", fetch, ttl_minutes=240)
 
 
 def _get_inference_result(request: Request, model_id: str | None = None) -> dict:
@@ -50,12 +50,12 @@ def _get_inference_result(request: Request, model_id: str | None = None) -> dict
     cache = request.app.state.cache
     models = getattr(request.app.state, "models", {})
 
-    if model_id and model_id not in models:
-        raise HTTPException(status_code=400, detail=f"Unknown model: {model_id}. Available: {list(models.keys())}")
-
     # Resolve None / "default" to "config_d" so the same model doesn't get two cache entries
     if not model_id or model_id == "default":
         model_id = "config_d"
+
+    if model_id not in models:
+        raise HTTPException(status_code=400, detail=f"Unknown model: {model_id}. Available: {list(models.keys())}")
     model = models.get(model_id, request.app.state.model)
     cache_key = f"predictions_{model_id}"
 
@@ -70,7 +70,7 @@ def _get_inference_result(request: Request, model_id: str | None = None) -> dict
             "element_ids": live["element_ids"],
         }
 
-    return cache.get_or_fetch(cache_key, run_on_cached_data)
+    return cache.get_or_fetch(cache_key, run_on_cached_data, ttl_minutes=240)
 
 
 def _get_predictions(request: Request, model_id: str | None = None) -> pd.DataFrame:
