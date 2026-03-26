@@ -51,9 +51,7 @@ export default function OverviewTab({
       <div className="overflow-x-auto">
         <div className="py-3 border-b border-surface-700">
           <span className="section-label">Architecture Comparison</span>
-          <span className="text-xs text-surface-500 ml-2">
-            (holdout 2024-25)
-          </span>
+          <span className="text-xs text-surface-500 ml-2">(holdout 2024-25)</span>
         </div>
         <table className="w-full">
           <thead className="bg-surface-800/30">

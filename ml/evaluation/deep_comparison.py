@@ -193,6 +193,7 @@ HORIZON_MODELS = {
 
 # Data loading
 
+
 def load_holdout(features_csv: str, target_col: str = TARGET_COL) -> tuple[pd.DataFrame, np.ndarray]:
     # Drop NaN targets; GW+2/3 lose the last 1-2 GWs of the season
     df = pd.read_csv(features_csv, low_memory=False)
@@ -212,6 +213,7 @@ def prepare_X(holdout_df: pd.DataFrame, target_col: str = TARGET_COL) -> pd.Data
 
 
 # Model loading and prediction
+
 
 def load_and_predict(spec: ModelSpec, holdout_df: pd.DataFrame, target_col: str = TARGET_COL) -> np.ndarray:
     X = prepare_X(holdout_df, target_col)
@@ -296,6 +298,7 @@ def _align(X: pd.DataFrame, model) -> pd.DataFrame:
 
 # Evaluation
 
+
 def evaluate_model(
     y_true: np.ndarray,
     y_pred: np.ndarray,
@@ -374,6 +377,7 @@ def evaluate_model(
 
 # Pairwise statistical tests
 
+
 def run_pairwise_tests(
     all_predictions: dict[str, np.ndarray],
     y_true: np.ndarray,
@@ -425,6 +429,7 @@ def build_significance_matrix(pairwise_tests: dict, model_names: list[str]) -> p
 
 # Error correlation (ensemble diversity)
 
+
 def compute_error_correlations(
     all_predictions: dict[str, np.ndarray],
     y_true: np.ndarray,
@@ -436,6 +441,7 @@ def compute_error_correlations(
 
 
 # SHAP comparison
+
 
 def load_shap_comparison() -> dict:
     shap_dir = Path("outputs/analysis/shap")
@@ -456,6 +462,7 @@ def load_shap_comparison() -> dict:
 
 
 # Save outputs for a single horizon
+
 
 def _save_horizon_outputs(
     out_dir: Path,
@@ -542,6 +549,7 @@ def _save_horizon_outputs(
 
 
 # Main orchestrator
+
 
 def run_horizon(horizon: int, models: list[ModelSpec], out_dir: Path):
     target_col = HORIZON_TARGETS[horizon]

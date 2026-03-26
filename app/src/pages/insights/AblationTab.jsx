@@ -230,9 +230,9 @@ export default function AblationTab({ ablationConfigs, ablationSignificance, int
               Synergistic — combining both exceeds the sum of individual gains
             </p>
             <p className="text-xs text-surface-500 mt-1">
-              B → D improvement is significant (p {"<"} 0.001). The +{interactionEffect.synergy.toFixed(2)}%
-              synergy shows injury and news features interact: news captures signals that
-              structured injury data misses, and vice versa.
+              B → D improvement is significant (p {"<"} 0.001). The +
+              {interactionEffect.synergy.toFixed(2)}% synergy shows injury and news features
+              interact: news captures signals that structured injury data misses, and vice versa.
             </p>
           </div>
         </div>
