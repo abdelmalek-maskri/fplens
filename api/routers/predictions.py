@@ -5,13 +5,48 @@ from fastapi import APIRouter, HTTPException, Query, Request
 
 from api.solvers import solve_best_squad
 from ml.pipelines.inference.multi_gw import predict_multi_gw
-from ml.pipelines.inference.predict import run as run_predictions
+from ml.pipelines.inference.predict import (
+    get_model_features,
+    predict,
+    prepare_features,
+)
 
 router = APIRouter(tags=["Predictions"])
 
 
+def _get_live_data(request: Request) -> dict:
+    """Fetch live player data once and cache it. Shared across all models."""
+    cache = request.app.state.cache
+
+    def fetch():
+        from ml.pipelines.inference.fetch_live_data import fetch_current_gw_data
+
+        live_df = fetch_current_gw_data(include_history=True, include_understat=True)
+
+        keep_cols = [
+            "element", "web_name", "name", "team_name", "position", "value",
+            "status", "form", "total_points", "chance_this_round", "news",
+            "opponent_name", "selected_by_percent", "goals_scored",
+            "expected_goals", "assists", "expected_assists",
+            "transfers_in_event", "transfers_out_event", "ict_index",
+            "minutes", "bonus", "bps", "clean_sheets",
+        ]
+        if "goals_conceded" in live_df.columns:
+            keep_cols.append("goals_conceded")
+        keep_cols = [c for c in keep_cols if c in live_df.columns]
+
+        return {
+            "live_df": live_df,
+            "player_info": live_df[keep_cols].copy(),
+            "element_ids": list(live_df["element"]) if "element" in live_df.columns else [],
+        }
+
+    return cache.get_or_fetch("live_data", fetch)
+
+
 def _get_inference_result(request: Request, model_id: str | None = None) -> dict:
-    """Run inference, cached per model with 4 hour TTL."""
+    """Run model prediction on cached live data. Only the model.predict() call
+    is repeated per model; the expensive data fetch is shared."""
     cache = request.app.state.cache
     models = getattr(request.app.state, "models", {})
 
@@ -21,7 +56,18 @@ def _get_inference_result(request: Request, model_id: str | None = None) -> dict
     model = models.get(model_id, request.app.state.model) if model_id else request.app.state.model
     cache_key = f"predictions_{model_id or 'default'}"
 
-    return cache.get_or_fetch(cache_key, lambda: run_predictions(model=model, save_output=False))
+    def run_on_cached_data():
+        live = _get_live_data(request)
+        model_features = get_model_features(model)
+        X = prepare_features(live["live_df"], model_features)
+        predictions = predict(model, X, live["player_info"])
+        return {
+            "predictions": predictions,
+            "feature_matrix": X,
+            "element_ids": live["element_ids"],
+        }
+
+    return cache.get_or_fetch(cache_key, run_on_cached_data)
 
 
 def _get_predictions(request: Request, model_id: str | None = None) -> pd.DataFrame:

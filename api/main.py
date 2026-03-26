@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from api.cache import FPLDataCache
 from api.routers import fixtures, insights, predictions, team
 from ml.pipelines.inference.multi_gw import load_horizon_models
-from ml.pipelines.inference.predict import DEFAULT_MODEL, run as run_predictions
+from ml.pipelines.inference.predict import DEFAULT_MODEL
 
 # Unpickling model objects
 # joblib needs these classes importable at load time. Training scripts
@@ -97,12 +97,34 @@ async def lifespan(app: FastAPI):
     app.state.horizon_models = load_horizon_models()
     app.state.cache = FPLDataCache(ttl_minutes=240)
 
-    # Pre-warm prediction cache so the first dashboard load is instant
-    print("Pre-warming prediction cache (default model)...")
+    # Pre-warm: fetch live data once (shared across all models), then predict with default
+    print("Pre-warming cache (live data + default model)...")
     try:
-        result = run_predictions(model=app.state.model, save_output=False)
+        from ml.pipelines.inference.fetch_live_data import fetch_current_gw_data
+        from ml.pipelines.inference.predict import get_model_features, predict, prepare_features
+
+        live_df = fetch_current_gw_data(include_history=True, include_understat=True)
+        keep_cols = [c for c in [
+            "element", "web_name", "name", "team_name", "position", "value",
+            "status", "form", "total_points", "chance_this_round", "news",
+            "opponent_name", "selected_by_percent", "goals_scored",
+            "expected_goals", "assists", "expected_assists",
+            "transfers_in_event", "transfers_out_event", "ict_index",
+            "minutes", "bonus", "bps", "clean_sheets", "goals_conceded",
+        ] if c in live_df.columns]
+        player_info = live_df[keep_cols].copy()
+        element_ids = list(live_df["element"]) if "element" in live_df.columns else []
+
+        live_cache = {"live_df": live_df, "player_info": player_info, "element_ids": element_ids}
+        app.state.cache.get_or_fetch("live_data", lambda: live_cache)
+
+        model_features = get_model_features(app.state.model)
+        X = prepare_features(live_df, model_features)
+        predictions = predict(app.state.model, X, player_info)
+        result = {"predictions": predictions, "feature_matrix": X, "element_ids": element_ids}
         app.state.cache.get_or_fetch("predictions_default", lambda: result)
-        print(f"  Cache warm — {len(result['predictions'])} players ready")
+
+        print(f"  Cache warm: {len(predictions)} players, model switching is now instant")
     except Exception as e:
         print(f"  WARNING: Pre-warm failed, first request will be slow: {e}")
 
