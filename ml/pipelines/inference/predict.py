@@ -1,10 +1,16 @@
 """
-Run inference on live FPL data using trained model.
-This module loads a trained model and generates predictions for the current
-gameweek, handling feature alignment between live data and training format.
+Run inference on live FPL data using the trained production model.
+
+Fetches current-GW player data from the FPL API, aligns features to match
+the training format, generates predictions with uncertainty estimates and
+per-player SHAP explanations, and outputs enriched predictions.
+
+Default model: Config D stacked ensemble (outputs/experiments/ablation/config_D/).
+
 Usage:
     python -m ml.pipelines.inference.predict
-    python -m ml.pipelines.inference.predict --model outputs/experiments/stacked_ensemble/model.joblib
+    python -m ml.pipelines.inference.predict --model outputs/experiments/ablation/config_D/model.joblib
+    python -m ml.pipelines.inference.predict --no-understat
 """
 
 from datetime import datetime

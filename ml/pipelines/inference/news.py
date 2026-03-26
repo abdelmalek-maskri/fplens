@@ -1,4 +1,13 @@
-# Live news fetcher for inference, to fetch recent articles, link to FPL players, and compute sentiment.
+"""
+Live news fetcher for the /api/news endpoint.
+
+Fetches recent Guardian articles (last 7 days), links them to FPL players
+using spaCy NER + regex matching, and computes per-article sentiment via
+RoBERTa. Results are cached for 60 minutes by the API cache layer.
+
+This is separate from the training news pipeline (ml/pipelines/news/)
+which processes historical articles for feature engineering.
+"""
 
 import logging
 import os

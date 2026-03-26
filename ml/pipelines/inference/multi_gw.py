@@ -1,11 +1,15 @@
 # ml/pipelines/inference/multi_gw.py
 """
-Multi-horizon prediction pipeline (FF-9c).
+Multi-horizon prediction pipeline.
 
-Generates per-player predictions for GW+1 through GW+3 using:
-  - GW+1: Config D stacked ensemble (production model)
-  - GW+2: CatBoost Tweedie vp1.8
-  - GW+3: CatBoost Tweedie vp1.2
+Generates per-player predictions for GW+1 through GW+3 using a different
+trained model per horizon. Each model was selected via the multi-horizon
+experiments (train_multi_horizon.py) based on MAE and Spearman ranking.
+
+Models:
+  GW+1: Config D stacked ensemble (loaded separately as the production model)
+  GW+2: LightGBM Reduced (drops lag-1 features that become noise 2 weeks out)
+  GW+3: LightGBM Reduced (drops lag-1 + roll-3 features)
 
 Usage:
     from ml.pipelines.inference.multi_gw import predict_multi_gw, load_horizon_models
@@ -20,14 +24,11 @@ import pandas as pd
 from ml.config.eval_config import CAT_COLS, DROP_COLS
 from ml.pipelines.inference.predict import align_features, get_model_features
 
-# ---------------------------------------------------------------------------
-# Model paths (selected via comprehensive 11-metric evaluation)
-# ---------------------------------------------------------------------------
 HORIZON_MODEL_PATHS = {
-    # GW+1: Config D stacked ensemble (loaded as production model in api/main.py)
-    # GW+2: LGB Reduced — best composite (MAE=1.103, ρ=0.649, R²=0.245)
+    # GW+1 uses the production model loaded in api/main.py (Config D stacked ensemble)
+    # GW+2: LGB Reduced — drops 25 lag-1/momentum features (MAE=1.103, ρ=0.649)
     2: Path("outputs/experiments/multi_horizon/gw2/lgbm_reduced/model.joblib"),
-    # GW+3: LGB Reduced — best available with saved model (MAE=1.121, ρ=0.632, R²=0.234)
+    # GW+3: LGB Reduced — drops 46 lag-1/roll-3/momentum features (MAE=1.121, ρ=0.632)
     3: Path("outputs/experiments/multi_horizon/gw3/lgbm_reduced/model.joblib"),
 }
 

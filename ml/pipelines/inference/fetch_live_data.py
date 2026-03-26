@@ -1,7 +1,15 @@
 """
-Fetch live player data from the FPL API for real-time predictions.
-This module fetches current gameweek data from the official FPL API and
-prepares it for model inference, including injury/availability features.
+Fetch live player data from the FPL API for inference.
+
+Calls the official FPL bootstrap-static endpoint to get all ~800 current
+players, fetches per-player GW history (via ThreadPoolExecutor), computes
+rolling/lag features to match the training format, adds injury features
+from live status data, and optionally enriches with Understat xG features
+from the pre-computed seasonal CSV.
+
+Main entry point: fetch_current_gw_data() returns a DataFrame ready for predict.py.
+Also provides fetch_fixtures(), fetch_user_team(), and format_player_history()
+for the API's fixture, team, and player detail endpoints.
 """
 
 import logging
