@@ -5,6 +5,7 @@ import { PitchView } from "../components/pitch";
 import StatusBadge from "../components/badges/StatusBadge";
 import TeamBadge from "../components/badges/TeamBadge";
 import FdrBadge from "../components/badges/FdrBadge";
+import ErrorState from "../components/feedback/ErrorState";
 import AlertRow from "../components/feedback/AlertRow";
 import { useTeam } from "../hooks";
 import FplIdHelp from "./my-team/FplIdHelp";
