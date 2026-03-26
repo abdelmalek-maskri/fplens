@@ -11,7 +11,7 @@ router = APIRouter(tags=["Predictions"])
 
 
 def _get_inference_result(request: Request, model_id: str | None = None) -> dict:
-    """Run inference, cached per model with 15 min TTL."""
+    """Run inference, cached per model with 4 hour TTL."""
     cache = request.app.state.cache
     models = getattr(request.app.state, "models", {})
 

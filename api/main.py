@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from api.cache import FPLDataCache
 from api.routers import fixtures, insights, predictions, team
 from ml.pipelines.inference.multi_gw import load_horizon_models
-from ml.pipelines.inference.predict import DEFAULT_MODEL
+from ml.pipelines.inference.predict import DEFAULT_MODEL, run as run_predictions
 
 # Unpickling model objects
 # joblib needs these classes importable at load time. Training scripts
@@ -95,7 +95,17 @@ async def lifespan(app: FastAPI):
 
     print("Loading horizon models (GW+2, GW+3)...")
     app.state.horizon_models = load_horizon_models()
-    app.state.cache = FPLDataCache(ttl_minutes=15)
+    app.state.cache = FPLDataCache(ttl_minutes=240)
+
+    # Pre-warm prediction cache so the first dashboard load is instant
+    print("Pre-warming prediction cache (default model)...")
+    try:
+        result = run_predictions(model=app.state.model, save_output=False)
+        app.state.cache.get_or_fetch("predictions_default", lambda: result)
+        print(f"  Cache warm — {len(result['predictions'])} players ready")
+    except Exception as e:
+        print(f"  WARNING: Pre-warm failed, first request will be slow: {e}")
+
     yield
     print("Shutting down...")
 
