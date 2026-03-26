@@ -90,8 +90,8 @@ _POSITIVE_KEYWORDS = [
 _NEGATIVE_PATTERNS = [re.compile(r"\b" + re.escape(kw) + r"\b") for kw in _NEGATIVE_KEYWORDS]
 _POSITIVE_PATTERNS = [re.compile(r"\b" + re.escape(kw) + r"\b") for kw in _POSITIVE_KEYWORDS]
 
-_MAX_RETURN_WEEKS = 26        # ~half a season; cap to avoid outlier dates
-_UNKNOWN_RETURN_WEEKS = 12.0   # "unknown"/"indefinite" = assume ~3 months
+_MAX_RETURN_WEEKS = 26  # ~half a season; cap to avoid outlier dates
+_UNKNOWN_RETURN_WEEKS = 12.0  # "unknown"/"indefinite" = assume ~3 months
 _DEFAULT_SHORT_TERM_WEEKS = 2.0
 
 _MONTHS = {
@@ -129,6 +129,7 @@ FILL_DEFAULTS = {
 
 
 # Structured features (13 cols: status encoding, chance fields, binary flags)
+
 
 def add_structured_features(df: pd.DataFrame) -> pd.DataFrame:
     print("Adding structured features...")
@@ -200,6 +201,7 @@ def _injury_episode_count(status: pd.Series) -> pd.Series:
 
 
 # NLP features (15 cols: injury type dummies, return timeline, sentiment)
+
 
 def extract_injury_type(news: str) -> str:
     if pd.isna(news) or news == "":
@@ -306,6 +308,7 @@ def add_nlp_features(df: pd.DataFrame) -> pd.DataFrame:
 
 # Merge with extended features
 
+
 def _merge_with_extended(df: pd.DataFrame) -> pd.DataFrame:
     from ml.pipelines.injury.download_historical import SEASONS as INJURY_SEASONS
 
@@ -368,6 +371,7 @@ def _merge_with_extended(df: pd.DataFrame) -> pd.DataFrame:
 
 
 # Main
+
 
 def run() -> None:
     print("=" * 60)

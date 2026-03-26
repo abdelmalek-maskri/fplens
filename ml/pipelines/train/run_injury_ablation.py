@@ -105,7 +105,8 @@ def train_config(config_key: str, config: dict, out_dir: Path) -> dict:
     print(f"Injury structured + temporal: {len(injury_structured)}")
     print(f"Injury NLP (type dummies):    {len(injury_nlp)}")
     print(f"News (Guardian):              {len(news_cols)}")
-    print(f"Total:                        {len(baseline_cols) + len(injury_structured) + len(injury_nlp) + len(news_cols)}"
+    print(
+        f"Total:                        {len(baseline_cols) + len(injury_structured) + len(injury_nlp) + len(news_cols)}"
     )
 
     if "status_encoded" in df.columns:
@@ -243,6 +244,7 @@ def train_config(config_key: str, config: dict, out_dir: Path) -> dict:
 
 
 # Cross-config comparison
+
 
 def print_comparison_table(results: dict) -> None:
     configs = sorted(results.keys())

@@ -41,6 +41,7 @@ NEWS_SEASONS = [
 
 # Name matching
 
+
 def normalize_name(name: str) -> str:
     """normalize player name: 'Aaron_Cresswell_402' -> 'aaron cresswell'"""
     clean = name.replace("_", " ").strip().lower()
@@ -127,6 +128,7 @@ def match_entity_to_player(entity_text: str, lookup: dict[str, int]) -> int | No
 
 # Article processing
 
+
 def find_player_mentions(
     article: dict,
     lookup: dict[str, int],
@@ -206,6 +208,7 @@ def compute_article_sentiment(
 
 
 # Main
+
 
 def run(seasons: list[str] | None = None) -> None:
     """link articles to players and compute article features."""

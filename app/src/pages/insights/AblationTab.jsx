@@ -192,7 +192,7 @@ export default function AblationTab({ ablationConfigs, ablationSignificance, int
             <span className="font-semibold text-surface-100">
               Synergy: +{interactionEffect.synergy.toFixed(2)}%
             </span>{" "}
-           ,the combined effect exceeds the sum of individual gains. Injury and news features
+            ,the combined effect exceeds the sum of individual gains. Injury and news features
             interact: news captures soft signals that structured injury data misses.
           </p>
         </div>

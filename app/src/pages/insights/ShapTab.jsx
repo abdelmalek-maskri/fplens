@@ -133,7 +133,6 @@ export default function ShapTab({ shapFeatures }) {
           })}
         </div>
       </div>
-
     </div>
   );
 }

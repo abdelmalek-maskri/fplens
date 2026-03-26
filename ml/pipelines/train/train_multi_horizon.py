@@ -436,8 +436,6 @@ def run_experiment_2(df: pd.DataFrame, horizons: list[int]) -> list[dict]:
     return results
 
 
-
-
 # ===========================================================================
 # Experiment 4: Two-Stage Hurdle Model
 # ===========================================================================
@@ -560,7 +558,6 @@ def run_experiment_4(df: pd.DataFrame, horizons: list[int]) -> list[dict]:
 #   5a: CatBoost with Tweedie loss (variance_power 1.2, 1.5, 1.8)
 #   5b: Simple GBM Average (3 LightGBMs, different seeds, averaged)
 # ===========================================================================
-
 
 
 def run_experiment_5(df: pd.DataFrame, horizons: list[int]) -> list[dict]:
