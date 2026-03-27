@@ -39,6 +39,7 @@ NEWS_SEASONS = [
     "2024-25",
 ]
 
+
 # Name matching
 def normalize_name(name: str) -> str:
     """normalize player name: 'Aaron_Cresswell_402' -> 'aaron cresswell'"""
