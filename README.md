@@ -1,46 +1,46 @@
 # Fantasy Lens
 
-A tool that predicts how many Fantasy Premier League points each player will score next week, and helps you pick the best team based on those predictions.
+Predicts how many Fantasy Premier League points each player will score next week, and helps you pick the best team based on those predictions.
 
 FPL is a game where 11 million people pick a squad of real Premier League footballers and earn points based on how they perform each week (goals, assists, clean sheets, etc.). Fantasy Lens uses machine learning to forecast those points, then tells you who to start, who to captain, who to transfer in, and how to plan transfers across multiple future gameweeks.
 
-**Quick start:** See [docs/RUNNING.md](docs/RUNNING.md) for setup instructions. The [project report](docs/final_report.tex) and supplementary appendices are in `docs/`. The full pipeline execution order is in [docs/PIPELINE_ORDER.md](docs/PIPELINE_ORDER.md).
+**Quick start:** See [docs/RUNNING.md](docs/RUNNING.md) for setup instructions, appendices are in `docs/`. The full pipeline execution order is in [docs/PIPELINE_ORDER.md](docs/PIPELINE_ORDER.md).
 
 ## What It Does
 
-**Predictions** — Every player gets a predicted score for the upcoming gameweek, with a confidence range showing how certain the model is. You can filter by position, search by name, switch between 10 trained models, and see what's driving each prediction (SHAP breakdown).
+**Predictions**: every player gets a predicted score for the upcoming gameweek, with a confidence range. You can filter by position, search by name, switch between 10 trained models, and see what's driving each prediction (SHAP breakdown).
 
-**Optimal XI** — Uses integer linear programming to pick the best 15-man squad from all 820+ players within the FPL budget (£100m, max 3 per team), then selects the best starting 11 from that squad.
+**Optimal XI**: uses integer linear programming to pick the best 15-man squad from all 820+ players within the FPL budget (£100m, max 3 per team), then selects the best starting 11 from that squad.
 
-**My Team** — Enter your FPL ID and the app pulls your actual squad. It tells you who to start, who to bench, who to captain, and suggests transfers (who to sell, who to buy, and how much you'd gain).
+**My Team**: enter your FPL ID and the app pulls your actual squad. It tells you who to start, who to bench, who to captain, and suggests transfers.
 
-**Transfers** — Multi-horizon transfer planning with a 1-3 week horizon toggle. Uses separately trained models for GW+1, GW+2, and GW+3 to evaluate whether a transfer is worth taking now or waiting.
+**Transfers**: multi-horizon transfer planning with a 1-3 week horizon toggle. Uses separately trained models for GW+1, GW+2, and GW+3 to evaluate whether a transfer is worth taking now or waiting.
 
-**Fixtures** — A grid showing every team's upcoming opponents colour-coded by difficulty. Helps you spot good runs of fixtures for planning transfers ahead.
+**Fixtures**: a grid showing every team's upcoming opponents colour-coded by difficulty.
 
-**Player Comparison** — Put two players side by side with a radar chart comparing their stats, form, and predictions.
+**Player Comparison**: two players side by side with a radar chart comparing stats, form, and predictions.
 
-**News & Sentiment** — Real Guardian articles about Premier League players, linked to the right FPL player and scored for positive/negative sentiment. Flags injury news.
+**News & Sentiment**: Guardian articles about Premier League players, linked to FPL players and scored for positive/negative sentiment. Flags injury news.
 
-**Model Insights** — See how the model works: which features matter most (SHAP analysis), how different data sources improve accuracy (ablation study), and how well predictions are calibrated.
+**Model Insights**: which features matter most (SHAP), how different data sources improve accuracy (ablation study), and how well predictions are calibrated.
 
 ## How the Model Works
 
-The model is a stacked ensemble — it combines predictions from 6 different models (2 LightGBMs, XGBoost, Random Forest, Ridge, and a classifier) through inverse-MAE weighting that learns which model to trust in which situation.
+The model is a stacked ensemble. It combines predictions from 6 different models (2 LightGBMs, XGBoost, Random Forest, Ridge, and a classifier) through inverse-MAE weighting.
 
-It's trained on 10 seasons of FPL data (2016-17 to 2024-25) with 155 features per player per gameweek:
+Trained on 10 seasons of FPL data (2016-17 to 2024-25) with 155 features per player per gameweek:
 
-- **FPL stats** — points, minutes, goals, assists, bonus, ICT index, form
-- **Understat** — expected goals (xG), expected assists (xA), shot data, key passes
-- **Rolling windows** — how a player has performed over the last 3, 5, and 10 games
-- **Injury data** — current status, chance of playing, NLP-extracted injury type from FPL news text
-- **Guardian news** — how often a player is mentioned, article sentiment, injury context
+- **FPL stats**: points, minutes, goals, assists, bonus, ICT index, form
+- **Understat**: expected goals (xG), expected assists (xA), shot data, key passes
+- **Rolling windows**: performance over the last 3, 5, and 10 games
+- **Injury data**: status, chance of playing, NLP-extracted injury type from FPL news text
+- **Guardian news**: mention count, article sentiment, injury context
 
-The target is simple: how many FPL points will this player score next gameweek?
+Target: how many FPL points will this player score next gameweek?
 
 ### Ablation Study
 
-Each data source was tested individually to measure its contribution:
+Each data source tested individually:
 
 | Config | Data Sources | Features | MAE |
 | ------ | ------------ | -------- | --- |
@@ -49,7 +49,7 @@ Each data source was tested individually to measure its contribution:
 | C | + News | 123 | 1.037 |
 | **D** | **+ Both** | **155** | **1.029** |
 
-Config D (all sources combined) is the production model. Injury and news features interact synergistically — together they reduce error more than either does alone.
+Config D is the production model. Injury and news features interact synergistically: together they reduce error more than either does alone.
 
 ## Architecture
 
@@ -65,11 +65,11 @@ Config D (all sources combined) is the production model. Injury and news feature
         FPL API      Guardian API   Understat
 ```
 
-**ML pipeline** (Python) — fetches live data from the FPL, Understat, and Guardian APIs, engineers features to match the training set, runs the model, and returns predictions with uncertainty estimates and per-player SHAP explanations.
+**ML pipeline** (Python): fetches live data from the FPL, Understat, and Guardian APIs, computes features, runs the model, returns predictions with uncertainty and per-player SHAP.
 
-**API** (FastAPI) — serves predictions, runs the ILP squad optimiser, fetches user teams, and caches everything with per-key TTL to avoid duplicate work.
+**API** (FastAPI): serves predictions, runs the ILP squad optimiser, fetches user teams, caches with per-key TTL.
 
-**App** (React) — 11 pages, dark theme, all data visualised with sparklines, pitch views, radar charts, and SHAP breakdowns.
+**App** (React): 11 pages, dark theme, sparklines, pitch views, radar charts, SHAP breakdowns.
 
 ## API Endpoints
 
@@ -99,7 +99,7 @@ ml/
 │   ├── inference/          Live prediction pipeline
 │   └── runners/            Pipeline orchestrator
 ├── analysis/               SHAP analysis
-├── evaluation/             Comprehensive metrics
+├── evaluation/             Metrics
 └── utils/                  CSV parsing, name normalisation
 
 api/
@@ -120,7 +120,6 @@ app/src/
 See [docs/RUNNING.md](docs/RUNNING.md) for full setup instructions.
 
 ```bash
-# Quick start
 pip install -r requirements.txt
 uvicorn api.main:app --reload    # Backend on http://127.0.0.1:8000
 cd app && npm install && npm run dev  # Frontend on http://localhost:5173
