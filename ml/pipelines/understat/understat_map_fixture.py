@@ -58,7 +58,7 @@ def run_one(season: str) -> Path:
     tm = tm.dropna(subset=[team_id_col]).copy()
     tm[team_id_col] = tm[team_id_col].astype(int)
 
-    # ensure a normalised team name column exists (build it missing).
+    # ensure a normalised team name column exists
     if "team_name_norm" not in tm.columns:
         if "team_name" in tm.columns:
             tm["team_name_norm"] = tm["team_name"].astype(str).map(norm)

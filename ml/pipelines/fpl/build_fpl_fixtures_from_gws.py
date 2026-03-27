@@ -86,7 +86,7 @@ def run_one(season: str, snapshot: Path) -> Path:
         df["element"] = pd.to_numeric(df["element"], errors="coerce")
         df["opponent_team"] = pd.to_numeric(df["opponent_team"], errors="coerce")
 
-        # Repair / fill team using element_to_team
+        # fill team using element_to_team
         team_from_map = df["element"].map(element_to_team)
 
         if "team" not in df.columns:
