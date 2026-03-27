@@ -4,15 +4,15 @@ A tool that predicts how many Fantasy Premier League points each player will sco
 
 FPL is a game where 11 million people pick a squad of real Premier League footballers and earn points based on how they perform each week (goals, assists, clean sheets, etc.). Fantasy Foresight uses machine learning to forecast those points, then tells you who to start, who to captain, who to transfer in, and when to play your chips.
 
+**Quick start:** See [docs/RUNNING.md](docs/RUNNING.md) for setup instructions. The [project report](docs/final_report.tex) and supplementary appendices are in `docs/`.
+
 ## What It Does
 
 **Predictions** — Every player gets a predicted score for the upcoming gameweek, with a confidence range showing how certain the model is. You can filter by position, search by name, and see what's driving each prediction (which stats matter most for this player right now).
 
-**Best XI** — The model picks the best possible starting 11 from all 820+ Premier League players for the upcoming week. No budget, no restrictions — just the highest-scoring combination across all valid formations.
+**Optimal XI** — Uses integer linear programming to pick the best 15-man squad from all 820+ players within the FPL budget (£100m, max 3 per team), then selects the best starting 11 from that squad.
 
 **My Team** — Enter your FPL ID and the app pulls your actual squad. It tells you who to start, who to bench, who to captain, and suggests transfers (who to sell, who to buy, and how much you'd gain).
-
-**Season Planner** — At the start of the season, the model picks an optimal 15-man squad within the FPL budget (£100m, max 3 players per team). Uses mathematical optimisation to find the best possible combination.
 
 **Fixtures** — A grid showing every team's upcoming opponents colour-coded by difficulty. Helps you spot good runs of fixtures for planning transfers ahead.
 
@@ -26,7 +26,7 @@ FPL is a game where 11 million people pick a squad of real Premier League footba
 
 The model is a stacked ensemble — it combines predictions from 6 different models (2 LightGBMs, XGBoost, Random Forest, Ridge, and a classifier) through a Ridge meta-learner that learns which model to trust in which situation.
 
-It's trained on 10 seasons of FPL data (2015-16 to 2024-25) with 141 features per player per gameweek:
+It's trained on 10 seasons of FPL data (2016-17 to 2024-25) with 155 features per player per gameweek:
 
 - **FPL stats** — points, minutes, goals, assists, bonus, ICT index, form
 - **Understat** — expected goals (xG), expected assists (xA), shot data, key passes
@@ -42,10 +42,10 @@ Each data source was tested individually to measure its contribution:
 
 | Config | Data Sources | Features | MAE |
 | ------ | ------------ | -------- | --- |
-| A | FPL + Understat | 109 | 1.060 |
-| B | + Injury | 121 | 1.051 |
-| C | + News | ~117 | 1.058 |
-| **D** | **+ Both** | **141** | **1.043** |
+| A | FPL + Understat | 116 | 1.039 |
+| B | + Injury | 148 | 1.032 |
+| C | + News | 123 | 1.037 |
+| **D** | **+ Both** | **155** | **1.029** |
 
 Config D (all sources combined) is the deployed model. Injury and news features have a synergy effect — together they reduce error more than either does alone.
 
@@ -55,7 +55,7 @@ Config D (all sources combined) is the deployed model. Injury and news features 
 ┌─────────────┐     ┌──────────────┐     ┌──────────────────┐
 │  React App  │────▶│  FastAPI API  │────▶│  ML Pipeline     │
 │  Vite 5     │     │  10 endpoints │     │  Stacked Ensemble│
-│  Tailwind   │     │  TTL cache    │     │  141 features    │
+│  Tailwind   │     │  TTL cache    │     │  155 features    │
 └─────────────┘     └──────────────┘     └──────────────────┘
                            │
               ┌────────────┼────────────┐

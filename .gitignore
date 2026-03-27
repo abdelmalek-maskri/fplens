@@ -39,6 +39,18 @@ catboost_info/
 # ML outputs (generated, reproducible from scripts)
 outputs/
 
+# Exception: commit essential models so inspectors can run the app without training
+!outputs/experiments/ablation/config_D/
+!outputs/experiments/ablation/config_D/model.joblib
+!outputs/experiments/ablation/config_D/summary.json
+!outputs/experiments/ablation/ablation_summary.json
+!outputs/experiments/ablation/config_A/summary.json
+!outputs/experiments/ablation/config_B/summary.json
+!outputs/experiments/ablation/config_C/summary.json
+!outputs/experiments/multi_horizon/gw2/lgbm_reduced/model.joblib
+!outputs/experiments/multi_horizon/gw3/lgbm_reduced/model.joblib
+!outputs/evaluation/shap/config_D/shap_report.json
+
 # Logs
 *.log
 
