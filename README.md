@@ -6,6 +6,10 @@ FPL is a game where 11 million people pick a squad of real Premier League footba
 
 **Quick start:** See [docs/RUNNING.md](docs/RUNNING.md) for setup instructions, appendices are in `docs/`. The full pipeline execution order is in [docs/PIPELINE_ORDER.md](docs/PIPELINE_ORDER.md).
 
+![Dashboard](docs/screenshots/dashboard.png)
+![Optimal XI](docs/screenshots/optimal-xi.png)
+![Transfer Planner](docs/screenshots/transfers.png)
+
 ## What It Does
 
 **Predictions**: every player gets a predicted score for the upcoming gameweek, with a confidence range. You can filter by position, search by name, switch between 10 trained models, and see what's driving each prediction (SHAP breakdown).
