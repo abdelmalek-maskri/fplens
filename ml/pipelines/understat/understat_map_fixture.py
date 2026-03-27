@@ -1,5 +1,3 @@
-# ml/pipelines/understat/understat_map_fixture.py
-
 from pathlib import Path
 
 import pandas as pd
@@ -84,7 +82,7 @@ def run_one(season: str) -> Path:
     under["h_norm"] = under["h_team"].astype(str).map(norm)
     under["a_norm"] = under["a_team"].astype(str).map(norm)
 
-    # Map normalised names to FPL team ids.
+    # map normalised names to FPL team ids.
     under["home_team_id"] = under["h_norm"].map(name_to_id)
     under["away_team_id"] = under["a_norm"].map(name_to_id)
 

@@ -10,10 +10,6 @@ Two feature groups:
 2. News-extracted (15 features): regex on FPL's short news string to classify
    injury type (hamstring, knee, illness, etc.), estimate return timeline,
    and detect sentiment (returned to training vs ruled out).
-
-Important: the news parsing here uses simple regex on the FPL API 'news' field,
-NOT the Guardian newspaper articles. The Guardian pipeline (news/) is a separate
-data source tested independently in the ablation study (Config C).
 """
 
 import re
@@ -129,8 +125,6 @@ FILL_DEFAULTS = {
 
 
 # Structured features (13 cols: status encoding, chance fields, binary flags)
-
-
 def add_structured_features(df: pd.DataFrame) -> pd.DataFrame:
     print("Adding structured features...")
     df = df.copy()
@@ -201,8 +195,6 @@ def _injury_episode_count(status: pd.Series) -> pd.Series:
 
 
 # NLP features (15 cols: injury type dummies, return timeline, sentiment)
-
-
 def extract_injury_type(news: str) -> str:
     if pd.isna(news) or news == "":
         return "none"
@@ -286,33 +278,31 @@ def news_sentiment(news: str) -> float:
 
 
 def add_nlp_features(df: pd.DataFrame) -> pd.DataFrame:
-    print("Adding NLP features...")
+    print("adding NLP features...")
     df = df.copy()
 
-    print("Classifying injury types...")
+    print("classifying injury types...")
     df["injury_type"] = df["news"].apply(extract_injury_type)
     injury_dummies = pd.get_dummies(df["injury_type"], prefix="injury")
     df = pd.concat([df, injury_dummies], axis=1)
 
-    print("Estimating return dates...")
+    print("estimating return dates...")
     df["expected_return_weeks"] = df.apply(
         lambda row: extract_return_weeks(row["news"], row.get("snapshot_date")),
         axis=1,
     )
 
-    print("Scoring sentiment...")
+    print("scoring sentiment...")
     df["news_sentiment"] = df["news"].apply(news_sentiment)
 
     return df
 
 
 # Merge with extended features
-
-
 def _merge_with_extended(df: pd.DataFrame) -> pd.DataFrame:
     from ml.pipelines.injury.download_historical import SEASONS as INJURY_SEASONS
 
-    print("\nMerging with extended features...")
+    print("\nmerging with extended features...")
     extended_df = pd.read_csv(EXTENDED_FEATURES, low_memory=False)
 
     # injury_count_season appears in FILL_DEFAULTS AND matches "injury_*" prefix
@@ -331,7 +321,7 @@ def _merge_with_extended(df: pd.DataFrame) -> pd.DataFrame:
     # Drop stale injury columns from prior runs to avoid _x/_y suffixes
     overlap = set(extended_df.columns) & set(injury_subset.columns) - set(merge_keys)
     if overlap:
-        print(f"Dropping {len(overlap)} stale columns from base: {sorted(overlap)[:5]}...")
+        print(f"dropping {len(overlap)} stale columns from base: {sorted(overlap)[:5]}...")
         extended_df = extended_df.drop(columns=overlap)
 
     combined = extended_df.merge(injury_subset, on=merge_keys, how="left")
@@ -339,7 +329,7 @@ def _merge_with_extended(df: pd.DataFrame) -> pd.DataFrame:
 
     # Pre-2018 seasons have no injury snapshots. We leave them as NaN rather
     # than filling with "available" defaults, because LightGBM learns optimal
-    # split direction for NaN — treating missing as "unknown" rather than "healthy"
+    # split direction for NaN, treating missing as "unknown" rather than "healthy"
     has_injury = combined["season"].isin(INJURY_SEASONS).values
     all_injury_cols = list(
         dict.fromkeys(list(FILL_DEFAULTS.keys()) + [c for c in combined.columns if c.startswith("injury_")])
@@ -371,13 +361,10 @@ def _merge_with_extended(df: pd.DataFrame) -> pd.DataFrame:
 
 
 # Main
-
-
 def run() -> None:
     print("=" * 60)
     print("BUILD INJURY FEATURES")
     print("=" * 60)
-
     print("\nLoading data...")
     df = pd.read_csv(INPUT_PATH, low_memory=False)
     print(f"{len(df):,} rows loaded")
@@ -400,7 +387,7 @@ def run() -> None:
         "recovery_trajectory",
     ]
     df[structured_cols].to_csv(OUTPUT_DIR / "injury_features_structured.csv", index=False)
-    print(f"Saved structured -> {OUTPUT_DIR / 'injury_features_structured.csv'}")
+    print(f"saved structured -> {OUTPUT_DIR / 'injury_features_structured.csv'}")
 
     df = add_nlp_features(df)
 

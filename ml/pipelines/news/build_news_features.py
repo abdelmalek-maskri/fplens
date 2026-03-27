@@ -126,7 +126,7 @@ def aggregate_links_to_gw(
 
 
 def run() -> None:
-    """Build per-GW news features from article-player links."""
+    """build per-GW news features from article-player links."""
     print("=" * 60)
     print("BUILD NEWS FEATURES")
     print("=" * 60)

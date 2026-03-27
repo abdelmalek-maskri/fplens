@@ -1,4 +1,3 @@
-# ml/pipelines/mappings/build_team_name_map.py
 from pathlib import Path
 
 import pandas as pd
@@ -80,8 +79,6 @@ def load_from_teams_csv(season: str) -> pd.DataFrame:
 
     out = teams[["id", name_col]].copy()
     out.columns = ["team_id", "team_name"]
-
-    # clean types
     out["team_id"] = pd.to_numeric(out["team_id"], errors="coerce")
     out = out.dropna(subset=["team_id"]).copy()
     out["team_id"] = out["team_id"].astype(int)

@@ -1,5 +1,3 @@
-# ml/pipelines/fpl/build_fpl_fixtures_from_gws.py
-
 from pathlib import Path
 
 import pandas as pd
