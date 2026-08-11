@@ -5,7 +5,7 @@ import ErrorBoundary from "./components/feedback/ErrorBoundary";
 import Loading from "./components/feedback/Loading";
 
 const Dashboard = lazy(() => import("./pages/Dashboard"));
-const OptimalXI = lazy(() => import("./pages/SeasonPlanner"));
+const OptimalXI = lazy(() => import("./pages/OptimalXI"));
 const MyTeam = lazy(() => import("./pages/MyTeam"));
 const TransferPlanner = lazy(() => import("./pages/TransferPlanner"));
 const FixtureTicker = lazy(() => import("./pages/FixtureTicker"));

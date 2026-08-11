@@ -7,5 +7,5 @@ export { useTransfers } from "./useTransfers";
 export { useModelInsights } from "./useModelInsights";
 export { usePlayer } from "./usePlayer";
 export { usePlayerPool } from "./usePlayerPool";
-export { useSeasonPlanner } from "./useSeasonPlanner";
+export { useOptimalXI } from "./useOptimalXI";
 export { useGameweek } from "./useGameweek";

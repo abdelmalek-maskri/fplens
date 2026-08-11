@@ -13,6 +13,10 @@ logger = logging.getLogger(__name__)
 OUTPUTS = Path("outputs")
 NEWS_CACHE_TTL = 60  # minutes; news doesn't change fast
 
+# SHAP importances for the production model. Regenerate with
+# `python -m ml.analysis.shap_analysis`.
+SHAP_IMPORTANCE_PATH = OUTPUTS / "evaluation/shap/config_D/global_importance.csv"
+
 
 @router.get("/model-insights")
 def get_model_insights():
@@ -20,11 +24,14 @@ def get_model_insights():
     ablation_path = OUTPUTS / "experiments/ablation/ablation_summary.json"
     ablation = json.loads(ablation_path.read_text()) if ablation_path.exists() else {}
 
-    shap_path = OUTPUTS / "analysis/shap/stacked_ensemble_global_importance.csv"
     shap_features = []
-    if shap_path.exists():
-        with open(shap_path) as f:
+    if SHAP_IMPORTANCE_PATH.exists():
+        with open(SHAP_IMPORTANCE_PATH) as f:
             shap_features = list(csv.DictReader(f))
+    else:
+        # Was silently returning [] against a path that never existed, which the
+        # frontend then masked by falling back to its hardcoded list.
+        logger.warning("SHAP importances missing at %s; tab will render empty", SHAP_IMPORTANCE_PATH)
 
     variants = []
     for config in ["A", "B", "C", "D"]:
