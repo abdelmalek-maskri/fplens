@@ -10,8 +10,8 @@
 
 ```bash
 # Clone the repository
-git clone https://git.cs.bham.ac.uk/projects-2025-26/axm1962.git
-cd axm1962
+git clone https://github.com/abdelmalek-maskri/fplens.git
+cd fplens
 
 # Install Python dependencies
 pip install -r requirements.txt
