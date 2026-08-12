@@ -1,8 +1,8 @@
-# Fantasy Lens
+# FPLens
 
 Predicts how many Fantasy Premier League points each player will score next week, and helps you pick the best team based on those predictions.
 
-FPL is a game where 11 million people pick a squad of real Premier League footballers and earn points based on how they perform each week (goals, assists, clean sheets, etc.). Fantasy Lens uses machine learning to forecast those points, then tells you who to start, who to captain, who to transfer in, and how to plan transfers across multiple future gameweeks.
+FPL is a game where 11 million people pick a squad of real Premier League footballers and earn points based on how they perform each week (goals, assists, clean sheets, etc.). FPLens uses machine learning to forecast those points, then tells you who to start, who to captain, who to transfer in, and how to plan transfers across multiple future gameweeks.
 
 **Quick start:** See [docs/RUNNING.md](docs/RUNNING.md) for setup instructions, appendices are in `docs/`. The full pipeline execution order is in [docs/PIPELINE_ORDER.md](docs/PIPELINE_ORDER.md).
 
@@ -32,7 +32,7 @@ FPL is a game where 11 million people pick a squad of real Premier League footba
 
 The model is a stacked ensemble. It combines predictions from 6 different models (2 LightGBMs, XGBoost, Random Forest, Ridge, and a classifier) through inverse-MAE weighting.
 
-Trained on 10 seasons of FPL data (2016-17 to 2024-25) with 155 features per player per gameweek:
+Trained on the 8 complete seasons from 2016-17 to 2023-24, with 2024-25 held out for evaluation, using 155 features per player per gameweek:
 
 - **FPL stats**: points, minutes, goals, assists, bonus, ICT index, form
 - **Understat**: expected goals (xG), expected assists (xA), shot data, key passes
@@ -46,21 +46,23 @@ Target: how many FPL points will this player score next gameweek?
 
 Each data source tested individually:
 
-| Config | Data Sources | Features | MAE |
-| ------ | ------------ | -------- | --- |
-| A | FPL + Understat | 116 | 1.039 |
-| B | + Injury | 148 | 1.032 |
-| C | + News | 123 | 1.037 |
-| **D** | **+ Both** | **155** | **1.029** |
+| Config | Data Sources | Features | Spearman ρ | MAE | RMSE |
+| ------ | ------------ | -------- | ---------- | --- | ---- |
+| A | FPL + Understat | 116 | 0.674 | 1.039 | 2.091 |
+| B | + Injury | 148 | 0.685 | 1.032 | 2.083 |
+| C | + News | 123 | 0.675 | 1.037 | 2.089 |
+| **D** | **+ Both** | **155** | **0.687** | **1.029** | **2.078** |
 
-Config D is the production model. Injury and news features interact synergistically: together they reduce error more than either does alone.
+Config D is the production model. Injury and news features interact synergistically: together they improve ranking more than either does alone.
+
+Spearman ρ is the headline metric because FPL is a top-N selection problem — you pick a squad, so getting the *order* right matters more than absolute error. MAE is reported for completeness but is a poor way to rank these models: the target is 59.8% zeros, so MAE rewards predicting low regardless of skill (multiplying Config D's predictions by a constant 0.7 drops MAE to 0.975 while RMSE gets worse). Differences between configs are small in absolute terms; see `outputs/experiments/ablation/ablation_summary.json` for Diebold-Mariano tests and bootstrap intervals.
 
 ## Architecture
 
 ```text
 ┌─────────────┐     ┌──────────────┐     ┌──────────────────┐
 │  React App  │────▶│  FastAPI API  │────▶│  ML Pipeline     │
-│  Vite 5     │     │  8 endpoints  │     │  Stacked Ensemble│
+│  Vite 5     │     │  12 endpoints │     │  Stacked Ensemble│
 │  Tailwind   │     │  TTL cache    │     │  155 features    │
 └─────────────┘     └──────────────┘     └──────────────────┘
                            │
@@ -78,7 +80,8 @@ Config D is the production model. Injury and news features interact synergistica
 ## API Endpoints
 
 ```text
-GET  /api/predictions              All players with predicted points + uncertainty
+GET  /api/predictions?model=       All players with predicted points + uncertainty
+GET  /api/models                   Available trained models for the selector
 GET  /api/best-squad?budget=100    Optimal 15-man squad (ILP solver)
 GET  /api/predictions/multi-gw     Multi-horizon predictions (GW+1/2/3)
 GET  /api/fixtures?num_gws=6       Fixture difficulty grid by team
@@ -86,6 +89,9 @@ GET  /api/team/{fpl_id}            User's squad with suggestions
 GET  /api/player/{element_id}      Player detail, history, SHAP breakdown
 GET  /api/news?days=7              Guardian articles with sentiment + player links
 GET  /api/model-insights           Training metrics and ablation results
+GET  /api/health                   Liveness + loaded-model / cache status
+GET  /api/status                   Current gameweek and next deadline
+POST /api/refresh                  Invalidate cache (needs X-Refresh-Secret)
 ```
 
 ## Project Structure
@@ -109,13 +115,14 @@ ml/
 api/
 ├── main.py                 FastAPI app, model loading, cache
 ├── cache.py                Thread-safe TTL cache with per-key locking
+├── inference.py            Shared live-data + prediction cache accessors
 ├── solvers.py              ILP squad optimiser, transfer suggestions
 └── routers/                Endpoint handlers
 
 app/src/
-├── pages/                  11 pages
-├── components/             40+ UI components
-├── hooks/                  Data hooks (API calls)
+├── pages/                  10 routes + NotFound
+├── components/             29 shared components (+14 page-level)
+├── hooks/                  11 data hooks (API calls)
 └── lib/                    API client, constants, theme
 ```
 
@@ -134,10 +141,13 @@ To reproduce all models from scratch, see [docs/PIPELINE_ORDER.md](docs/PIPELINE
 ## Testing
 
 ```bash
-cd app && npm test              # Frontend (Vitest + happy-dom)
+cd app && npm test              # Frontend (Vitest + happy-dom) — 83 tests
+python3 -m pytest -q            # Python — 78 tests (api/, ml/, solvers)
 ruff check ml/ api/             # Python lint
-pytest api/tests/ ml/tests/     # Python tests
 ```
+
+Run Python tests from the project root with `python3 -m pytest` so the root lands on
+`sys.path` — bare `pytest api/tests` fails to import the `api.*` packages.
 
 ## Tech Stack
 

@@ -1,5 +1,5 @@
 # ==============================================================================
-# Fantasy Foresight - Makefile
+# FPLens - Makefile
 # ==============================================================================
 
 # --- Development servers ---
@@ -7,7 +7,7 @@
 .PHONY: api.run web.dev dev test
 
 api.run:
-	cd api && uvicorn main:app --reload --port 8000
+	uvicorn api.main:app --reload --port 8000
 
 web.dev:
 	cd app && npm run dev
@@ -19,11 +19,13 @@ dev:
 
 # --- Tests ---
 
+# python -m pytest (not bare pytest) so the project root lands on sys.path
+# and the api.* / ml.* package imports resolve.
 test:
-	cd api && pytest -q
+	python3 -m pytest -q
 
 test.api:
-	cd api && pytest -q
+	python3 -m pytest api/tests -q
 
 web.build:
 	cd app && npm run build
@@ -40,9 +42,10 @@ ml.fpl:
 	python3 -m ml.pipelines.fpl.build_fpl_table
 
 # Stage 2: Fetch Understat data, build mappings, merge with FPL
+# run_data_pipeline covers steps 1-10 (it re-runs the Stage 1 FPL build too)
 .PHONY: ml.understat
 ml.understat:
-	python3 -m ml.pipelines.runners.run_understat_all
+	python3 -m ml.pipelines.runners.run_data_pipeline
 
 # Stage 3: Create prediction target (points_next_gw)
 .PHONY: ml.target
@@ -70,14 +73,19 @@ ml.train.baseline:
 	python3 -m ml.pipelines.train.train_baseline_model
 
 ml.train.ablation:
-	python3 -m ml.pipelines.train.run_ablation
+	python3 -m ml.pipelines.train.run_injury_ablation
 
+# Trains every model in api/main.py's MODEL_REGISTRY.
+# run_injury_ablation produces config_A/B/C/D and must run last — it needs the
+# injury and news feature tables.
 ml.train.all:
 	python3 -m ml.pipelines.train.train_baseline_model
-	python3 -m ml.pipelines.train.run_ablation
+	python3 -m ml.pipelines.train.train_baseline_tweedie
 	python3 -m ml.pipelines.train.train_twohead_model
-	python3 -m ml.pipelines.train.train_stacked_ensemble
+	python3 -m ml.pipelines.train.train_catboost_twohead
 	python3 -m ml.pipelines.train.train_position_specific
+	python3 -m ml.pipelines.train.train_stacked_ensemble
+	python3 -m ml.pipelines.train.run_injury_ablation
 
 # Stage 5b: News pipeline (Guardian articles → per-GW features)
 .PHONY: ml.news ml.news.fetch ml.news.link ml.news.features ml.news.merge
@@ -117,9 +125,11 @@ ml.shap:
 baseline_v1: ml.fpl ml.understat ml.target ml.features.baseline ml.train.baseline
 
 # Full pipeline: data → features → all models
+# ml.news must precede training: merge_with_features builds the A/B/C/D ablation
+# tables, and config_C/config_D cannot train without them. Needs GUARDIAN_API_KEY.
 .PHONY: ml.full
-ml.full: ml.fpl ml.understat ml.target ml.features.extended ml.injury ml.train.all
+ml.full: ml.data ml.train.all
 
 # Data only (no training)
 .PHONY: ml.data
-ml.data: ml.fpl ml.understat ml.target ml.features.extended ml.injury
+ml.data: ml.fpl ml.understat ml.target ml.features.extended ml.injury ml.news

@@ -56,7 +56,7 @@ const Sidebar = forwardRef(function Sidebar({ open, onClose, gwData }, ref) {
               <span className="text-white font-bold text-2xs leading-none">FL</span>
             </div>
             <div>
-              <h1 className="font-semibold text-surface-100 text-sm leading-none">Fantasy Lens</h1>
+              <h1 className="font-semibold text-surface-100 text-sm leading-none">FPLens</h1>
               <p className="text-2xs text-surface-500 mt-0.5">
                 {currentGw ? `Gameweek ${currentGw}` : "—"}
               </p>
