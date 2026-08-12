@@ -1,4 +1,4 @@
-"""Tests for Fantasy Foresight API endpoints."""
+"""Tests for FPLens API endpoints."""
 
 from unittest.mock import MagicMock, patch
 
@@ -81,7 +81,7 @@ def _make_inference_result(players=None):
 
 def test_predictions_returns_list(client):
     fake_result = _make_inference_result()
-    with patch("api.routers.predictions._get_inference_result", return_value=fake_result):
+    with patch("api.routers.predictions.get_predictions_df", return_value=fake_result["predictions"]):
         r = client.get("/api/predictions")
     assert r.status_code == 200
     data = r.json()
@@ -91,6 +91,37 @@ def test_predictions_returns_list(client):
 
 _PREDICT_MOD = "ml.pipelines.inference.predict"
 _FETCH_MOD = "ml.pipelines.inference.fetch_live_data"
+_TEAM_INFERENCE = "api.routers.team.get_inference_result"
+
+
+def test_live_data_fetched_once_across_routers(client):
+    """Regression: team and prediction routes must share one cached live fetch.
+
+    Previously team.py called predict.run() directly, which re-fetched live data
+    behind the shared cache's back and wrote the same key with a shorter TTL.
+    """
+    fake_result = _make_inference_result()
+    live_df = fake_result["predictions"].assign(chance_this_round=100, news="")
+
+    with (
+        patch(f"{_FETCH_MOD}.fetch_current_gw_data", return_value=live_df) as mock_fetch,
+        patch(f"{_PREDICT_MOD}.fetch_current_gw_data", return_value=live_df),
+        patch("api.inference.get_model_features", return_value=["feat_a", "feat_b", "feat_c"]),
+        patch("api.inference.prepare_features", return_value=fake_result["feature_matrix"]),
+        patch("api.inference.predict", return_value=fake_result["predictions"]),
+        patch(f"{_FETCH_MOD}.fetch_player_history", return_value=[]),
+        patch(f"{_FETCH_MOD}.fetch_fixtures", return_value={"teams": [], "fixtures": {}, "current_gw": 29}),
+        patch(f"{_PREDICT_MOD}.compute_player_shap", create=True, return_value={}),
+    ):
+        assert client.get("/api/player/1").status_code == 200
+
+        # The team route must populate the SHARED live_data key rather than
+        # fetching privately — otherwise later requests refetch needlessly.
+        assert "live_data" in client.get("/api/health").json()["cache_keys"]
+
+        assert client.get("/api/predictions").status_code == 200
+
+    assert mock_fetch.call_count == 1
 
 
 class TestPlayerDetail:
@@ -113,7 +144,7 @@ class TestPlayerDetail:
             "current_gw": 29,
         }
         with (
-            patch(f"{_PREDICT_MOD}.run", return_value=fake_result),
+            patch(_TEAM_INFERENCE, return_value=fake_result),
             patch(f"{_FETCH_MOD}.fetch_player_history", return_value=fake_history),
             patch(f"{_FETCH_MOD}.fetch_fixtures", return_value=fake_fixtures),
             patch(
@@ -134,7 +165,7 @@ class TestPlayerDetail:
 
     def test_404_for_unknown_player(self, client):
         fake_result = _make_inference_result()
-        with patch(f"{_PREDICT_MOD}.run", return_value=fake_result):
+        with patch(_TEAM_INFERENCE, return_value=fake_result):
             r = client.get("/api/player/99999")
         assert r.status_code == 404
 
@@ -142,7 +173,7 @@ class TestPlayerDetail:
         fake_result = _make_inference_result()
         fake_fixtures = {"teams": [], "fixtures": {}, "current_gw": 29}
         with (
-            patch(f"{_PREDICT_MOD}.run", return_value=fake_result),
+            patch(_TEAM_INFERENCE, return_value=fake_result),
             patch(f"{_FETCH_MOD}.fetch_player_history", return_value=None),
             patch(f"{_FETCH_MOD}.fetch_fixtures", return_value=fake_fixtures),
             patch(f"{_PREDICT_MOD}.compute_player_shap", create=True, return_value={}),

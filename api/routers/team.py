@@ -4,6 +4,7 @@ import logging
 
 from fastapi import APIRouter, HTTPException, Path, Request
 
+from api.inference import get_inference_result, resolve_model
 from api.solvers import suggest_transfers
 from ml.pipelines.inference.fetch_live_data import fetch_user_team
 
@@ -48,14 +49,7 @@ def get_team(
     # merge picks with predictions for player names + predicted points
     predictions_df = None
     try:
-        from ml.pipelines.inference.predict import run as run_predictions
-
-        model = request.app.state.model
-        result = cache.get_or_fetch(
-            "predictions_config_d",
-            lambda: run_predictions(model=model, save_output=False),
-        )
-        predictions_df = result["predictions"]
+        predictions_df = get_inference_result(request)["predictions"]
     except Exception:
         logger.warning("Predictions unavailable for team enrichment", exc_info=True)
 
@@ -103,19 +97,16 @@ def _build_player_detail(element_id: int, request: Request) -> dict:
         fetch_player_history,
         get_player_fdr,
     )
-    from ml.pipelines.inference.predict import run as run_predictions
 
     try:
         from ml.pipelines.inference.predict import compute_player_shap
     except ImportError:
         compute_player_shap = None
 
-    model = request.app.state.model
     cache = request.app.state.cache
-    inference = cache.get_or_fetch(
-        "predictions_config_d",
-        lambda: run_predictions(model=model, save_output=False),
-    )
+    # SHAP must run against the same model that produced feature_matrix
+    _, model = resolve_model(request)
+    inference = get_inference_result(request)
     predictions_df = inference["predictions"]
     feature_matrix = inference["feature_matrix"]
     element_ids = inference["element_ids"]
