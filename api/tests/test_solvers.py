@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-import pytest
 
 from api.solvers import solve_best_squad, suggest_transfers
 
