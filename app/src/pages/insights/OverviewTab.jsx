@@ -58,6 +58,9 @@ export default function OverviewTab({
                 Model
               </th>
               <th scope="col" className="table-header text-left py-2.5 px-3">
+                Spearman ρ
+              </th>
+              <th scope="col" className="table-header text-left py-2.5 px-3">
                 MAE
               </th>
               <th scope="col" className="table-header text-left py-2.5 px-3">
@@ -65,9 +68,6 @@ export default function OverviewTab({
               </th>
               <th scope="col" className="table-header text-left py-2.5 px-3">
                 R²
-              </th>
-              <th scope="col" className="table-header text-left py-2.5 px-3">
-                Spearman ρ
               </th>
               <th scope="col" className="table-header text-left py-2.5 px-3">
                 vs Zero
@@ -89,21 +89,24 @@ export default function OverviewTab({
                   </div>
                   <p className="text-xs text-surface-500 mt-0.5">{model.description}</p>
                 </td>
+                {/* rho is emphasised, not MAE. The "Best" badge is awarded on
+                    ranking, and leading with MAE contradicted it visibly: Tweedie
+                    sits lower in this table with a better MAE than the best model. */}
                 <td className="py-2.5 px-3 font-data tabular-nums">
                   <span
                     className={`font-bold ${model.best ? "text-brand-400" : "text-surface-100"}`}
                   >
-                    {model.mae.toFixed(4)}
+                    {model.spearman.toFixed(3)}
                   </span>
+                </td>
+                <td className="py-2.5 px-3 text-surface-300 font-data tabular-nums">
+                  {model.mae.toFixed(4)}
                 </td>
                 <td className="py-2.5 px-3 text-surface-300 font-data tabular-nums">
                   {model.rmse.toFixed(4)}
                 </td>
                 <td className="py-2.5 px-3 text-surface-300 font-data tabular-nums">
                   {model.r2.toFixed(4)}
-                </td>
-                <td className="py-2.5 px-3 text-surface-300 font-data tabular-nums">
-                  {model.spearman.toFixed(3)}
                 </td>
                 <td className="py-2.5 px-3 font-data tabular-nums">
                   <span className="text-success-400 font-semibold">

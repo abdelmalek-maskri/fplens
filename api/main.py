@@ -1,5 +1,6 @@
 import contextlib
 import os
+import secrets
 import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -22,18 +23,23 @@ from ml.pipelines.inference.predict import DEFAULT_MODEL
 _MODEL_CLASSES = []
 with contextlib.suppress(ImportError):
     from ml.pipelines.train.train_stacked_ensemble import StackedEnsemble
+
     _MODEL_CLASSES.append(StackedEnsemble)
 with contextlib.suppress(ImportError):
     from ml.pipelines.train.train_twohead_model import TwoHeadModel
+
     _MODEL_CLASSES.append(TwoHeadModel)
 with contextlib.suppress(ImportError):
     from ml.pipelines.train.train_position_specific import PositionSpecificLGBMModel
+
     _MODEL_CLASSES.append(PositionSpecificLGBMModel)
 with contextlib.suppress(ImportError):
     from ml.pipelines.train.train_stacked_with_injury import StackedEnsembleInjury
+
     _MODEL_CLASSES.append(StackedEnsembleInjury)
 with contextlib.suppress(ImportError):
     from ml.pipelines.train.train_catboost_twohead import CatBoostTwoHead
+
     _MODEL_CLASSES.append(CatBoostTwoHead)
 
 for _mod in ("__main__", "__mp_main__"):
@@ -43,49 +49,94 @@ for _mod in ("__main__", "__mp_main__"):
 
 MODEL_PATH = Path(os.environ.get("MODEL_PATH", str(DEFAULT_MODEL)))
 
-# Model registry (all GW+1 variants available via /api/models)
-
+# GW+1 model registry, served to the frontend selector via /api/models.
+# (display name, joblib path, MAE, Spearman rho) on the 2024-25 holdout.
+#
+# Both metrics are exposed because ranking and error disagree here, and that
+# disagreement is the point: baseline_tweedie has the lowest MAE of anything in
+# the project while ranking near the bottom, because 60% of the target is zeros
+# and MAE rewards predicting low. rho is the metric to sort and judge by.
+# Numbers come from outputs/experiments/**/{summary,metrics,*_comprehensive}.json.
 MODEL_REGISTRY = {
     "config_d": (
-        "Config D: Stacked + Injury + News (Best)",
+        "Config D: Stacked + Injury + News",
         "outputs/experiments/ablation/config_D/model.joblib",
         1.029,
+        0.687,
     ),
-    "config_b": ("Config B: + Injury features", "outputs/experiments/ablation/config_B/model.joblib", 1.032),
-    "config_c": ("Config C: + News features", "outputs/experiments/ablation/config_C/model.joblib", 1.037),
-    "config_a": ("Config A: FPL + Understat only", "outputs/experiments/ablation/config_A/model.joblib", 1.039),
-    "baseline_tweedie": ("LightGBM Tweedie", "outputs/experiments/baseline_tweedie/model.joblib", 1.021),
-    "stacked_ensemble": ("Stacked Ensemble (fpl+Understat)", "outputs/experiments/stacked_ensemble/model.joblib", 1.080),
-    "twohead": ("Two-Head (Classifier + Regressor)", "outputs/experiments/twohead/model.joblib", 1.087),
-    "baseline": ("Single LightGBM", "outputs/experiments/baseline/model.joblib", 1.091),
-    "position_specific": ("Position-Specific (4x LightGBM)", "outputs/experiments/position_specific/model.joblib", 1.095),
-    "catboost_twohead": ("CatBoost Two-Head", "outputs/experiments/catboost_twohead/model.joblib", 1.097),
+    "config_b": ("Config B: + Injury", "outputs/experiments/ablation/config_B/model.joblib", 1.032, 0.685),
+    "config_c": ("Config C: + News", "outputs/experiments/ablation/config_C/model.joblib", 1.037, 0.675),
+    "config_a": ("Config A: FPL + Understat", "outputs/experiments/ablation/config_A/model.joblib", 1.039, 0.674),
+    "stacked_ensemble": (
+        "Stacked Ensemble (no injury/news)",
+        "outputs/experiments/stacked_ensemble/model.joblib",
+        1.080,
+        0.669,
+    ),
+    "catboost_twohead": ("CatBoost Two-Head", "outputs/experiments/catboost_twohead/model.joblib", 1.097, 0.667),
+    "baseline_tweedie": ("LightGBM Tweedie", "outputs/experiments/baseline_tweedie/model.joblib", 1.021, 0.662),
+    "baseline": ("Single LightGBM", "outputs/experiments/baseline/model.joblib", 1.091, 0.661),
+    "twohead": ("Two-Head (Classifier + Regressor)", "outputs/experiments/twohead/model.joblib", 1.087, 0.655),
+    "position_specific": (
+        "Position-Specific (4× LightGBM)",
+        "outputs/experiments/position_specific/model.joblib",
+        1.095,
+        0.633,
+    ),
 }
 
-REFRESH_SECRET = os.environ.get("REFRESH_SECRET", "dev-secret")
+# No default. A shared fallback in a public repo is a published credential, so an
+# unset secret disables the endpoint rather than leaving a guessable one in place.
+REFRESH_SECRET = os.environ.get("REFRESH_SECRET", "")
+
+# The set deployed to production. Each of the four non-ensemble models is 4-7MB
+# and demonstrates something distinct (lowest MAE but poor ranking, the original
+# baseline, a different architecture, a failed experiment). The remaining ablation
+# configs share config_d's architecture, so each would cost ~120MB of RAM to show
+# a ranking difference of about 2%.
+SHOWCASE_MODELS = ("config_d", "baseline_tweedie", "baseline", "twohead", "position_specific")
+
+
+def selected_model_ids() -> list[str]:
+    """Model IDs to attempt loading.
+
+    FPLENS_MODELS accepts a comma-separated list, or "showcase" for the deploy set.
+    Unset loads the whole registry, of which only the files present on disk load —
+    all ten in a full local checkout, the committed subset in production.
+    """
+    raw = os.environ.get("FPLENS_MODELS", "").strip()
+    if not raw or raw == "all":
+        return list(MODEL_REGISTRY)
+    if raw == "showcase":
+        return list(SHOWCASE_MODELS)
+
+    ids = [m.strip() for m in raw.split(",") if m.strip()]
+    unknown = [m for m in ids if m not in MODEL_REGISTRY]
+    if unknown:
+        raise ValueError(f"FPLENS_MODELS contains unknown model IDs {unknown}; valid: {list(MODEL_REGISTRY)}")
+    return ids
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Load all models and initialise the FPL data cache on startup."""
+    """Load the selected models and initialise the FPL data cache on startup."""
     if not MODEL_PATH.exists():
         raise FileNotFoundError(f"Model file not found: {MODEL_PATH}")
 
-    # Load every registered model that exists on disk
     app.state.models = {}
     app.state.model_info = []
-    for model_id, (name, path, mae) in MODEL_REGISTRY.items():
+    for model_id in selected_model_ids():
+        name, path, mae, rho = MODEL_REGISTRY[model_id]
         p = Path(path)
         if not p.exists():
             continue
         try:
             print(f"  Loading {name} from {path}...")
             app.state.models[model_id] = joblib.load(p)
-            app.state.model_info.append({"id": model_id, "name": name, "mae": mae})
+            app.state.model_info.append({"id": model_id, "name": name, "mae": mae, "spearman": rho})
         except Exception as e:
             print(f"  WARNING: Failed to load {name}: {e}")
 
-    # config_d is the best ablation variant (MAE 1.016); fall back to MODEL_PATH
     if "config_d" in app.state.models:
         app.state.model = app.state.models["config_d"]
         print(f"Loaded {len(app.state.models)} models, default: config_d")
@@ -107,9 +158,16 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="FPLens API", version="2.0", lifespan=lifespan)
 
+# The deployed dashboard is served from a different origin than the API, so the
+# allowed origins have to be configurable. CORS_ORIGINS is a comma-separated list;
+# the default covers local Vite only, so a deployment that forgets to set it fails
+# visibly in the browser rather than silently allowing everything.
+DEV_ORIGINS = ["http://localhost:5173", "http://127.0.0.1:5173"]
+CORS_ORIGINS = [o.strip() for o in os.environ.get("CORS_ORIGINS", ",".join(DEV_ORIGINS)).split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["GET", "POST"],
     allow_headers=["Content-Type", "X-Refresh-Secret"],
@@ -148,8 +206,12 @@ def status():
 
 @app.post("/api/refresh")
 def refresh_cache(x_refresh_secret: str = Header(None)):
-    """Invalidate all cached data. Requires REFRESH_SECRET header."""
-    if x_refresh_secret != REFRESH_SECRET:
+    """Invalidate all cached data. Requires the REFRESH_SECRET header."""
+    if not REFRESH_SECRET:
+        raise HTTPException(status_code=503, detail="Cache refresh is not configured")
+    # compare_digest keeps the check constant-time so the secret can't be guessed
+    # a character at a time from response timing
+    if not x_refresh_secret or not secrets.compare_digest(x_refresh_secret, REFRESH_SECRET):
         raise HTTPException(status_code=403, detail="Invalid refresh secret")
     app.state.cache.invalidate()
     return {"status": "refreshed"}
