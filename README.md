@@ -37,7 +37,7 @@ Injury and news interact: together they help more than the sum of adding each al
 
 ```bash
 git clone --recurse-submodules https://github.com/abdelmalek-maskri/fplens.git
-cd fplens && pip install -r requirements.txt && (cd app && npm install)
+cd fplens && python3 -m pip install -r requirements.txt && (cd app && npm install)
 
 make dev     # API on :8000, dashboard on :5173
 ```
@@ -53,7 +53,7 @@ cd app && npm test     # 83 frontend tests
 
 Four data sources are merged into 155 features per player per gameweek: FPL match stats, Understat expected goals, injury records reconstructed from git history, and Guardian article sentiment. None of these share a common identifier, so linking them needed per-season team maps and a three-strategy name matcher.
 
-Six diverse base learners: two LightGBMs, XGBoost, Random Forest, Ridge, and a classifier for whether a player features at all are combined by inverse-MAE weighting. A FastAPI backend serves live predictions with a TTL cache; a React dashboard renders them.
+Six diverse base learners (two LightGBMs, XGBoost, Random Forest, Ridge, and a classifier for whether a player features at all) are combined by inverse-MAE weighting. A FastAPI backend serves live predictions with a TTL cache; a React dashboard renders them.
 
 Every rolling feature is computed with a one-gameweek lag, and injury snapshots are shifted forward a gameweek, so no feature uses information unavailable at prediction time.
 
@@ -81,4 +81,6 @@ Full terms for each in [docs/DATA_SOURCES.md](docs/DATA_SOURCES.md). Not affilia
 
 ## Licence
 
-Source code is [MIT](LICENSE). Third-party data remains under its own terms.
+Source code is [MIT](LICENSE). The licence covers this repository's code only — data
+retrieved from third-party sources at build or run time remains subject to its own terms,
+detailed in [docs/DATA_SOURCES.md](docs/DATA_SOURCES.md).
