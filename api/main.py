@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 import joblib
+from dotenv import load_dotenv
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -46,6 +47,10 @@ for _mod in ("__main__", "__mp_main__"):
     if _mod in sys.modules:
         for _cls in _MODEL_CLASSES:
             setattr(sys.modules[_mod], _cls.__name__, _cls)
+
+# Before any os.environ read below. Previously only the news modules called this,
+# and they import lazily, so API settings placed in .env were ignored at startup.
+load_dotenv()
 
 MODEL_PATH = Path(os.environ.get("MODEL_PATH", str(DEFAULT_MODEL)))
 
@@ -100,15 +105,15 @@ SHOWCASE_MODELS = ("config_d", "baseline_tweedie", "baseline", "twohead", "posit
 def selected_model_ids() -> list[str]:
     """Model IDs to attempt loading.
 
-    FPLENS_MODELS accepts a comma-separated list, or "showcase" for the deploy set.
-    Unset loads the whole registry, of which only the files present on disk load —
-    all ten in a full local checkout, the committed subset in production.
+    Defaults to SHOWCASE_MODELS so a local run shows the same selector a visitor
+    gets, rather than every model that happens to be on disk. FPLENS_MODELS takes
+    "all", "showcase", or a comma-separated list of IDs.
     """
     raw = os.environ.get("FPLENS_MODELS", "").strip()
-    if not raw or raw == "all":
-        return list(MODEL_REGISTRY)
-    if raw == "showcase":
+    if not raw or raw == "showcase":
         return list(SHOWCASE_MODELS)
+    if raw == "all":
+        return list(MODEL_REGISTRY)
 
     ids = [m.strip() for m in raw.split(",") if m.strip()]
     unknown = [m for m in ids if m not in MODEL_REGISTRY]
