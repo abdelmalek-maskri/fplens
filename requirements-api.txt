@@ -1,0 +1,39 @@
+# Serving dependencies only — what `uvicorn api.main:app` needs to run.
+# Use requirements.txt for training and the full data pipeline.
+#
+# Deliberately excluded:
+#   torch, transformers, spacy  training-only NLP for building injury/news features.
+#                               ml/pipelines/inference/news.py guards both imports and
+#                               falls back to regex player linking and keyword sentiment,
+#                               so /api/news works without them. Including them would add
+#                               roughly 400MB of wheels plus a ~500MB model download on
+#                               first request.
+#   pytest, coverage            test-only.
+#
+# Direct dependencies only; pip resolves the rest. Pins match requirements.txt.
+
+fastapi==0.135.1
+uvicorn[standard]==0.41.0
+
+# Feature building and model loading
+pandas==2.3.3
+numpy==2.2.6
+scipy==1.15.3
+scikit-learn==1.7.2
+joblib==1.5.3
+
+# Needed to unpickle the stacked ensemble's base learners
+lightgbm==4.6.0
+xgboost==3.2.0
+
+# Per-player SHAP breakdowns on /api/player/{id}. Pulls numba and llvmlite
+# (~100MB); predict.py imports it lazily, so the endpoint degrades rather than
+# failing if it is ever dropped.
+shap==0.49.1
+
+# External data at inference: FPL and Guardian over HTTP, Understat via its async client
+requests==2.32.5
+aiohttp==3.8.3
+understat==0.1.14
+beautifulsoup4==4.11.1
+python-dotenv==1.2.2
