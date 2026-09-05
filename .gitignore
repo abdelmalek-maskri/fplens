@@ -51,7 +51,7 @@ outputs/
 !outputs/experiments/multi_horizon/gw3/lgbm_reduced/model.joblib
 !outputs/evaluation/shap/config_D/shap_report.json
 
-# Logs
+# logs
 *.log
 
 # Claude Code / MCP (local config)
