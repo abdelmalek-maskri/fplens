@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
   pull_request:
-    branches: [main]
+    branches: [main, dev]
 
 # Cancel in-progress runs for the same PR/branch
 concurrency:
@@ -68,7 +68,7 @@ jobs:
       - run: npm run build
 
   lint-python:
-    name: Lint Python (ML)
+    name: Lint Python
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -78,5 +78,25 @@ jobs:
           python-version-file: .python-version
 
       - run: pip install ruff
-      - run: ruff check ml/
-      - run: ruff format --check ml/
+      - run: ruff check ml/ api/
+      - run: ruff format --check ml/ api/
+
+  test-python:
+    name: Test Python
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version-file: .python-version
+          cache: pip
+          cache-dependency-path: requirements-api.txt
+
+      # Serving deps are enough: no test imports torch, transformers or spacy.
+      # Installing the thin file here also proves it stays sufficient.
+      - run: pip install -r requirements-api.txt pytest
+
+      # `python -m` puts the repo root on sys.path, which the api.* / ml.*
+      # imports need. Bare `pytest` fails with ModuleNotFoundError.
+      - run: python -m pytest api/tests ml/tests -q
