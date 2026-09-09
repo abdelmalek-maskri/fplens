@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   getPredictions,
+  getModels,
+  getManifest,
   getBestSquad,
   getFixtures,
   getTeam,
@@ -32,10 +34,10 @@ beforeEach(() => {
 
 describe("apiFetch shared behavior", () => {
   it("calls correct URL with BASE_URL prefix", async () => {
-    await getPredictions();
+    await getFixtures();
     expect(mockFetch).toHaveBeenCalledOnce();
     const [url] = mockFetch.mock.calls[0];
-    expect(url).toBe("http://127.0.0.1:8000/api/predictions");
+    expect(url).toBe("http://127.0.0.1:8000/api/fixtures?num_gws=6");
   });
 
   it("defaults to GET method", async () => {
@@ -58,7 +60,7 @@ describe("apiFetch shared behavior", () => {
       json: () => Promise.resolve({ detail: "not found" }),
     });
 
-    await expect(getPredictions()).rejects.toThrow("Not found.");
+    await expect(getFixtures()).rejects.toThrow("Not found.");
   });
 
   it("throws friendly message on 422", async () => {
@@ -100,7 +102,7 @@ describe("apiFetch shared behavior", () => {
       return Promise.reject(err);
     });
 
-    await expect(getPredictions()).rejects.toThrow("Request timed out: GET /api/predictions");
+    await expect(getFixtures()).rejects.toThrow("Request timed out: GET /api/fixtures?num_gws=6");
   });
 
   it("re-throws non-abort errors as-is", async () => {
@@ -110,11 +112,6 @@ describe("apiFetch shared behavior", () => {
 });
 
 describe("GET endpoints", () => {
-  it("getPredictions hits /api/predictions", async () => {
-    await getPredictions();
-    expect(mockFetch.mock.calls[0][0]).toBe("http://127.0.0.1:8000/api/predictions");
-  });
-
   it("getBestSquad passes budget query param", async () => {
     await getBestSquad(85);
     expect(mockFetch.mock.calls[0][0]).toBe("http://127.0.0.1:8000/api/best-squad?budget=85");
@@ -160,6 +157,43 @@ describe("GET endpoints", () => {
   it("getMultiGW defaults to horizon=3", async () => {
     await getMultiGW();
     expect(mockFetch.mock.calls[0][0]).toContain("horizon=3");
+  });
+});
+
+describe("snapshot files", () => {
+  it("getModels reads the static file, not the API", async () => {
+    await getModels();
+    expect(mockFetch.mock.calls[0][0]).toBe("/data/models.json");
+  });
+
+  it("getManifest reads the static file", async () => {
+    await getManifest();
+    expect(mockFetch.mock.calls[0][0]).toBe("/data/manifest.json");
+  });
+
+  it("getPredictions reads the file for the model it was given", async () => {
+    await getPredictions("baseline_tweedie");
+    expect(mockFetch).toHaveBeenCalledOnce();
+    expect(mockFetch.mock.calls[0][0]).toBe("/data/predictions_baseline_tweedie.json");
+  });
+
+  it("getPredictions asks the manifest which model is default", async () => {
+    mockFetch
+      .mockResolvedValueOnce(jsonResponse({ default_model: "config_d" }))
+      .mockResolvedValueOnce(jsonResponse([]));
+
+    await getPredictions();
+    expect(mockFetch.mock.calls[0][0]).toBe("/data/manifest.json");
+    expect(mockFetch.mock.calls[1][0]).toBe("/data/predictions_config_d.json");
+  });
+
+  it("treats the sentinel 'default' the same as no model", async () => {
+    mockFetch
+      .mockResolvedValueOnce(jsonResponse({ default_model: "config_d" }))
+      .mockResolvedValueOnce(jsonResponse([]));
+
+    await getPredictions("default");
+    expect(mockFetch.mock.calls[1][0]).toBe("/data/predictions_config_d.json");
   });
 });
 

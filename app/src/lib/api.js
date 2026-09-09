@@ -1,5 +1,10 @@
 const BASE_URL = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000").replace(/\/+$/, "");
 
+// Predictions are identical for every visitor and change once per gameweek, so
+// the job writes them to app/public/data and they are served as static files
+// from this app's own origin. No API, no CORS, no model in memory.
+const SNAPSHOT_BASE = "/data";
+
 const DEFAULT_TIMEOUT = 30_000;
 
 function buildUrl(path, params = {}) {
@@ -8,12 +13,16 @@ function buildUrl(path, params = {}) {
   return query ? `${path}?${query}` : path;
 }
 
-async function apiFetch(path, { method = "GET", headers = {}, timeout = DEFAULT_TIMEOUT } = {}) {
+async function request(
+  base,
+  path,
+  { method = "GET", headers = {}, timeout = DEFAULT_TIMEOUT } = {}
+) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeout);
 
   try {
-    const res = await fetch(`${BASE_URL}${path}`, {
+    const res = await fetch(`${base}${path}`, {
       method,
       signal: controller.signal,
       headers: { ...(method === "POST" ? { "Content-Type": "application/json" } : {}), ...headers },
@@ -38,12 +47,27 @@ async function apiFetch(path, { method = "GET", headers = {}, timeout = DEFAULT_
   }
 }
 
-export function getPredictions(modelId) {
-  return apiFetch(buildUrl("/api/predictions", { model: modelId }));
+const apiFetch = (path, opts) => request(BASE_URL, path, opts);
+const snapshotFetch = (path, opts) => request(SNAPSHOT_BASE, path, opts);
+
+export function getManifest() {
+  return snapshotFetch("/manifest.json");
+}
+
+/**
+ * Predicted points for every player, from the current snapshot.
+ *
+ * Without a modelId this reads the manifest first to learn the default, which
+ * costs a second round trip. The manifest is ~500 bytes and browser-cached, and
+ * the alternative is hardcoding a model name the job already knows.
+ */
+export async function getPredictions(modelId) {
+  const id = modelId && modelId !== "default" ? modelId : (await getManifest()).default_model;
+  return snapshotFetch(`/predictions_${encodeURIComponent(id)}.json`);
 }
 
 export function getModels() {
-  return apiFetch("/api/models");
+  return snapshotFetch("/models.json");
 }
 
 export function getBestSquad(budget = 100) {
