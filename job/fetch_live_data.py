@@ -850,7 +850,7 @@ def enrich_with_news(df: pd.DataFrame, bootstrap_data: dict) -> pd.DataFrame:
     ]
 
     try:
-        from ml.pipelines.inference.news import fetch_recent_news
+        from job.news import fetch_recent_news
     except ImportError:
         logger.info("News module not available, skipping")
         for col in NEWS_COLS:

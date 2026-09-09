@@ -12,8 +12,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from api.cache import FPLDataCache
 from api.routers import fixtures, insights, predictions, team
-from ml.pipelines.inference.multi_gw import load_horizon_models
-from ml.pipelines.inference.predict import DEFAULT_MODEL
+from job.multi_gw import load_horizon_models
+from job.predict import DEFAULT_MODEL
 
 # Unpickling model objects
 # joblib needs these classes importable at load time. Training scripts
@@ -197,7 +197,7 @@ def health():
 @app.get("/api/status")
 def status():
     """Current gameweek number and next deadline for the frontend shell."""
-    from ml.pipelines.inference.fetch_live_data import get_bootstrap_data, get_current_gameweek
+    from job.fetch_live_data import get_bootstrap_data, get_current_gameweek
 
     cache = app.state.cache
 

@@ -1,7 +1,7 @@
-# Tests for ml/pipelines/inference/news.py
+# Tests for job/news.py
 # Covers: _is_pl_relevant, _build_player_lookup, _link_articles_to_players, _compute_sentiment
 
-from ml.pipelines.inference.news import (
+from job.news import (
     _build_player_lookup,
     _compute_sentiment,
     _is_pl_relevant,

@@ -111,7 +111,7 @@ ml.ablation.injury:
 # Stage 7: Inference (requires live FPL API)
 .PHONY: ml.predict
 ml.predict:
-	python3 -m ml.pipelines.inference.predict
+	python3 -m job.predict
 
 # Stage 8: Analysis (optional)
 .PHONY: ml.shap

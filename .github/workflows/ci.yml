@@ -99,4 +99,4 @@ jobs:
 
       # `python -m` puts the repo root on sys.path, which the api.* / ml.*
       # imports need. Bare `pytest` fails with ModuleNotFoundError.
-      - run: python -m pytest api/tests ml/tests -q
+      - run: python -m pytest api/tests job/tests -q

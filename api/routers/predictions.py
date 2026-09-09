@@ -5,7 +5,7 @@ from fastapi import APIRouter, Query, Request
 from api.inference import get_inference_result, get_predictions_df
 from api.schemas import BestSquad
 from api.solvers import solve_best_squad
-from ml.pipelines.inference.multi_gw import predict_multi_gw
+from job.multi_gw import predict_multi_gw
 
 router = APIRouter(tags=["Predictions"])
 
@@ -44,7 +44,7 @@ def get_multi_gw(
     horizon_models = getattr(request.app.state, "horizon_models", {})
 
     def fetch():
-        from ml.pipelines.inference.fetch_live_data import fetch_fixtures
+        from job.fetch_live_data import fetch_fixtures
 
         inference = get_inference_result(request)
         gw1_preds = inference["predictions"]

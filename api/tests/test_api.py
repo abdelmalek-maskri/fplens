@@ -98,8 +98,8 @@ def test_predictions_returns_list(client):
     assert data[0]["web_name"] == "Salah"
 
 
-_PREDICT_MOD = "ml.pipelines.inference.predict"
-_FETCH_MOD = "ml.pipelines.inference.fetch_live_data"
+_PREDICT_MOD = "job.predict"
+_FETCH_MOD = "job.fetch_live_data"
 _TEAM_INFERENCE = "api.routers.team.get_inference_result"
 
 

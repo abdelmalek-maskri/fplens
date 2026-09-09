@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, Query, Request
 
-from ml.pipelines.inference.fetch_live_data import fetch_fixtures
+from job.fetch_live_data import fetch_fixtures
 
 router = APIRouter(tags=["Fixtures"])
 

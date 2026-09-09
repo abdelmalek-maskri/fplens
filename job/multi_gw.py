@@ -1,4 +1,3 @@
-# ml/pipelines/inference/multi_gw.py
 """
 Multi-horizon prediction pipeline.
 
@@ -12,7 +11,7 @@ Models:
   GW+3: LightGBM Reduced (drops lag-1 + roll-3 features)
 
 Usage:
-    from ml.pipelines.inference.multi_gw import predict_multi_gw, load_horizon_models
+    from job.multi_gw import predict_multi_gw, load_horizon_models
 """
 
 from pathlib import Path
@@ -21,8 +20,8 @@ import joblib
 import numpy as np
 import pandas as pd
 
+from job.predict import align_features, get_model_features
 from ml.config.eval_config import CAT_COLS, DROP_COLS
-from ml.pipelines.inference.predict import align_features, get_model_features
 
 HORIZON_MODEL_PATHS = {
     # GW+1 uses the production model loaded in api/main.py (Config D stacked ensemble)
@@ -69,7 +68,7 @@ def _add_future_fixture_features(df: pd.DataFrame, fixtures_data: dict) -> pd.Da
 
     # Build short name -> FPL team ID map for numeric opponent encoding
     try:
-        from ml.pipelines.inference.fetch_live_data import get_bootstrap_data
+        from job.fetch_live_data import get_bootstrap_data
 
         bootstrap = get_bootstrap_data()
         short_to_id = {t["short_name"]: t["id"] for t in bootstrap["teams"]}

@@ -52,8 +52,8 @@ def get_news(request: Request, days: int = Query(default=7, ge=1, le=30)):
     cache = request.app.state.cache
 
     def _fetch():
-        from ml.pipelines.inference.fetch_live_data import get_bootstrap_data
-        from ml.pipelines.inference.news import fetch_recent_news
+        from job.fetch_live_data import get_bootstrap_data
+        from job.news import fetch_recent_news
 
         try:
             bootstrap = cache.get_or_fetch("bootstrap", get_bootstrap_data)

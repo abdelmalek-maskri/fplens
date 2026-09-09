@@ -8,9 +8,9 @@ per-player SHAP explanations, and outputs enriched predictions.
 Default model: Config D stacked ensemble (outputs/experiments/ablation/config_D/).
 
 Usage:
-    python -m ml.pipelines.inference.predict
-    python -m ml.pipelines.inference.predict --model outputs/experiments/ablation/config_D/model.joblib
-    python -m ml.pipelines.inference.predict --no-understat
+    python -m job.predict
+    python -m job.predict --model outputs/experiments/ablation/config_D/model.joblib
+    python -m job.predict --no-understat
 """
 
 from datetime import datetime
@@ -20,8 +20,8 @@ import joblib
 import numpy as np
 import pandas as pd
 
+from job.fetch_live_data import fetch_current_gw_data
 from ml.config.eval_config import CAT_COLS, DROP_COLS, TARGET_COL
-from ml.pipelines.inference.fetch_live_data import fetch_current_gw_data
 
 # Default paths
 DEFAULT_MODEL = Path("outputs/experiments/ablation/config_D/model.joblib")

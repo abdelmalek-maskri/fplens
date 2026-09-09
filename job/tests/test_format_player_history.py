@@ -1,6 +1,6 @@
 """Tests for format_player_history() in fetch_live_data."""
 
-from ml.pipelines.inference.fetch_live_data import format_player_history
+from job.fetch_live_data import format_player_history
 
 
 def _make_gw(round_num, pts=2, mins=90, xg="0.5", xa="0.1", bonus=1):

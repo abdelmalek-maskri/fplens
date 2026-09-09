@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pandas as pd
 
-from ml.pipelines.inference.predict import (
+from job.predict import (
     FEATURE_DISPLAY_NAMES,
     _get_lgbm_from_model,
     compute_player_shap,

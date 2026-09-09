@@ -9,7 +9,7 @@ writers disagreeing on freshness.
 import pandas as pd
 from fastapi import HTTPException, Request
 
-from ml.pipelines.inference.predict import get_model_features, predict, prepare_features
+from job.predict import get_model_features, predict, prepare_features
 
 DEFAULT_MODEL_ID = "config_d"
 
@@ -64,7 +64,7 @@ def get_live_data(request: Request) -> dict:
     cache = request.app.state.cache
 
     def fetch():
-        from ml.pipelines.inference.fetch_live_data import fetch_current_gw_data
+        from job.fetch_live_data import fetch_current_gw_data
 
         live_df = fetch_current_gw_data(include_history=True, include_understat=True)
         keep = [c for c in PLAYER_INFO_COLS if c in live_df.columns]

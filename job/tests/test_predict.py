@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from ml.pipelines.inference.predict import (
+from job.predict import (
     align_features,
     get_model_features,
     prepare_features,

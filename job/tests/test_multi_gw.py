@@ -63,7 +63,7 @@ def _make_feature_matrix(n=5):
 
 
 class TestAddFutureFixtureFeatures:
-    @patch("ml.pipelines.inference.fetch_live_data.get_bootstrap_data")
+    @patch("job.fetch_live_data.get_bootstrap_data")
     def test_adds_expected_columns(self, mock_bootstrap):
         mock_bootstrap.return_value = {
             "teams": [
@@ -73,7 +73,7 @@ class TestAddFutureFixtureFeatures:
                 {"short_name": "LEE", "id": 20},
             ]
         }
-        from ml.pipelines.inference.multi_gw import _add_future_fixture_features
+        from job.multi_gw import _add_future_fixture_features
 
         df = pd.DataFrame({"team_name": ["Arsenal", "Bournemouth"]})
         result = _add_future_fixture_features(df, FIXTURES_DATA)
@@ -81,7 +81,7 @@ class TestAddFutureFixtureFeatures:
         for col in ["opponent_gw2", "was_home_gw2", "fdr_gw2", "opponent_gw3", "was_home_gw3", "fdr_gw3"]:
             assert col in result.columns, f"Missing column: {col}"
 
-    @patch("ml.pipelines.inference.fetch_live_data.get_bootstrap_data")
+    @patch("job.fetch_live_data.get_bootstrap_data")
     def test_uses_numeric_team_ids(self, mock_bootstrap):
         mock_bootstrap.return_value = {
             "teams": [
@@ -90,17 +90,17 @@ class TestAddFutureFixtureFeatures:
                 {"short_name": "LEE", "id": 20},
             ]
         }
-        from ml.pipelines.inference.multi_gw import _add_future_fixture_features
+        from job.multi_gw import _add_future_fixture_features
 
         df = pd.DataFrame({"team_name": ["Arsenal"]})
         result = _add_future_fixture_features(df, FIXTURES_DATA)
         # opponent_gw2 should be MCI's numeric ID (11), not "MCI"
         assert result["opponent_gw2"].iloc[0] == 11
 
-    @patch("ml.pipelines.inference.fetch_live_data.get_bootstrap_data")
+    @patch("job.fetch_live_data.get_bootstrap_data")
     def test_missing_fixtures_fills_defaults(self, mock_bootstrap):
         mock_bootstrap.return_value = {"teams": []}
-        from ml.pipelines.inference.multi_gw import _add_future_fixture_features
+        from job.multi_gw import _add_future_fixture_features
 
         df = pd.DataFrame({"team_name": ["Unknown FC"]})
         result = _add_future_fixture_features(df, FIXTURES_DATA)
@@ -110,7 +110,7 @@ class TestAddFutureFixtureFeatures:
 
 class TestPredictMultiGw:
     def test_horizon_capped_at_3(self):
-        from ml.pipelines.inference.multi_gw import predict_multi_gw
+        from job.multi_gw import predict_multi_gw
 
         gw1 = _make_gw1_predictions(3)
         fm = _make_feature_matrix(3)
@@ -129,7 +129,7 @@ class TestPredictMultiGw:
 
     def test_element_alignment(self):
         """GW+2/3 predictions must map to the correct player regardless of sort order."""
-        from ml.pipelines.inference.multi_gw import predict_multi_gw
+        from job.multi_gw import predict_multi_gw
 
         gw1 = _make_gw1_predictions(3)
         fm = _make_feature_matrix(3)

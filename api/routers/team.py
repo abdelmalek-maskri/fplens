@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException, Path, Request
 from api.inference import get_inference_result, resolve_model
 from api.schemas import Team
 from api.solvers import suggest_transfers
-from ml.pipelines.inference.fetch_live_data import fetch_user_team
+from job.fetch_live_data import fetch_user_team
 
 logger = logging.getLogger(__name__)
 
@@ -93,14 +93,14 @@ def get_player(
 
 def _build_player_detail(element_id: int, request: Request) -> dict:
     """Merge prediction, history, fixtures, and SHAP for a single player."""
-    from ml.pipelines.inference.fetch_live_data import (
+    from job.fetch_live_data import (
         fetch_fixtures,
         fetch_player_history,
         get_player_fdr,
     )
 
     try:
-        from ml.pipelines.inference.predict import compute_player_shap
+        from job.predict import compute_player_shap
     except ImportError:
         compute_player_shap = None
 
