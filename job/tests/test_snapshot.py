@@ -27,7 +27,9 @@ def _predictions(n=3):
 
 
 @contextmanager
-def _stub(models=("config_d",), predict_side_effect=None):
+def _stub(models=("config_d",), predict_side_effect=None, features=("element", "web_name")):
+    """`features` is what each model expects; the live frame only ever has
+    element and web_name, so anything else in it counts as zero-filled."""
     live = pd.DataFrame({"element": [1, 2, 3], "web_name": ["P1", "P2", "P3"]})
     info = [{"id": m, "name": m, "mae": 1.0, "spearman": 0.5} for m in models]
 
@@ -36,7 +38,7 @@ def _stub(models=("config_d",), predict_side_effect=None):
         patch.object(snapshot, "get_bootstrap_data", return_value={"events": []}),
         patch.object(snapshot, "get_current_gameweek", return_value={"id": 12}),
         patch.object(snapshot, "fetch_current_gw_data", return_value=live),
-        patch.object(snapshot, "get_model_features", return_value=[]),
+        patch.object(snapshot, "get_model_features", return_value=list(features)),
         patch.object(snapshot, "prepare_features", return_value=live),
         patch.object(snapshot, "predict", side_effect=predict_side_effect or (lambda *a, **k: _predictions())),
     ):
@@ -103,6 +105,38 @@ def test_refuses_to_publish_an_empty_snapshot(tmp_path):
     out = tmp_path / "data"
     with patch.object(snapshot, "load_models", return_value=({}, [])), pytest.raises(RuntimeError, match="No models"):
         snapshot.build(out_dir=out, log_predictions=False)
+
+
+def test_manifest_records_how_much_of_the_input_was_fabricated(tmp_path):
+    """Config D is served with 42 of 155 features zero-filled. The snapshot has
+    to say so, or the site presents a degraded model as a healthy one."""
+    out = tmp_path / "data"
+    with _stub(features=("element", "web_name", "us_xg_roll3", "fdr_gw2")):
+        snapshot.build(out_dir=out, log_predictions=False)
+
+    model = json.loads((out / "manifest.json").read_text())["models"][0]
+    assert model["features_expected"] == 4
+    assert model["features_zero_filled"] == 2
+    assert model["zero_filled"] == ["fdr_gw2", "us_xg_roll3"]
+
+
+def test_max_zero_filled_refuses_to_publish(tmp_path):
+    out = tmp_path / "data"
+    with (
+        _stub(features=("element", "web_name", "us_xg_roll3", "fdr_gw2")),
+        pytest.raises(RuntimeError, match="exceeds --max-zero-filled"),
+    ):
+        snapshot.build(out_dir=out, log_predictions=False, max_zero_filled=1)
+
+    assert not out.exists(), "a rejected snapshot must not be written"
+
+
+def test_max_zero_filled_allows_a_clean_run(tmp_path):
+    out = tmp_path / "data"
+    with _stub():
+        snapshot.build(out_dir=out, log_predictions=False, max_zero_filled=0)
+
+    assert (out / "manifest.json").exists()
 
 
 def test_prediction_log_appends_rather_than_overwrites(tmp_path, monkeypatch):

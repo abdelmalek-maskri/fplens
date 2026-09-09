@@ -99,11 +99,41 @@ def _append_prediction_log(gameweek: int, per_model: dict[str, pd.DataFrame]) ->
     log.to_csv(PREDICTION_LOG, mode="a", header=header, index=False)
 
 
-def build(out_dir: Path = DEFAULT_OUT, model_ids: list[str] | None = None, log_predictions: bool = True) -> dict:
+def _report_coverage(model_info: list[dict], max_zero_filled: int | None) -> None:
+    """Say how much of each model's input was fabricated, and optionally refuse.
+
+    Zero-filling is not inherently wrong: a feature the live API cannot supply
+    has to be something. It becomes wrong when nobody knows it happened, because
+    the model was evaluated with those columns present and is being served
+    without them.
+    """
+    worst = 0
+    for m in model_info:
+        n, total = m["features_zero_filled"], m["features_expected"]
+        worst = max(worst, n)
+        if not n:
+            continue
+        pct = 100 * n / total if total else 0
+        print(f"  WARNING: {m['id']} has {n}/{total} features zero-filled ({pct:.0f}%)")
+        print(f"           {', '.join(m['zero_filled'][:8])}{' ...' if n > 8 else ''}")
+
+    if max_zero_filled is not None and worst > max_zero_filled:
+        raise RuntimeError(
+            f"{worst} zero-filled features exceeds --max-zero-filled {max_zero_filled}. The snapshot was not written."
+        )
+
+
+def build(
+    out_dir: Path = DEFAULT_OUT,
+    model_ids: list[str] | None = None,
+    log_predictions: bool = True,
+    max_zero_filled: int | None = None,
+) -> dict:
     """Fetch live data once, predict with each model, write the snapshot.
 
     Returns the manifest. Raises if no model could be loaded, since an empty
-    snapshot would replace a good one with nothing.
+    snapshot would replace a good one with nothing, or if max_zero_filled is set
+    and any model exceeds it.
     """
     model_ids = model_ids if model_ids is not None else selected_model_ids()
     models, model_info = load_models(model_ids)
@@ -117,11 +147,27 @@ def build(out_dir: Path = DEFAULT_OUT, model_ids: list[str] | None = None, log_p
     keep = [c for c in PLAYER_INFO_COLS if c in live_df.columns]
     player_info = live_df[keep].copy()
 
+    live_cols = set(live_df.columns)
     per_model: dict[str, pd.DataFrame] = {}
+    coverage: dict[str, list[str]] = {}
+
     for model_id, model in models.items():
         print(f"Predicting with {model_id}...")
-        X = prepare_features(live_df, get_model_features(model))
+        feats = get_model_features(model)
+        # align_features fills these with 0 without saying which, so capture the
+        # names here. A model quietly running on a quarter zeros still returns
+        # confident-looking numbers, which is the failure worth surfacing.
+        coverage[model_id] = sorted(set(feats) - live_cols)
+        X = prepare_features(live_df, feats)
         per_model[model_id] = predict(model, X, player_info)
+
+    for m in model_info:
+        zero_filled = coverage.get(m["id"], [])
+        m["features_expected"] = len(get_model_features(models[m["id"]]))
+        m["features_zero_filled"] = len(zero_filled)
+        m["zero_filled"] = zero_filled
+
+    _report_coverage(model_info, max_zero_filled)
 
     manifest = {
         "gameweek": gameweek,
@@ -163,10 +209,21 @@ def main() -> None:
         help=f"comma-separated model IDs (default: the showcase set). Valid: {','.join(MODEL_REGISTRY)}",
     )
     parser.add_argument("--no-log", action="store_true", help="skip appending to the prediction log")
+    parser.add_argument(
+        "--max-zero-filled",
+        type=int,
+        default=None,
+        help="fail instead of publishing if any model has more than N features zero-filled",
+    )
     args = parser.parse_args()
 
     ids = [m.strip() for m in args.models.split(",")] if args.models else None
-    build(out_dir=args.out, model_ids=ids, log_predictions=not args.no_log)
+    build(
+        out_dir=args.out,
+        model_ids=ids,
+        log_predictions=not args.no_log,
+        max_zero_filled=args.max_zero_filled,
+    )
 
 
 if __name__ == "__main__":
