@@ -113,6 +113,12 @@ ml.ablation.injury:
 ml.predict:
 	python3 -m job.predict
 
+# Build the JSON the website reads. One live fetch (~800 FPL calls, ~40s),
+# then every model predicts on top of it. Run after a gameweek deadline.
+.PHONY: snapshot
+snapshot:
+	python3 -m job.snapshot
+
 # Stage 8: Analysis (optional)
 .PHONY: ml.shap
 ml.shap:
