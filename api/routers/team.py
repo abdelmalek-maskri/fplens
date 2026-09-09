@@ -5,6 +5,7 @@ import logging
 from fastapi import APIRouter, HTTPException, Path, Request
 
 from api.inference import get_inference_result, resolve_model
+from api.schemas import Team
 from api.solvers import suggest_transfers
 from ml.pipelines.inference.fetch_live_data import fetch_user_team
 
@@ -29,7 +30,7 @@ _ENRICH_FIELDS = {
 }
 
 
-@router.get("/team/{fpl_id}")
+@router.get("/team/{fpl_id}", response_model=Team)
 def get_team(
     request: Request,
     fpl_id: int = Path(..., ge=1, le=15_000_000),

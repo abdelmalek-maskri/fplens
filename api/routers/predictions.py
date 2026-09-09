@@ -3,6 +3,7 @@
 from fastapi import APIRouter, Query, Request
 
 from api.inference import get_inference_result, get_predictions_df
+from api.schemas import BestSquad
 from api.solvers import solve_best_squad
 from ml.pipelines.inference.multi_gw import predict_multi_gw
 
@@ -24,7 +25,7 @@ def get_models(request: Request):
     return getattr(request.app.state, "model_info", [])
 
 
-@router.get("/best-squad")
+@router.get("/best-squad", response_model=BestSquad)
 def get_best_squad(
     request: Request,
     budget: float = Query(default=100.0, ge=50.0, le=120.0),
