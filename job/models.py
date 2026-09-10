@@ -70,12 +70,34 @@ MODEL_REGISTRY = {
 
 DEFAULT_MODEL_ID = "config_d"
 
-# The set published to the site. Each of the four non-ensemble models is 4-7MB
-# and demonstrates something distinct (lowest MAE but poor ranking, the original
-# baseline, a different architecture, a failed experiment). The remaining ablation
-# configs share config_d's architecture, so each would cost ~120MB of RAM to show
-# a ranking difference of about 2%.
-SHOWCASE_MODELS = ("config_d", "baseline_tweedie", "baseline", "twohead", "position_specific")
+# The set published to the site, in two halves.
+#
+# The four ablation configs are the point of the project: switching between them
+# shows what injury and news features are actually worth, which is the research
+# made interactive rather than a table in a document. stacked_ensemble is the
+# same architecture without either, so it is the floor they are measured against.
+#
+# The other four each demonstrate something distinct: lowest MAE but poor ranking,
+# the original baseline, a different architecture, and a failed experiment.
+#
+# This list used to exclude the ablation configs because the API held every model
+# in memory for the life of the process, and each stacked ensemble costs ~120MB.
+# The API no longer loads models at all — the job loads them once, predicts, and
+# exits — so that constraint is gone. What publishing one now costs is ~45MB in
+# the release tarball and ~38KB gzipped per snapshot.
+#
+# catboost_twohead is left out: 46MB to duplicate an architecture already shown.
+SHOWCASE_MODELS = (
+    "config_d",
+    "config_b",
+    "config_c",
+    "config_a",
+    "stacked_ensemble",
+    "baseline_tweedie",
+    "baseline",
+    "twohead",
+    "position_specific",
+)
 
 
 def patch_unpickle_names() -> None:

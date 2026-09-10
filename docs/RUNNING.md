@@ -99,14 +99,14 @@ All read from the environment, and `.env` in the project root is loaded automati
 | Variable | Default | Purpose |
 | -------- | ------- | ------- |
 | `GUARDIAN_API_KEY` | unset | Live news sentiment. Without it, news features are zero-filled at inference. Free key from [the Guardian Open Platform](https://open-platform.theguardian.com). |
-| `FPLENS_MODELS` | `showcase` | Which models to load. `showcase` is the five-model deploy set, `all` is the full registry, or pass a comma-separated list of IDs. |
+| `FPLENS_MODELS` | `showcase` | Which models to load. `showcase` is the nine-model published set, `all` is the full registry, or pass a comma-separated list of IDs. |
 | `CORS_ORIGINS` | local Vite | Comma-separated allowed origins. Must include the deployed dashboard's URL. |
 | `REFRESH_SECRET` | unset | Secret for `POST /api/refresh`. Unset disables the endpoint (503) rather than leaving a guessable default. |
 | `FPLENS_SNAPSHOT_DIR` | `app/public/data` | Where the API reads predictions from. Override when the API is deployed apart from the site. |
 
 `FPLENS_MODELS` applies to the snapshot job, not the API — the API loads no models at
-all. The showcase set is five models; `all` publishes every one you have on disk, at
-roughly 350KB of extra JSON each.
+all. The showcase set is nine models; `all` adds catboost_twohead, at roughly 350KB of
+extra JSON (38KB gzipped) and 46MB in the release tarball.
 
 ## Deploying the API
 
@@ -127,7 +127,7 @@ python3 -m pip install -r requirements-api.txt
 uvicorn api.main:app --host 0.0.0.0 --port ${PORT:-8000}
 ```
 
-A clean serving environment boots the five showcase models plus both horizon models at
+A clean serving environment boots the nine showcase models plus both horizon models at
 roughly 304MB resident.
 
 ## Tests
