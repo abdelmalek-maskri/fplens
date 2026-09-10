@@ -8,6 +8,7 @@ import {
   getTeam,
   getPlayer,
   getModelInsights,
+  getNews,
   getMultiGW,
   refresh,
   health,
@@ -34,10 +35,10 @@ beforeEach(() => {
 
 describe("apiFetch shared behavior", () => {
   it("calls correct URL with BASE_URL prefix", async () => {
-    await getFixtures();
+    await getBestSquad();
     expect(mockFetch).toHaveBeenCalledOnce();
     const [url] = mockFetch.mock.calls[0];
-    expect(url).toBe("http://127.0.0.1:8000/api/fixtures?num_gws=6");
+    expect(url).toBe("http://127.0.0.1:8000/api/best-squad?budget=100");
   });
 
   it("defaults to GET method", async () => {
@@ -60,7 +61,7 @@ describe("apiFetch shared behavior", () => {
       json: () => Promise.resolve({ detail: "not found" }),
     });
 
-    await expect(getFixtures()).rejects.toThrow("Not found.");
+    await expect(getBestSquad()).rejects.toThrow("Not found.");
   });
 
   it("throws friendly message on 422", async () => {
@@ -102,7 +103,9 @@ describe("apiFetch shared behavior", () => {
       return Promise.reject(err);
     });
 
-    await expect(getFixtures()).rejects.toThrow("Request timed out: GET /api/fixtures?num_gws=6");
+    await expect(getBestSquad()).rejects.toThrow(
+      "Request timed out: GET /api/best-squad?budget=100"
+    );
   });
 
   it("re-throws non-abort errors as-is", async () => {
@@ -122,16 +125,6 @@ describe("GET endpoints", () => {
     expect(mockFetch.mock.calls[0][0]).toContain("budget=100");
   });
 
-  it("getFixtures passes num_gws query param", async () => {
-    await getFixtures(3);
-    expect(mockFetch.mock.calls[0][0]).toBe("http://127.0.0.1:8000/api/fixtures?num_gws=3");
-  });
-
-  it("getFixtures defaults to num_gws=6", async () => {
-    await getFixtures();
-    expect(mockFetch.mock.calls[0][0]).toContain("num_gws=6");
-  });
-
   it("getTeam passes fplId in path", async () => {
     await getTeam(3935276);
     expect(mockFetch.mock.calls[0][0]).toBe("http://127.0.0.1:8000/api/team/3935276");
@@ -140,11 +133,6 @@ describe("GET endpoints", () => {
   it("getPlayer passes elementId in path", async () => {
     await getPlayer(42);
     expect(mockFetch.mock.calls[0][0]).toBe("http://127.0.0.1:8000/api/player/42");
-  });
-
-  it("getModelInsights hits /api/model-insights", async () => {
-    await getModelInsights();
-    expect(mockFetch.mock.calls[0][0]).toBe("http://127.0.0.1:8000/api/model-insights");
   });
 
   it("getMultiGW passes horizon query param", async () => {
@@ -194,6 +182,32 @@ describe("snapshot files", () => {
 
     await getPredictions("default");
     expect(mockFetch.mock.calls[1][0]).toBe("/data/predictions_config_d.json");
+  });
+
+  it("getModelInsights reads the static file", async () => {
+    await getModelInsights();
+    expect(mockFetch.mock.calls[0][0]).toBe("/data/model_insights.json");
+  });
+
+  it("getNews reads the static file and takes no window", async () => {
+    await getNews();
+    expect(mockFetch.mock.calls[0][0]).toBe("/data/news.json");
+    expect(getNews.length).toBe(0);
+  });
+
+  it("getFixtures reads one file and narrows it locally", async () => {
+    const grid = { gw: 4, fixtures: { ARS: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] } };
+    mockFetch.mockResolvedValue(jsonResponse(grid));
+
+    const six = await getFixtures(6);
+    expect(mockFetch.mock.calls[0][0]).toBe("/data/fixtures.json");
+    expect(six.fixtures.ARS).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(six.gw).toBe(4);
+  });
+
+  it("getFixtures leaves a snapshot with no fixtures alone", async () => {
+    mockFetch.mockResolvedValue(jsonResponse({ gw: 4 }));
+    await expect(getFixtures()).resolves.toEqual({ gw: 4, fixtures: {} });
   });
 });
 

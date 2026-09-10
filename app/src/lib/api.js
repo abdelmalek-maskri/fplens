@@ -74,8 +74,18 @@ export function getBestSquad(budget = 100) {
   return apiFetch(buildUrl("/api/best-squad", { budget }));
 }
 
-export function getFixtures(numGws = 6) {
-  return apiFetch(buildUrl("/api/fixtures", { num_gws: numGws }));
+/**
+ * Team x gameweek fixture grid with difficulty ratings.
+ *
+ * The snapshot holds the maximum window the API used to allow, so narrowing it
+ * is a slice here rather than a different request.
+ */
+export async function getFixtures(numGws = 6) {
+  const data = await snapshotFetch("/fixtures.json");
+  const fixtures = Object.fromEntries(
+    Object.entries(data.fixtures ?? {}).map(([team, list]) => [team, list.slice(0, numGws)])
+  );
+  return { ...data, fixtures };
 }
 
 export function getTeam(fplId) {
@@ -87,11 +97,12 @@ export function getPlayer(elementId) {
 }
 
 export function getModelInsights() {
-  return apiFetch("/api/model-insights");
+  return snapshotFetch("/model_insights.json");
 }
 
-export function getNews(days = 7) {
-  return apiFetch(buildUrl("/api/news", { days }));
+// The lookback is fixed when the snapshot is built, so there is no days param.
+export function getNews() {
+  return snapshotFetch("/news.json");
 }
 
 export function getMultiGW(horizon = 3) {

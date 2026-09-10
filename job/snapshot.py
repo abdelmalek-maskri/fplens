@@ -13,7 +13,9 @@ serving rather than a half-written mixture of two gameweeks.
 """
 
 import argparse
+import csv
 import json
+import logging
 import math
 import shutil
 from datetime import datetime, timezone
@@ -21,11 +23,28 @@ from pathlib import Path
 
 import pandas as pd
 
-from job.fetch_live_data import fetch_current_gw_data, get_bootstrap_data, get_current_gameweek
+from job.fetch_live_data import (
+    fetch_current_gw_data,
+    fetch_fixtures,
+    get_bootstrap_data,
+    get_current_gameweek,
+)
 from job.models import MODEL_REGISTRY, load_models, selected_model_ids
 from job.predict import get_model_features, predict, prepare_features
 
+logger = logging.getLogger(__name__)
+
 DEFAULT_OUT = Path("app/public/data")
+
+OUTPUTS = Path("outputs")
+SHAP_IMPORTANCE_PATH = OUTPUTS / "evaluation/shap/config_D/global_importance.csv"
+
+# The API capped this at 10 and the UI asks for 6. Writing the maximum lets the
+# frontend slice to whatever it wants from one file.
+FIXTURE_GWS = 10
+
+# Guardian lookback. The UI has only ever asked for 7.
+NEWS_DAYS = 7
 
 # Appended to rather than overwritten: this is the record of what was predicted
 # before the gameweek was played, which is the only way to score the model on
@@ -99,6 +118,43 @@ def _append_prediction_log(gameweek: int, per_model: dict[str, pd.DataFrame]) ->
     log.to_csv(PREDICTION_LOG, mode="a", header=header, index=False)
 
 
+def _build_model_insights() -> dict:
+    """Training metrics, ablation results and global SHAP importance.
+
+    Pure disk reads from outputs/. This never needed a request to serve it; the
+    endpoint was re-reading these six files on every call.
+    """
+    ablation_path = OUTPUTS / "experiments/ablation/ablation_summary.json"
+    ablation = json.loads(ablation_path.read_text()) if ablation_path.exists() else {}
+
+    shap_features = []
+    if SHAP_IMPORTANCE_PATH.exists():
+        with open(SHAP_IMPORTANCE_PATH) as f:
+            shap_features = list(csv.DictReader(f))
+    else:
+        logger.warning("SHAP importances missing at %s; that tab will render empty", SHAP_IMPORTANCE_PATH)
+
+    variants = []
+    for config in ["A", "B", "C", "D"]:
+        summary_path = OUTPUTS / f"experiments/ablation/config_{config}/summary.json"
+        if summary_path.exists():
+            variants.append(json.loads(summary_path.read_text()))
+
+    return {"ablation": ablation, "shap_features": shap_features, "model_variants": variants}
+
+
+def _build_news(bootstrap: dict) -> dict:
+    """Guardian articles with sentiment. Degrades to empty rather than failing
+    the whole snapshot, since news is the least important thing on the site."""
+    try:
+        from job.news import fetch_recent_news
+
+        return fetch_recent_news(bootstrap, days=NEWS_DAYS)
+    except Exception as e:
+        logger.error("News fetch failed, writing an empty feed: %s", e)
+        return {"articles": [], "trending": []}
+
+
 def _report_coverage(model_info: list[dict], max_zero_filled: int | None) -> None:
     """Say how much of each model's input was fabricated, and optionally refuse.
 
@@ -140,7 +196,8 @@ def build(
     if not models:
         raise RuntimeError(f"No models could be loaded from {model_ids}. Train them or check outputs/.")
 
-    gameweek = get_current_gameweek(get_bootstrap_data()["events"])["id"]
+    bootstrap = get_bootstrap_data()
+    gameweek = get_current_gameweek(bootstrap["events"])["id"]
 
     print(f"Fetching live data for GW{gameweek}...")
     live_df = fetch_current_gw_data(include_history=True, include_understat=True)
@@ -187,6 +244,9 @@ def build(
     for model_id, df in per_model.items():
         _write_json(staging / f"predictions_{model_id}.json", _records(df))
     _write_json(staging / "models.json", model_info)
+    _write_json(staging / "fixtures.json", fetch_fixtures(bootstrap, num_gws=FIXTURE_GWS))
+    _write_json(staging / "news.json", _build_news(bootstrap))
+    _write_json(staging / "model_insights.json", _build_model_insights())
     _write_json(staging / "manifest.json", manifest)
 
     if out_dir.exists():

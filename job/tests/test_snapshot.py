@@ -41,6 +41,9 @@ def _stub(models=("config_d",), predict_side_effect=None, features=("element", "
         patch.object(snapshot, "get_model_features", return_value=list(features)),
         patch.object(snapshot, "prepare_features", return_value=live),
         patch.object(snapshot, "predict", side_effect=predict_side_effect or (lambda *a, **k: _predictions())),
+        patch.object(snapshot, "fetch_fixtures", return_value={"teams": [], "fixtures": {}}),
+        patch.object(snapshot, "_build_news", return_value={"articles": [], "trending": []}),
+        patch.object(snapshot, "_build_model_insights", return_value={"ablation": {}}),
     ):
         yield
 
@@ -51,7 +54,15 @@ def test_writes_one_file_per_model_plus_manifest(tmp_path):
         snapshot.build(out_dir=out, log_predictions=False)
 
     written = sorted(p.name for p in out.iterdir())
-    assert written == ["manifest.json", "models.json", "predictions_baseline.json", "predictions_config_d.json"]
+    assert written == [
+        "fixtures.json",
+        "manifest.json",
+        "model_insights.json",
+        "models.json",
+        "news.json",
+        "predictions_baseline.json",
+        "predictions_config_d.json",
+    ]
 
 
 def test_manifest_records_the_gameweek_and_models(tmp_path):
@@ -137,6 +148,13 @@ def test_max_zero_filled_allows_a_clean_run(tmp_path):
         snapshot.build(out_dir=out, log_predictions=False, max_zero_filled=0)
 
     assert (out / "manifest.json").exists()
+
+
+def test_news_failure_does_not_sink_the_whole_snapshot():
+    """News is the least important thing on the site. A Guardian outage should
+    cost the news feed, not the predictions."""
+    with patch("job.news.fetch_recent_news", side_effect=RuntimeError("Guardian down")):
+        assert snapshot._build_news({}) == {"articles": [], "trending": []}
 
 
 def test_prediction_log_appends_rather_than_overwrites(tmp_path, monkeypatch):
