@@ -57,7 +57,7 @@ MULTI_GW_HORIZON = 3
 # real outcomes later. Nothing else in the project keeps it.
 PREDICTION_LOG = Path("data/predictions_log.csv")
 
-# Carried into each prediction file. Kept in sync with api.inference.PLAYER_INFO_COLS.
+# Player info carried into each prediction file alongside the predicted points.
 PLAYER_INFO_COLS = [
     "element",
     "web_name",

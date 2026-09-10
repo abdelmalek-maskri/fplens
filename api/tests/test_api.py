@@ -1,38 +1,51 @@
-"""Tests for FPLens API endpoints."""
+"""Tests for the two endpoints that still need a server."""
 
-from unittest.mock import MagicMock, patch
+import json
+from unittest.mock import patch
 
-import numpy as np
-import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
 
+from api.main import app
+
+PLAYERS = [
+    {
+        "element": 1,
+        "web_name": "Salah",
+        "position": "MID",
+        "team_name": "LIV",
+        "value": 13.0,
+        "predicted_points": 6.5,
+        "status": "a",
+        "chance_of_playing": 100,
+        "form": 8.0,
+        "opponent_name": "ARS",
+        "uncertainty": 0.5,
+        "predicted_range_low": 5.7,
+        "predicted_range_high": 7.3,
+    }
+]
+
 
 @pytest.fixture
-def mock_model():
-    model = MagicMock()
-    model.predict.return_value = ([3.5, 2.1], None)
-    model.base_models = {"lgb1": (MagicMock(feature_name_=["f1", "f2"]), "regressor")}
-    model.base_names = ["lgb1"]
-    return model
+def client():
+    with TestClient(app) as c:
+        yield c
 
 
 @pytest.fixture
-def client(mock_model):
-    with patch("api.main.MODEL_PATH") as mock_path, patch("api.main.joblib.load", return_value=mock_model):
-        mock_path.exists.return_value = True
-        from api.main import app
-
-        with TestClient(app) as c:
-            yield c
+def snapshot(tmp_path):
+    """A snapshot directory on disk, since that is now the API's data source."""
+    (tmp_path / "manifest.json").write_text(json.dumps({"gameweek": 4, "default_model": "config_d"}))
+    (tmp_path / "predictions_config_d.json").write_text(json.dumps(PLAYERS))
+    with patch("api.snapshot.SNAPSHOT_DIR", tmp_path):
+        yield tmp_path
 
 
 def test_health(client):
     r = client.get("/api/health")
     assert r.status_code == 200
-    data = r.json()
-    assert data["status"] == "ok"
-    assert data["model_loaded"] is True
+    assert r.json()["status"] == "ok"
 
 
 def test_refresh_disabled_when_secret_unset(client):
@@ -52,153 +65,101 @@ def test_refresh_accepts_correct_secret(client):
     with patch("api.main.REFRESH_SECRET", "s3cret"):
         r = client.post("/api/refresh", headers={"X-Refresh-Secret": "s3cret"})
     assert r.status_code == 200
-    assert r.json()["status"] == "refreshed"
 
 
-def _make_inference_result(players=None):
-    """Build a fake inference result dict matching run()'s return shape."""
-    if players is None:
-        players = [
-            {
-                "element": 1,
-                "web_name": "Salah",
-                "position": "MID",
-                "team_name": "LIV",
-                "value": 13.0,
-                "predicted_points": 6.5,
-                "status": "a",
-                "chance_of_playing": 100,
-                "form": 8.0,
-                "opponent_name": "ARS",
-                "uncertainty": 0.5,
-                "predicted_range_low": 5.7,
-                "predicted_range_high": 7.3,
-                "rank": 1,
-            }
-        ]
-    df = pd.DataFrame(players)
-    X = pd.DataFrame(
-        np.random.rand(len(players), 3),
-        columns=["feat_a", "feat_b", "feat_c"],
-    )
-    return {
-        "predictions": df,
-        "feature_matrix": X,
-        "element_ids": [p["element"] for p in players],
-    }
+def test_api_serves_only_the_endpoints_that_need_a_server(client):
+    """Everything else moved to the snapshot. If a read endpoint reappears here,
+    something has been added back that should be a file."""
+    paths = {r.path for r in app.routes if hasattr(r, "methods") and r.path.startswith("/api")}
+    assert paths == {"/api/best-squad", "/api/team/{fpl_id}", "/api/health", "/api/refresh"}
 
 
-def test_predictions_returns_list(client):
-    fake_result = _make_inference_result()
-    with patch("api.routers.predictions.get_predictions_df", return_value=fake_result["predictions"]):
-        r = client.get("/api/predictions")
-    assert r.status_code == 200
-    data = r.json()
-    assert isinstance(data, list)
-    assert data[0]["web_name"] == "Salah"
+def test_api_loads_no_model(client):
+    """The whole point of the rebuild: no joblib in this process."""
+    assert not hasattr(app.state, "models")
+    assert not hasattr(app.state, "horizon_models")
 
 
-_PREDICT_MOD = "job.predict"
-_FETCH_MOD = "job.fetch_live_data"
-_TEAM_INFERENCE = "api.routers.team.get_inference_result"
-
-
-def test_live_data_fetched_once_across_routers(client):
-    """Regression: team and prediction routes must share one cached live fetch.
-
-    Previously team.py called predict.run() directly, which re-fetched live data
-    behind the shared cache's back and wrote the same key with a shorter TTL.
-    """
-    fake_result = _make_inference_result()
-    live_df = fake_result["predictions"].assign(chance_this_round=100, news="")
-
-    with (
-        patch(f"{_FETCH_MOD}.fetch_current_gw_data", return_value=live_df) as mock_fetch,
-        patch(f"{_PREDICT_MOD}.fetch_current_gw_data", return_value=live_df),
-        patch("api.inference.get_model_features", return_value=["feat_a", "feat_b", "feat_c"]),
-        patch("api.inference.prepare_features", return_value=fake_result["feature_matrix"]),
-        patch("api.inference.predict", return_value=fake_result["predictions"]),
-        patch(f"{_FETCH_MOD}.fetch_player_history", return_value=[]),
-        patch(f"{_FETCH_MOD}.fetch_fixtures", return_value={"teams": [], "fixtures": {}, "current_gw": 29}),
-        patch(f"{_PREDICT_MOD}.compute_player_shap", create=True, return_value={}),
-    ):
-        assert client.get("/api/player/1").status_code == 200
-
-        # The team route must populate the SHARED live_data key rather than
-        # fetching privately — otherwise later requests refetch needlessly.
-        assert "live_data" in client.get("/api/health").json()["cache_keys"]
-
-        assert client.get("/api/predictions").status_code == 200
-
-    assert mock_fetch.call_count == 1
-
-
-class TestPlayerDetail:
-    def test_returns_full_profile(self, client):
-        fake_result = _make_inference_result()
-        fake_history = [
-            {
-                "round": i,
-                "total_points": i * 2,
-                "minutes": 90,
-                "expected_goals": "0.5",
-                "expected_assists": "0.3",
-                "bonus": 1,
-            }
-            for i in range(1, 11)
-        ]
-        fake_fixtures = {
-            "teams": ["LIV"],
-            "fixtures": {"LIV": [{"gw": 30, "opponent": "WHU", "home": True, "atkFdr": 2, "defFdr": 3}]},
-            "current_gw": 29,
+class TestBestSquad:
+    def test_reads_predictions_from_the_snapshot(self, client, snapshot):
+        empty_xi = {
+            "formation": "4-4-2",
+            "total_points": 0.0,
+            "total_with_captain": 0.0,
+            "captain_id": 1,
+            "vice_id": 1,
+            "starters": [],
+            "bench": [],
         }
-        with (
-            patch(_TEAM_INFERENCE, return_value=fake_result),
-            patch(f"{_FETCH_MOD}.fetch_player_history", return_value=fake_history),
-            patch(f"{_FETCH_MOD}.fetch_fixtures", return_value=fake_fixtures),
-            patch(
-                f"{_PREDICT_MOD}.compute_player_shap",
-                create=True,
-                return_value={1: [{"feature": "f", "display": "F", "value": 1.0, "impact": 0.5}]},
-            ),
-        ):
-            r = client.get("/api/player/1")
+        result = {
+            "squad": [],
+            "total_value": 0.0,
+            "total_points": 0.0,
+            "budget_remaining": 85.0,
+            "best_xi": empty_xi,
+        }
+        with patch("api.routers.squad.solve_best_squad", return_value=result) as solve:
+            r = client.get("/api/best-squad?budget=85")
         assert r.status_code == 200
-        data = r.json()
-        assert data["element"] == 1
-        assert data["web_name"] == "Salah"
-        assert len(data["pts_history"]) == 10
-        assert len(data["pts_last5"]) == 5
-        assert len(data["fixtures"]) == 1
-        assert len(data["shap"]) == 1
+        df = solve.call_args.args[0]
+        assert list(df["web_name"]) == ["Salah"], "the solver is fed the snapshot, not a model"
+        assert solve.call_args.kwargs["budget"] == 85.0
 
-    def test_404_for_unknown_player(self, client):
-        fake_result = _make_inference_result()
-        with patch(_TEAM_INFERENCE, return_value=fake_result):
-            r = client.get("/api/player/99999")
+    def test_503_when_no_snapshot_has_been_built(self, client, tmp_path):
+        with patch("api.snapshot.SNAPSHOT_DIR", tmp_path / "missing"):
+            r = client.get("/api/best-squad")
+        assert r.status_code == 503
+        assert "make snapshot" in r.json()["detail"]
+
+    def test_rejects_a_budget_outside_the_allowed_range(self, client):
+        assert client.get("/api/best-squad?budget=10").status_code == 422
+
+
+class TestTeam:
+    def _fpl_response(self):
+        return {
+            "fpl_id": 123,
+            "manager": "A Manager",
+            "team_name": "A Team",
+            "overall_rank": 1000,
+            "overall_points": 500,
+            "bank": 1.5,
+            "total_value": 99.5,
+            "gameweek": 4,
+            "picks_gameweek": 3,
+            "active_chip": None,
+            "picks": [{"element": 1, "position": 1, "multiplier": 1, "is_captain": True, "is_vice_captain": False}],
+        }
+
+    def test_enriches_picks_from_the_snapshot(self, client, snapshot):
+        with patch("api.routers.team.fetch_user_team", return_value=self._fpl_response()):
+            r = client.get("/api/team/123")
+        assert r.status_code == 200
+        pick = r.json()["picks"][0]
+        assert pick["web_name"] == "Salah"
+        assert pick["player_position"] == "MID"
+        assert pick["predicted_points"] == 6.5
+
+    def test_still_returns_the_squad_when_predictions_are_missing(self, client, tmp_path):
+        """A manager should still see their team if the snapshot is absent."""
+        with (
+            patch("api.snapshot.SNAPSHOT_DIR", tmp_path / "missing"),
+            patch("api.routers.team.fetch_user_team", return_value=self._fpl_response()),
+        ):
+            r = client.get("/api/team/123")
+        assert r.status_code == 200
+        assert r.json()["picks"][0]["web_name"] == ""
+        assert r.json()["transfer_suggestions"] == []
+
+    def test_404_for_an_unknown_fpl_id(self, client, snapshot):
+        with patch("api.routers.team.fetch_user_team", side_effect=Exception("404 Not Found")):
+            r = client.get("/api/team/123")
         assert r.status_code == 404
 
-    def test_empty_history_when_fetch_fails(self, client):
-        fake_result = _make_inference_result()
-        fake_fixtures = {"teams": [], "fixtures": {}, "current_gw": 29}
-        with (
-            patch(_TEAM_INFERENCE, return_value=fake_result),
-            patch(f"{_FETCH_MOD}.fetch_player_history", return_value=None),
-            patch(f"{_FETCH_MOD}.fetch_fixtures", return_value=fake_fixtures),
-            patch(f"{_PREDICT_MOD}.compute_player_shap", create=True, return_value={}),
-        ):
-            r = client.get("/api/player/1")
-        assert r.status_code == 200
-        data = r.json()
-        assert data["pts_history"] == []
-        assert data["fixtures"] == []
-        assert data["shap"] == []
+    def test_502_when_fpl_is_unreachable(self, client, snapshot):
+        with patch("api.routers.team.fetch_user_team", side_effect=RuntimeError("boom")):
+            r = client.get("/api/team/123")
+        assert r.status_code == 502
 
-
-def test_model_insights(client):
-    r = client.get("/api/model-insights")
-    assert r.status_code == 200
-    data = r.json()
-    assert "ablation" in data
-    assert "shap_features" in data
-    assert "model_variants" in data
+    def test_rejects_an_out_of_range_fpl_id(self, client):
+        assert client.get("/api/team/99999999").status_code == 422

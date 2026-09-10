@@ -91,11 +91,11 @@ jobs:
         with:
           python-version-file: .python-version
           cache: pip
-          cache-dependency-path: requirements-api.txt
+          cache-dependency-path: requirements-job.txt
 
-      # Serving deps are enough: no test imports torch, transformers or spacy.
-      # Installing the thin file here also proves it stays sufficient.
-      - run: pip install -r requirements-api.txt pytest
+      # The job's file covers both suites: it is a superset of the API's, and
+      # job/tests loads real models. Neither needs torch, transformers or spacy.
+      - run: pip install -r requirements-job.txt -r requirements-api.txt pytest
 
       # `python -m` puts the repo root on sys.path, which the api.* / ml.*
       # imports need. Bare `pytest` fails with ModuleNotFoundError.
