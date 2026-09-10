@@ -95,7 +95,8 @@ jobs:
 
       # The job's file covers both suites: it is a superset of the API's, and
       # job/tests loads real models. Neither needs torch, transformers or spacy.
-      - run: pip install -r requirements-job.txt -r requirements-api.txt pytest
+      # httpx is test-only: starlette's TestClient needs it, nothing at runtime does.
+      - run: pip install -r requirements-job.txt -r requirements-api.txt pytest httpx==0.28.1
 
       # `python -m` puts the repo root on sys.path, which the api.* / ml.*
       # imports need. Bare `pytest` fails with ModuleNotFoundError.
