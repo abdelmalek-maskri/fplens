@@ -46,20 +46,26 @@ Opens on `http://localhost:5173`. Requires the backend to be running.
 
 ## Models
 
-**Trained models are not committed to the repository.** `outputs/` and `*.joblib` are
-gitignored (they are large and reproducible), so a fresh clone contains no models and the
-API will refuse to start:
+**Trained models are not committed, and the site does not need them.** `outputs/` and
+`*.joblib` are gitignored because they are large and reproducible. The snapshot in
+`app/public/data/` **is** committed, so a fresh clone serves the whole dashboard with no
+model on disk.
 
-```text
-FileNotFoundError: Model file not found: outputs/experiments/ablation/config_D/model.joblib
+Models are needed for two things only: rebuilding the snapshot, and training.
+
+```bash
+make snapshot   # ~800 FPL API calls, ~30s, rewrites app/public/data/
 ```
 
-The API needs at minimum:
+That needs `outputs/experiments/ablation/config_D/model.joblib` at minimum. The other
+registry models are optional — the job skips any whose `.joblib` is missing and simply
+publishes fewer options in the selector. The GW+2 and GW+3 horizon models are optional
+too; without them `multi_gw.json` degrades to GW+1 only.
 
 | Path | Purpose |
 | ---- | ------- |
-| `outputs/experiments/ablation/config_D/model.joblib` | Production stacked ensemble (GW+1). Required — startup fails without it. |
-| `outputs/experiments/multi_horizon/gw2/lgbm_reduced/model.joblib` | GW+2 horizon (optional; `/api/predictions/multi-gw` degrades without it) |
+| `outputs/experiments/ablation/config_D/model.joblib` | Production stacked ensemble (GW+1) |
+| `outputs/experiments/multi_horizon/gw2/lgbm_reduced/model.joblib` | GW+2 horizon (optional) |
 | `outputs/experiments/multi_horizon/gw3/lgbm_reduced/model.joblib` | GW+3 horizon (optional) |
 | `outputs/experiments/ablation/ablation_summary.json` | Model Insights page |
 | `outputs/evaluation/shap/` | SHAP reports for Model Insights |
@@ -86,10 +92,6 @@ To train just the production model once features exist:
 python3 -m ml.pipelines.train.run_injury_ablation
 ```
 
-The other registry models (baseline, two-head, position-specific, etc.) are optional — the
-API skips any whose `.joblib` is missing and simply offers fewer options in the model
-selector. Reproduce them with the scripts in `ml/pipelines/train/`.
-
 ## Configuration
 
 All read from the environment, and `.env` in the project root is loaded automatically.
@@ -100,18 +102,25 @@ All read from the environment, and `.env` in the project root is loaded automati
 | `FPLENS_MODELS` | `showcase` | Which models to load. `showcase` is the five-model deploy set, `all` is the full registry, or pass a comma-separated list of IDs. |
 | `CORS_ORIGINS` | local Vite | Comma-separated allowed origins. Must include the deployed dashboard's URL. |
 | `REFRESH_SECRET` | unset | Secret for `POST /api/refresh`. Unset disables the endpoint (503) rather than leaving a guessable default. |
-| `MODEL_PATH` | Config D | Fallback model path if `config_d` is not in the loaded set. |
+| `FPLENS_SNAPSHOT_DIR` | `app/public/data` | Where the API reads predictions from. Override when the API is deployed apart from the site. |
 
-Loading all ten models needs about 764MB of RAM; the showcase set needs about 326MB,
-which is why it is the default. `FPLENS_MODELS=all` lists every model you have on disk.
+`FPLENS_MODELS` applies to the snapshot job, not the API — the API loads no models at
+all. The showcase set is five models; `all` publishes every one you have on disk, at
+roughly 350KB of extra JSON each.
 
 ## Deploying the API
 
-`requirements-api.txt` holds serving dependencies only — 455MB installed against
-1.3GB for the full `requirements.txt`. It omits torch, transformers, and spaCy, which
-exist for building injury and news features during training. The live news endpoint
-guards those imports and falls back to regex player linking and keyword sentiment, so
-it still works without them.
+Three requirements files, smallest first:
+
+| File | For | Notably excludes |
+| ---- | --- | ---------------- |
+| `requirements-api.txt` | serving | LightGBM, XGBoost, SHAP, scikit-learn, joblib (~200MB) |
+| `requirements-job.txt` | `make snapshot` | torch, transformers, spaCy (~400MB) |
+| `requirements.txt` | training | nothing; one flat freeze |
+
+The API loads no models, which is why its file is the thin one. The job guards its
+spaCy and transformers imports and falls back to regex player linking with keyword
+sentiment, so news features still build without them.
 
 ```bash
 python3 -m pip install -r requirements-api.txt

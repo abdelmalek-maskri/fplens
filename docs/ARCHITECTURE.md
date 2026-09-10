@@ -2,34 +2,56 @@
 
 ## System overview
 
+Predictions are the same for every visitor and change once per gameweek, so
+they are computed on a schedule and written to files rather than computed per
+request. Only two things genuinely need a server.
+
 ```text
-┌─────────────┐     ┌───────────────┐     ┌──────────────────┐
-│  React App  │────▶│  FastAPI API  │────▶│  ML Pipeline     │
-│  Vite 5     │     │  12 endpoints │     │  Stacked Ensemble│
-│  Tailwind   │     │  TTL cache    │     │  155 features    │
-└─────────────┘     └───────────────┘     └──────────────────┘
-                            │
-               ┌────────────┼────────────┐
-               ▼            ▼            ▼
-         FPL API      Guardian API   Understat
+  once per gameweek deadline
+  ┌────────────────┐   ~800 calls, ~40s   ┌────────────────────────────┐
+  │  job/snapshot  │────────────────────▶ │ FPL · Understat · Guardian │
+  └───────┬────────┘                      └────────────────────────────┘
+          │ loads the models, writes JSON
+          ▼
+  ┌────────────────────────┐
+  │  app/public/data/      │  12 files, ~2.9 MB raw / ~200 KB gzipped
+  └───────────┬────────────┘
+              │ served as static files
+              ▼
+  ┌────────────────────────┐   2 endpoints    ┌──────────────────┐
+  │  React app, 10 routes  │────────────────▶ │ FastAPI          │──▶ FPL API
+  └────────────────────────┘                  │ no model loaded  │
+  every request                               └──────────────────┘
 ```
 
-**ML pipeline** fetches live data from three external APIs, computes features matching the training schema, and returns predictions with uncertainty and per-player SHAP.
+**Job** fetches live data from three external APIs, rebuilds the training
+features, runs every showcase model, and writes the JSON the site reads. It is
+the only thing that loads a model.
 
-**API** serves predictions, runs the ILP squad optimiser, fetches user teams, and caches with per-key TTL.
+**App** reads those files directly. Ten routes: dashboard, optimal XI, my team,
+transfers, fixtures, comparison, news, watchlist, insights, player detail.
 
-**App** renders 10 routes: dashboard, optimal XI, my team, transfers, fixtures, comparison, news, watchlist, insights, player detail.
+**API** answers the two questions a file cannot: what is in a given manager's
+squad, and what is the best squad for a given budget.
 
 ## Repository layout
 
 ```text
-api/          FastAPI backend
-  main.py       app entry, model registry, lifespan loader
-  inference.py  shared live-data + prediction cache (all routers read through this)
-  cache.py      thread-safe TTL cache with per-key locking
+api/          FastAPI backend — two endpoints, no ML dependencies
+  main.py       app entry and lifespan
+  snapshot.py   reads the predictions the job wrote
+  cache.py      thread-safe TTL cache, now only for per-user squads
   solvers.py    ILP squad optimiser, best XI, transfer suggestions
-  routers/      endpoint handlers
-ml/
+  schemas.py    response models for both endpoints
+  routers/      squad.py, team.py
+job/          everything that runs on a schedule
+  snapshot.py     writes the site's JSON
+  fetch_live_data.py  FPL, Understat and injury features
+  predict.py      feature alignment, prediction, per-player SHAP
+  multi_gw.py     GW+2 and GW+3 horizons
+  news.py         Guardian articles, spaCy NER, RoBERTa sentiment
+  models.py       model registry and loading
+ml/           training only
   config/       evaluation config, season definitions
   pipelines/
     features/   lag, rolling, momentum, season averages
@@ -37,9 +59,8 @@ ml/
     understat/  xG scraping and gameweek mapping
     mappings/   cross-source entity resolution
     injury/     injury features (structured + NLP)
-    news/       Guardian articles, spaCy NER, RoBERTa sentiment
+    news/       Guardian article linking and sentiment
     train/      one script per architecture
-    inference/  live prediction pipeline
   evaluation/   stratified, calibration, and business metrics
   analysis/     SHAP analysis
 app/src/
@@ -49,28 +70,49 @@ app/src/
   lib/          API client, constants, theme
 ```
 
+## The snapshot
+
+`make snapshot` runs `job/snapshot.py`, which writes into `app/public/data/`:
+
+```text
+manifest.json              gameweek, deadline, model list, feature coverage
+models.json                what fills the model selector
+predictions_<model>.json   one per showcase model, ~650 players each
+players.json               full detail: history, fixtures, SHAP
+multi_gw.json              GW+1/2/3 predictions
+fixtures.json              team x gameweek difficulty grid, 10 GWs
+news.json                  Guardian articles with sentiment
+model_insights.json        ablation results and global SHAP importance
+```
+
+It is built in a sibling `.staging` directory and swapped into place at the
+end, so a run that dies partway leaves the previous snapshot serving rather
+than a mixture of two gameweeks. It refuses to publish if no model loaded, and
+`--max-zero-filled N` makes it refuse when too much of a model's input is
+absent.
+
+Each run also appends to `data/predictions_log.csv`, the record of what was
+predicted before a gameweek was played. That is the only way to score the model
+on real outcomes later.
+
 ## API reference
 
 ```text
-GET  /api/predictions?model=       All players with predicted points + uncertainty
-GET  /api/models                   Available trained models
 GET  /api/best-squad?budget=100    Optimal 15-man squad (ILP)
-GET  /api/predictions/multi-gw     Multi-horizon predictions (GW+1/2/3)
-GET  /api/fixtures?num_gws=6       Fixture difficulty grid by team
-GET  /api/team/{fpl_id}            A user's squad with transfer suggestions
-GET  /api/player/{element_id}      Player detail, history, SHAP breakdown
-GET  /api/news?days=7              Guardian articles with sentiment
-GET  /api/model-insights           Ablation results and SHAP importance
-GET  /api/health                   Liveness, loaded models, cache status
-GET  /api/status                   Current gameweek and next deadline
-POST /api/refresh                  Invalidate cache (needs X-Refresh-Secret)
+GET  /api/team/{fpl_id}            A manager's squad with transfer suggestions
+GET  /api/health                   Liveness and cache status
+POST /api/refresh                  Drop cached squads (needs X-Refresh-Secret)
 ```
 
-## Caching
+Everything else the site shows is a file. The API reads the same
+`predictions_*.json` the frontend does, so the two can never disagree about
+what a player is predicted to score. Parsing it costs about 3ms, so it is read
+per request rather than cached, which also means a new snapshot is live the
+moment it lands.
 
-The expensive step is fetching per-player gameweek history — roughly one FPL API call per player, about 30 seconds for ~825 players via a thread pool. That result is cached once under `live_data` and shared across every model; switching models only re-runs the cheap `predict()` call on top of it.
-
-Every cache key gets its own lock, so concurrent requests for the same key wait on a single in-flight fetch rather than starting duplicates. All routers read predictions through `api/inference.py` — calling the inference pipeline directly from a router would fetch behind the cache's back and write the same key with a different TTL.
+`api/cache.py` survives for one job: a manager's squad has to be fetched from
+the FPL API on demand, because there are millions of possible IDs and nothing
+can be precomputed until someone types theirs in.
 
 ## Models
 
@@ -133,3 +175,8 @@ Config D is production because FPL is a top-N selection problem: you pick 15 pla
 - Diebold-Mariano tests treat player-gameweek panel data as a time series; clustering by gameweek would widen the intervals.
 - `chance_delta` and `recovery_trajectory` are zero-filled at inference — they need per-gameweek `chance_of_playing` history the live API doesn't expose.
 - Players with no gameweek history (new signings) fall back to approximated rolling features.
+- **Every model is served with a quarter to a third of its features zero-filled.** Config D runs on 113 of 155, the baselines on 47 of 71. The snapshot prints this on every run and records it in the manifest. Two causes:
+  - 32 Understat lag/rolling features. The live fetch fails inside `aiohttp` (pinned at 3.8.3, which has known resolver problems), and the CSV fallback wants `understat_gw_2026-27.csv`, which does not exist because the newest scrape is 2025-26.
+  - 10 future-fixture features (`fdr_*_gw2`, `fdr_*_gw3`, `opponent_gw*`, `was_home_gw*`). Only `job/multi_gw.py` and the training feature builder construct them, so the single-gameweek path has never supplied them.
+
+  These matter: `fdr_attack_gw2` shows up as a top-5 SHAP driver for real players while always being zero. The holdout figures above were measured with all 155 features present, so the served model is not the model that was evaluated.

@@ -133,5 +133,5 @@ These run automatically when the API server starts:
 uvicorn api.main:app --reload
 
 # Or run inference standalone
-python -m job.predict
+python -m job.snapshot   # writes app/public/data/
 ```

@@ -48,7 +48,7 @@ Football articles used for news sentiment features.
 - Source: <https://open-platform.theguardian.com>
 - Terms: the free developer tier is **non-commercial only**, **requires attribution**,
   and **content must not be retained for longer than 24 hours**.
-- Live path: `/api/news` fetches on demand and caches for 60 minutes, within the
+- Live path: `make snapshot` fetches once per gameweek into `news.json`, within the
   retention limit.
 - Training path: sentiment features are derived aggregates (mention counts, sentiment
   scores, injury context) rather than stored article text. Raw responses used during
