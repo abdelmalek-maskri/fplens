@@ -10,6 +10,7 @@ import {
   getModelInsights,
   getNews,
   getMultiGW,
+  getStatus,
   refresh,
   health,
 } from "../../lib/api";
@@ -129,18 +130,6 @@ describe("GET endpoints", () => {
     await getTeam(3935276);
     expect(mockFetch.mock.calls[0][0]).toBe("http://127.0.0.1:8000/api/team/3935276");
   });
-
-  it("getMultiGW passes horizon query param", async () => {
-    await getMultiGW(4);
-    expect(mockFetch.mock.calls[0][0]).toBe(
-      "http://127.0.0.1:8000/api/predictions/multi-gw?horizon=4"
-    );
-  });
-
-  it("getMultiGW defaults to horizon=3", async () => {
-    await getMultiGW();
-    expect(mockFetch.mock.calls[0][0]).toContain("horizon=3");
-  });
 });
 
 describe("snapshot files", () => {
@@ -209,6 +198,21 @@ describe("snapshot files", () => {
   it("getPlayer throws for an id the snapshot does not have", async () => {
     mockFetch.mockResolvedValue(jsonResponse({ 42: { web_name: "Salah" } }));
     await expect(getPlayer(999)).rejects.toThrow("Not found.");
+  });
+
+  it("getMultiGW reads the static file and takes no horizon", async () => {
+    await getMultiGW();
+    expect(mockFetch.mock.calls[0][0]).toBe("/data/multi_gw.json");
+    expect(getMultiGW.length).toBe(0);
+  });
+
+  it("getStatus reshapes the manifest instead of calling the API", async () => {
+    mockFetch.mockResolvedValue(jsonResponse({ gameweek: 4, deadline: "2026-09-12T17:30:00Z" }));
+    await expect(getStatus()).resolves.toEqual({
+      current_gw: 4,
+      deadline: "2026-09-12T17:30:00Z",
+    });
+    expect(mockFetch.mock.calls[0][0]).toBe("/data/manifest.json");
   });
 
   it("getFixtures leaves a snapshot with no fixtures alone", async () => {

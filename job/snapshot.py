@@ -32,6 +32,7 @@ from job.fetch_live_data import (
     get_player_fdr,
 )
 from job.models import MODEL_REGISTRY, load_models, selected_model_ids
+from job.multi_gw import load_horizon_models, predict_multi_gw
 from job.predict import compute_player_shap, get_model_features, predict, prepare_features
 
 logger = logging.getLogger(__name__)
@@ -47,6 +48,9 @@ FIXTURE_GWS = 10
 
 # Guardian lookback. The UI has only ever asked for 7.
 NEWS_DAYS = 7
+
+# GW+2 and GW+3 are the only horizons with trained models.
+MULTI_GW_HORIZON = 3
 
 # Appended to rather than overwritten: this is the record of what was predicted
 # before the gameweek was played, which is the only way to score the model on
@@ -233,7 +237,8 @@ def build(
         raise RuntimeError(f"No models could be loaded from {model_ids}. Train them or check outputs/.")
 
     bootstrap = get_bootstrap_data()
-    gameweek = get_current_gameweek(bootstrap["events"])["id"]
+    event = get_current_gameweek(bootstrap["events"])
+    gameweek = event["id"]
 
     print(f"Fetching live data for GW{gameweek}...")
     # Fetched here rather than inside fetch_current_gw_data because the player
@@ -275,8 +280,15 @@ def build(
     shap = compute_player_shap(models[default_id], default_X, element_ids, top_n=5)
     players = _build_players(per_model[default_id], histories, fixtures, shap)
 
+    print("Predicting GW+2 and GW+3...")
+    multi_gw = predict_multi_gw(
+        per_model[default_id], live_df, load_horizon_models(), fixtures, horizon=MULTI_GW_HORIZON
+    )
+
     manifest = {
         "gameweek": gameweek,
+        # Carried so the header can show the countdown without an API call.
+        "deadline": event.get("deadline_time"),
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "models": model_info,
         "default_model": model_info[0]["id"] if model_info else None,
@@ -294,6 +306,7 @@ def build(
         _write_json(staging / f"predictions_{model_id}.json", _records(df))
     _write_json(staging / "models.json", model_info)
     _write_json(staging / "players.json", players)
+    _write_json(staging / "multi_gw.json", multi_gw)
     _write_json(staging / "fixtures.json", fixtures)
     _write_json(staging / "news.json", _build_news(bootstrap))
     _write_json(staging / "model_insights.json", _build_model_insights())

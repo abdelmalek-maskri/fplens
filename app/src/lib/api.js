@@ -115,8 +115,10 @@ export function getNews() {
   return snapshotFetch("/news.json");
 }
 
-export function getMultiGW(horizon = 3) {
-  return apiFetch(buildUrl("/api/predictions/multi-gw", { horizon }));
+// The snapshot always covers GW+1 through GW+3, and the planner narrows it
+// locally, so there is no horizon param.
+export function getMultiGW() {
+  return snapshotFetch("/multi_gw.json");
 }
 
 export function refresh(secret = "dev-secret") {
@@ -130,6 +132,7 @@ export function health() {
   return apiFetch("/api/health");
 }
 
-export function getStatus() {
-  return apiFetch("/api/status");
+export async function getStatus() {
+  const { gameweek, deadline } = await getManifest();
+  return { current_gw: gameweek, deadline };
 }
