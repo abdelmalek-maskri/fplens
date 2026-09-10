@@ -35,13 +35,22 @@ def test_health(client):
     assert data["model_loaded"] is True
 
 
-def test_refresh_cache_requires_secret(client):
-    r = client.post("/api/refresh")
-    assert r.status_code == 403
+def test_refresh_disabled_when_secret_unset(client):
+    """No REFRESH_SECRET means the endpoint is off, not open with a default."""
+    with patch("api.main.REFRESH_SECRET", ""):
+        r = client.post("/api/refresh", headers={"X-Refresh-Secret": "anything"})
+    assert r.status_code == 503
 
 
-def test_refresh_cache_with_secret(client):
-    r = client.post("/api/refresh", headers={"X-Refresh-Secret": "dev-secret"})
+def test_refresh_rejects_wrong_secret(client):
+    with patch("api.main.REFRESH_SECRET", "s3cret"):
+        assert client.post("/api/refresh").status_code == 403
+        assert client.post("/api/refresh", headers={"X-Refresh-Secret": "wrong"}).status_code == 403
+
+
+def test_refresh_accepts_correct_secret(client):
+    with patch("api.main.REFRESH_SECRET", "s3cret"):
+        r = client.post("/api/refresh", headers={"X-Refresh-Secret": "s3cret"})
     assert r.status_code == 200
     assert r.json()["status"] == "refreshed"
 

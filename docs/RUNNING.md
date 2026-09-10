@@ -90,9 +90,36 @@ The other registry models (baseline, two-head, position-specific, etc.) are opti
 API skips any whose `.joblib` is missing and simply offers fewer options in the model
 selector. Reproduce them with the scripts in `ml/pipelines/train/`.
 
-## Optional
+## Configuration
 
-- Set `GUARDIAN_API_KEY` environment variable (from [The Guardian Open Platform](https://open-platform.theguardian.com)) for live news sentiment features. Without it, news features are zero-filled at inference.
+All read from the environment, and `.env` in the project root is loaded automatically.
+
+| Variable | Default | Purpose |
+| -------- | ------- | ------- |
+| `GUARDIAN_API_KEY` | unset | Live news sentiment. Without it, news features are zero-filled at inference. Free key from [the Guardian Open Platform](https://open-platform.theguardian.com). |
+| `FPLENS_MODELS` | `showcase` | Which models to load. `showcase` is the five-model deploy set, `all` is the full registry, or pass a comma-separated list of IDs. |
+| `CORS_ORIGINS` | local Vite | Comma-separated allowed origins. Must include the deployed dashboard's URL. |
+| `REFRESH_SECRET` | unset | Secret for `POST /api/refresh`. Unset disables the endpoint (503) rather than leaving a guessable default. |
+| `MODEL_PATH` | Config D | Fallback model path if `config_d` is not in the loaded set. |
+
+Loading all ten models needs about 764MB of RAM; the showcase set needs about 326MB,
+which is why it is the default. `FPLENS_MODELS=all` lists every model you have on disk.
+
+## Deploying the API
+
+`requirements-api.txt` holds serving dependencies only — 455MB installed against
+1.3GB for the full `requirements.txt`. It omits torch, transformers, and spaCy, which
+exist for building injury and news features during training. The live news endpoint
+guards those imports and falls back to regex player linking and keyword sentiment, so
+it still works without them.
+
+```bash
+python3 -m pip install -r requirements-api.txt
+uvicorn api.main:app --host 0.0.0.0 --port ${PORT:-8000}
+```
+
+A clean serving environment boots the five showcase models plus both horizon models at
+roughly 304MB resident.
 
 ## Tests
 

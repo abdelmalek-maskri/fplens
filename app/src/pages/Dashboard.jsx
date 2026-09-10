@@ -106,8 +106,20 @@ export default function Dashboard() {
             </select>
           )}
           {activeModel && (
-            <span className="text-2xs font-data tabular-nums text-brand-400">
-              MAE {activeModel.mae}
+            /* Rank quality leads, error follows. Sorting these models by MAE is
+               actively misleading: 60% of gameweek scores are zero, so MAE rewards
+               predicting low. LightGBM Tweedie has the best MAE here and the worst
+               rankings. */
+            <span className="text-2xs font-data tabular-nums text-surface-500">
+              {typeof activeModel.spearman === "number" && (
+                <>
+                  <span className="text-brand-400" title="Spearman rank correlation">
+                    ρ {activeModel.spearman.toFixed(3)}
+                  </span>
+                  <span className="mx-1.5 text-surface-700">·</span>
+                </>
+              )}
+              <span title="Mean absolute error">MAE {activeModel.mae}</span>
             </span>
           )}
         </div>

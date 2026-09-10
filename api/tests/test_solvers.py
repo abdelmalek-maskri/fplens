@@ -8,17 +8,19 @@ def _make_pool(n=100):
     """Build a pool with enough players across 20 teams for ILP feasibility."""
     positions = (["GK"] * 10 + ["DEF"] * 30 + ["MID"] * 40 + ["FWD"] * 20)[:n]
     teams = [f"T{(i % 20) + 1}" for i in range(n)]
-    return pd.DataFrame({
-        "element": range(1, n + 1),
-        "web_name": [f"Player{i}" for i in range(1, n + 1)],
-        "team_name": teams,
-        "position": positions,
-        "predicted_points": np.linspace(4.0, 1.0, n),
-        "value": np.linspace(4.0, 8.0, n),
-        "status": ["a"] * n,
-        "chance_of_playing": [100.0] * n,
-        "form": [3.0] * n,
-    })
+    return pd.DataFrame(
+        {
+            "element": range(1, n + 1),
+            "web_name": [f"Player{i}" for i in range(1, n + 1)],
+            "team_name": teams,
+            "position": positions,
+            "predicted_points": np.linspace(4.0, 1.0, n),
+            "value": np.linspace(4.0, 8.0, n),
+            "status": ["a"] * n,
+            "chance_of_playing": [100.0] * n,
+            "form": [3.0] * n,
+        }
+    )
 
 
 class TestSolveBestSquad:
