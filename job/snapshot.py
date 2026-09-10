@@ -32,7 +32,7 @@ from job.fetch_live_data import (
     get_player_fdr,
 )
 from job.models import MODEL_REGISTRY, load_models, selected_model_ids
-from job.multi_gw import load_horizon_models, predict_multi_gw
+from job.multi_gw import add_future_fixture_features, load_horizon_models, predict_multi_gw
 from job.predict import compute_player_shap, get_model_features, predict, prepare_features
 
 logger = logging.getLogger(__name__)
@@ -248,6 +248,13 @@ def build(
     keep = [c for c in PLAYER_INFO_COLS if c in live_df.columns]
     player_info = live_df[keep].copy()
 
+    # The GW+1 models were trained with GW+2/GW+3 fixture difficulty, but only the
+    # multi-horizon path ever built those columns, so the default model has always
+    # been served with them zero-filled. Fixtures are published weeks ahead, so
+    # this is knowable at prediction time, not leakage.
+    fixtures = fetch_fixtures(bootstrap, num_gws=FIXTURE_GWS)
+    live_df = add_future_fixture_features(live_df, fixtures)
+
     live_cols = set(live_df.columns)
     per_model: dict[str, pd.DataFrame] = {}
     coverage: dict[str, list[str]] = {}
@@ -276,7 +283,6 @@ def build(
 
     print("Building player detail...")
     element_ids = [int(e) for e in live_df["element"]]
-    fixtures = fetch_fixtures(bootstrap, num_gws=FIXTURE_GWS)
     shap = compute_player_shap(models[default_id], default_X, element_ids, top_n=5)
     players = _build_players(per_model[default_id], histories, fixtures, shap)
 

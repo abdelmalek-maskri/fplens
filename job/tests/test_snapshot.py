@@ -43,6 +43,9 @@ def _stub(models=("config_d",), predict_side_effect=None, features=("element", "
         patch.object(snapshot, "get_player_fdr", return_value=[]),
         patch.object(snapshot, "load_horizon_models", return_value={}),
         patch.object(snapshot, "predict_multi_gw", return_value=[]),
+        # Passthrough: the real one would add the fdr_* columns and change the
+        # zero-fill counts these tests assert on.
+        patch.object(snapshot, "add_future_fixture_features", side_effect=lambda df, _fx: df),
         patch.object(snapshot, "get_model_features", return_value=list(features)),
         patch.object(snapshot, "prepare_features", return_value=live),
         patch.object(snapshot, "predict", side_effect=predict_side_effect or (lambda *a, **k: _predictions())),

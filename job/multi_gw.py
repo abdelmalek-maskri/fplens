@@ -53,7 +53,7 @@ def _get_features(model) -> list[str]:
     return get_model_features(model)
 
 
-def _add_future_fixture_features(df: pd.DataFrame, fixtures_data: dict) -> pd.DataFrame:
+def add_future_fixture_features(df: pd.DataFrame, fixtures_data: dict) -> pd.DataFrame:
     """Add future fixture features (opponent_gw2/3, fdr_gw2/3, was_home_gw2/3).
 
     The GW+2/3 models were trained with these columns. Without them,
@@ -129,7 +129,7 @@ def _prepare_and_predict(model, live_df: pd.DataFrame, fixtures_data: dict | Non
             and f.startswith(("opponent_gw", "was_home_gw", "fdr_gw", "fdr_attack_gw", "fdr_defence_gw"))
         ]
         if missing:
-            live_df = _add_future_fixture_features(live_df, fixtures_data)
+            live_df = add_future_fixture_features(live_df, fixtures_data)
 
     drop = set(DROP_COLS)
     X = live_df.drop(columns=[c for c in drop if c in live_df.columns], errors="ignore")

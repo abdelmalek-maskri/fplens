@@ -73,10 +73,10 @@ class TestAddFutureFixtureFeatures:
                 {"short_name": "LEE", "id": 20},
             ]
         }
-        from job.multi_gw import _add_future_fixture_features
+        from job.multi_gw import add_future_fixture_features
 
         df = pd.DataFrame({"team_name": ["Arsenal", "Bournemouth"]})
-        result = _add_future_fixture_features(df, FIXTURES_DATA)
+        result = add_future_fixture_features(df, FIXTURES_DATA)
 
         for col in ["opponent_gw2", "was_home_gw2", "fdr_gw2", "opponent_gw3", "was_home_gw3", "fdr_gw3"]:
             assert col in result.columns, f"Missing column: {col}"
@@ -90,20 +90,20 @@ class TestAddFutureFixtureFeatures:
                 {"short_name": "LEE", "id": 20},
             ]
         }
-        from job.multi_gw import _add_future_fixture_features
+        from job.multi_gw import add_future_fixture_features
 
         df = pd.DataFrame({"team_name": ["Arsenal"]})
-        result = _add_future_fixture_features(df, FIXTURES_DATA)
+        result = add_future_fixture_features(df, FIXTURES_DATA)
         # opponent_gw2 should be MCI's numeric ID (11), not "MCI"
         assert result["opponent_gw2"].iloc[0] == 11
 
     @patch("job.fetch_live_data.get_bootstrap_data")
     def test_missing_fixtures_fills_defaults(self, mock_bootstrap):
         mock_bootstrap.return_value = {"teams": []}
-        from job.multi_gw import _add_future_fixture_features
+        from job.multi_gw import add_future_fixture_features
 
         df = pd.DataFrame({"team_name": ["Unknown FC"]})
-        result = _add_future_fixture_features(df, FIXTURES_DATA)
+        result = add_future_fixture_features(df, FIXTURES_DATA)
         assert result["opponent_gw2"].iloc[0] == 0
         assert result["fdr_gw2"].iloc[0] == 3
 

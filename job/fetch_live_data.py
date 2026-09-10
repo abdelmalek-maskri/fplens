@@ -626,6 +626,38 @@ US_BASE_COLS = [
 US_ROLL_WINDOWS = [3, 5, 10]
 
 
+def live_gw_windows() -> pd.DataFrame | None:
+    """Gameweek date ranges, built from the live fixtures endpoint.
+
+    Understat reports match dates, not gameweeks, so its rows have to be mapped
+    onto FPL's calendar. The training pipeline writes a CSV per season for this,
+    but that only exists for seasons already scraped into data/raw, which is why
+    the live path silently produced nothing for the current one.
+
+    Returns columns [GW, start_date, end_date], or None if kickoff times are
+    unavailable.
+    """
+    resp = requests.get(f"{FPL_BASE_URL}/fixtures/", timeout=30)
+    if resp.status_code != 200:
+        return None
+
+    fx = pd.DataFrame(resp.json())
+    if "kickoff_time" not in fx.columns or "event" not in fx.columns:
+        return None
+
+    fx["kickoff_time"] = pd.to_datetime(fx["kickoff_time"], errors="coerce", utc=True)
+    fx = fx.dropna(subset=["kickoff_time", "event"])
+    if fx.empty:
+        return None
+
+    win = fx.groupby("event")["kickoff_time"].agg(["min", "max"]).reset_index()
+    win.columns = ["GW", "start_date", "end_date"]
+    win["GW"] = win["GW"].astype(int)
+    win["start_date"] = win["start_date"].dt.tz_localize(None).dt.normalize()
+    win["end_date"] = win["end_date"].dt.tz_localize(None).dt.normalize()
+    return win.sort_values("start_date").reset_index(drop=True)
+
+
 def _fetch_live_understat(season: str, fpl_elements: list[dict]) -> pd.DataFrame | None:
     """Fetch current-season Understat data live and map to FPL element IDs.
 
@@ -732,11 +764,8 @@ def _fetch_live_understat(season: str, fpl_elements: list[dict]) -> pd.DataFrame
 
         matches_df = pd.DataFrame(rows)
 
-        gw_windows_path = Path(f"data/processed/fpl/gw_windows_{season}.csv")
-        if gw_windows_path.exists():
-            gw_win = pd.read_csv(gw_windows_path)
-            gw_win["start_date"] = pd.to_datetime(gw_win["start_date"])
-            gw_win["end_date"] = pd.to_datetime(gw_win["end_date"])
+        gw_win = live_gw_windows()
+        if gw_win is not None:
             matches_df["match_date"] = pd.to_datetime(matches_df["date"].str[:10])
 
             gw_win = gw_win.sort_values("start_date").reset_index(drop=True)
@@ -749,7 +778,7 @@ def _fetch_live_understat(season: str, fpl_elements: list[dict]) -> pd.DataFrame
             matches_df["GW"] = pd.array([gw_numbers[i] if i >= 0 else pd.NA for i in idx], dtype="Int64")
             matches_df = matches_df.dropna(subset=["GW"])
         else:
-            logger.warning("GW windows not found at %s, cannot assign GWs", gw_windows_path)
+            logger.warning("No fixture kickoff times, cannot map Understat matches to gameweeks")
             return None
 
         agg = matches_df.groupby(["element", "GW"], as_index=False)[US_MATCH_COLS].sum()
