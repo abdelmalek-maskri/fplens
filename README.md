@@ -11,7 +11,7 @@ Predicts how many points every Fantasy Premier League player will score next gam
 - **Plans transfers** over a 1–3 gameweek horizon, with a separately trained model for each horizon.
 
 <details>
-<summary>More screenshots</summary>
+<summary>Screenshots</summary>
 
 ![Optimal XI](docs/screenshots/optimal-xi.png)
 ![Transfer Planner](docs/screenshots/transfers.png)

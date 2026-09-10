@@ -38,7 +38,7 @@ outputs/
 *.npz
 catboost_info/
 
-# Logs
+# logs
 *.log
 
 # Claude Code / MCP (local config)
