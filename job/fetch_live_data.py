@@ -1023,12 +1023,19 @@ def add_temporal_injury_features(
 # -- Main Fetch Pipeline -------------------------------------------------------
 
 
-def fetch_current_gw_data(include_history: bool = True, include_understat: bool = True) -> pd.DataFrame:
+def fetch_current_gw_data(
+    include_history: bool = True,
+    include_understat: bool = True,
+    histories: dict[int, list[dict]] | None = None,
+) -> pd.DataFrame:
     """Main function: Fetch all current player data ready for prediction.
 
     Args:
         include_history: If True (default), fetch per-player GW history for
                         accurate rolling features. Makes ~600 API calls
+        histories: Already-fetched histories from fetch_all_player_histories.
+                        Pass these when the caller needs them too, so the ~600
+                        calls happen once rather than twice.
         include_understat: If True (default), enrich with Understat xG/xA features
                           from pre-computed CSV
     Returns:
@@ -1069,11 +1076,12 @@ def fetch_current_gw_data(include_history: bool = True, include_understat: bool 
     df = extract_player_features(elements, teams, current_gw, fixtures_df, season)
 
     # Fetch per-player GW histories for proper rolling features
-    histories = None
-    if include_history:
+    if include_history and histories is None:
         print("Fetching player histories for rolling features...")
         element_ids = [p["id"] for p in elements]
         histories = fetch_all_player_histories(element_ids)
+    elif not include_history:
+        histories = None
 
     # Add injury features (structured + NLP from current news)
     print("Adding injury features...")

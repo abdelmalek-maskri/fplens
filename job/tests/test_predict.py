@@ -86,3 +86,13 @@ class TestPrepareFeatures:
         result = prepare_features(df, ["a", "b"])
         assert result["a"].isna().sum() == 0
         assert result["b"].isna().sum() == 0
+
+
+def test_shap_feature_value_survives_a_categorical():
+    """position='GK' can rank in a player's top features. float() threw on it,
+    which the API caught and turned into an empty SHAP panel for that player."""
+    from job.predict import _feature_value
+
+    assert _feature_value(90.0) == 90.0
+    assert _feature_value("GK") == "GK"
+    assert _feature_value(None) == "None"

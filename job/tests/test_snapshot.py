@@ -35,9 +35,12 @@ def _stub(models=("config_d",), predict_side_effect=None, features=("element", "
 
     with (
         patch.object(snapshot, "load_models", return_value=({m: object() for m in models}, info)),
-        patch.object(snapshot, "get_bootstrap_data", return_value={"events": []}),
+        patch.object(snapshot, "get_bootstrap_data", return_value={"events": [], "elements": []}),
         patch.object(snapshot, "get_current_gameweek", return_value={"id": 12}),
+        patch.object(snapshot, "fetch_all_player_histories", return_value={}),
         patch.object(snapshot, "fetch_current_gw_data", return_value=live),
+        patch.object(snapshot, "compute_player_shap", return_value={}),
+        patch.object(snapshot, "get_player_fdr", return_value=[]),
         patch.object(snapshot, "get_model_features", return_value=list(features)),
         patch.object(snapshot, "prepare_features", return_value=live),
         patch.object(snapshot, "predict", side_effect=predict_side_effect or (lambda *a, **k: _predictions())),
@@ -60,6 +63,7 @@ def test_writes_one_file_per_model_plus_manifest(tmp_path):
         "model_insights.json",
         "models.json",
         "news.json",
+        "players.json",
         "predictions_baseline.json",
         "predictions_config_d.json",
     ]
@@ -148,6 +152,35 @@ def test_max_zero_filled_allows_a_clean_run(tmp_path):
         snapshot.build(out_dir=out, log_predictions=False, max_zero_filled=0)
 
     assert (out / "manifest.json").exists()
+
+
+def test_players_file_carries_history_fixtures_and_shap():
+    preds = pd.DataFrame({"element": [1], "web_name": ["P1"], "team_name": ["ARS"], "predicted_points": [5.0]})
+    histories = {1: [{"round": 3, "total_points": 6, "minutes": 90, "expected_goals": "0.4", "bonus": 1}]}
+    fixtures = {"fixtures": {"ARS": [{"gw": 4, "opponent": "CHE"}]}}
+    shap = {1: [{"feature": "form", "impact": 0.3}]}
+
+    with patch.object(snapshot, "get_player_fdr", return_value=fixtures["fixtures"]["ARS"]):
+        players = snapshot._build_players(preds, histories, fixtures, shap)
+
+    p = players[1]
+    assert p["pts_history"] == [6]
+    assert p["gw_labels"] == ["GW3"]
+    assert p["xg_history"] == [0.4], "expected_goals arrives from the API as a string"
+    assert p["shap"] == shap[1]
+    assert p["fixtures"] == fixtures["fixtures"]["ARS"]
+    assert p["predicted_points"] == 5.0, "the prediction row is carried through"
+
+
+def test_players_file_handles_a_player_with_no_history():
+    """New signings and academy players have no gameweek history at all."""
+    preds = pd.DataFrame({"element": [99], "web_name": ["New"], "team_name": ["ARS"], "predicted_points": [0.5]})
+
+    with patch.object(snapshot, "get_player_fdr", return_value=[]):
+        p = snapshot._build_players(preds, {}, {"fixtures": {}}, {})[99]
+
+    assert p["pts_history"] == []
+    assert p["shap"] == []
 
 
 def test_news_failure_does_not_sink_the_whole_snapshot():

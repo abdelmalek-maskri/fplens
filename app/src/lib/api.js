@@ -92,8 +92,18 @@ export function getTeam(fplId) {
   return apiFetch(`/api/team/${encodeURIComponent(fplId)}`);
 }
 
-export function getPlayer(elementId) {
-  return apiFetch(`/api/player/${encodeURIComponent(elementId)}`);
+/**
+ * Full detail for one player: prediction, history, fixtures, SHAP.
+ *
+ * All 654 live in one file. Gzipped that is ~100KB, paid once, so clicking
+ * through players after the first costs nothing. A file each would be a smaller
+ * first click but would rewrite 654 files every gameweek.
+ */
+export async function getPlayer(elementId) {
+  const players = await snapshotFetch("/players.json");
+  const player = players[elementId];
+  if (!player) throw new Error("Not found.");
+  return player;
 }
 
 export function getModelInsights() {

@@ -352,12 +352,21 @@ def compute_player_shap(model, X: pd.DataFrame, element_ids, top_n: int = 5) -> 
             {
                 "feature": X.columns[j],
                 "display": FEATURE_DISPLAY_NAMES.get(X.columns[j], X.columns[j].replace("_", " ").title()),
-                "value": round(float(X.iloc[i, j]), 3),
+                "value": _feature_value(X.iloc[i, j]),
                 "impact": round(float(player_shap[j]), 3),
             }
             for j in top_indices
         ]
     return result
+
+
+def _feature_value(v):
+    """Categoricals like position='GK' can rank in a player's top features, and
+    float() throws on them. That killed the whole SHAP panel for those players."""
+    try:
+        return round(float(v), 3)
+    except (TypeError, ValueError):
+        return str(v)
 
 
 def get_top_picks(predictions: pd.DataFrame, n: int = 15) -> pd.DataFrame:

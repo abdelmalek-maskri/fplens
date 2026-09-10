@@ -24,13 +24,15 @@ from pathlib import Path
 import pandas as pd
 
 from job.fetch_live_data import (
+    fetch_all_player_histories,
     fetch_current_gw_data,
     fetch_fixtures,
     get_bootstrap_data,
     get_current_gameweek,
+    get_player_fdr,
 )
 from job.models import MODEL_REGISTRY, load_models, selected_model_ids
-from job.predict import get_model_features, predict, prepare_features
+from job.predict import compute_player_shap, get_model_features, predict, prepare_features
 
 logger = logging.getLogger(__name__)
 
@@ -143,6 +145,40 @@ def _build_model_insights() -> dict:
     return {"ablation": ablation, "shap_features": shap_features, "model_variants": variants}
 
 
+def _build_players(predictions: pd.DataFrame, histories: dict, fixtures: dict, shap: dict) -> dict:
+    """Full detail for every player, keyed by element id.
+
+    One file rather than 654: gzipped it is around 100KB, so a visitor pays it
+    once and every subsequent player is free. The alternative was a file each,
+    which is a smaller first click but rewrites 654 files every gameweek.
+
+    Mirrors what /api/player/{id} assembled per request. Like that endpoint,
+    it uses the default model only, so the numbers here do not follow the
+    dashboard's model selector.
+    """
+    fx_by_team = fixtures.get("fixtures", {})
+    players = {}
+
+    for row in predictions.to_dict(orient="records"):
+        eid = int(row["element"])
+        player = {k: _clean(v) for k, v in row.items()}
+
+        last10 = (histories.get(eid) or [])[-10:]
+        player["pts_history"] = [g.get("total_points", 0) for g in last10]
+        player["pts_last5"] = player["pts_history"][-5:]
+        player["gw_labels"] = [f"GW{g.get('round', 0)}" for g in last10]
+        player["minutes_history"] = [g.get("minutes", 0) for g in last10]
+        player["xg_history"] = [float(g.get("expected_goals", 0) or 0) for g in last10]
+        player["xa_history"] = [float(g.get("expected_assists", 0) or 0) for g in last10]
+        player["bonus_history"] = [g.get("bonus", 0) for g in last10]
+
+        player["fixtures"] = get_player_fdr(fx_by_team, player.get("team_name", ""))
+        player["shap"] = shap.get(eid, [])
+        players[eid] = player
+
+    return players
+
+
 def _build_news(bootstrap: dict) -> dict:
     """Guardian articles with sentiment. Degrades to empty rather than failing
     the whole snapshot, since news is the least important thing on the site."""
@@ -200,13 +236,18 @@ def build(
     gameweek = get_current_gameweek(bootstrap["events"])["id"]
 
     print(f"Fetching live data for GW{gameweek}...")
-    live_df = fetch_current_gw_data(include_history=True, include_understat=True)
+    # Fetched here rather than inside fetch_current_gw_data because the player
+    # detail file needs them too, and they cost ~600 API calls.
+    histories = fetch_all_player_histories([p["id"] for p in bootstrap["elements"]])
+    live_df = fetch_current_gw_data(include_history=True, include_understat=True, histories=histories)
     keep = [c for c in PLAYER_INFO_COLS if c in live_df.columns]
     player_info = live_df[keep].copy()
 
     live_cols = set(live_df.columns)
     per_model: dict[str, pd.DataFrame] = {}
     coverage: dict[str, list[str]] = {}
+    default_id = model_info[0]["id"]
+    default_X = None
 
     for model_id, model in models.items():
         print(f"Predicting with {model_id}...")
@@ -217,6 +258,8 @@ def build(
         coverage[model_id] = sorted(set(feats) - live_cols)
         X = prepare_features(live_df, feats)
         per_model[model_id] = predict(model, X, player_info)
+        if model_id == default_id:
+            default_X = X
 
     for m in model_info:
         zero_filled = coverage.get(m["id"], [])
@@ -225,6 +268,12 @@ def build(
         m["zero_filled"] = zero_filled
 
     _report_coverage(model_info, max_zero_filled)
+
+    print("Building player detail...")
+    element_ids = [int(e) for e in live_df["element"]]
+    fixtures = fetch_fixtures(bootstrap, num_gws=FIXTURE_GWS)
+    shap = compute_player_shap(models[default_id], default_X, element_ids, top_n=5)
+    players = _build_players(per_model[default_id], histories, fixtures, shap)
 
     manifest = {
         "gameweek": gameweek,
@@ -244,7 +293,8 @@ def build(
     for model_id, df in per_model.items():
         _write_json(staging / f"predictions_{model_id}.json", _records(df))
     _write_json(staging / "models.json", model_info)
-    _write_json(staging / "fixtures.json", fetch_fixtures(bootstrap, num_gws=FIXTURE_GWS))
+    _write_json(staging / "players.json", players)
+    _write_json(staging / "fixtures.json", fixtures)
     _write_json(staging / "news.json", _build_news(bootstrap))
     _write_json(staging / "model_insights.json", _build_model_insights())
     _write_json(staging / "manifest.json", manifest)

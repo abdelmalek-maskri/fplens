@@ -130,11 +130,6 @@ describe("GET endpoints", () => {
     expect(mockFetch.mock.calls[0][0]).toBe("http://127.0.0.1:8000/api/team/3935276");
   });
 
-  it("getPlayer passes elementId in path", async () => {
-    await getPlayer(42);
-    expect(mockFetch.mock.calls[0][0]).toBe("http://127.0.0.1:8000/api/player/42");
-  });
-
   it("getMultiGW passes horizon query param", async () => {
     await getMultiGW(4);
     expect(mockFetch.mock.calls[0][0]).toBe(
@@ -203,6 +198,17 @@ describe("snapshot files", () => {
     expect(mockFetch.mock.calls[0][0]).toBe("/data/fixtures.json");
     expect(six.fixtures.ARS).toEqual([1, 2, 3, 4, 5, 6]);
     expect(six.gw).toBe(4);
+  });
+
+  it("getPlayer looks the player up in the one players file", async () => {
+    mockFetch.mockResolvedValue(jsonResponse({ 42: { web_name: "Salah" } }));
+    await expect(getPlayer(42)).resolves.toEqual({ web_name: "Salah" });
+    expect(mockFetch.mock.calls[0][0]).toBe("/data/players.json");
+  });
+
+  it("getPlayer throws for an id the snapshot does not have", async () => {
+    mockFetch.mockResolvedValue(jsonResponse({ 42: { web_name: "Salah" } }));
+    await expect(getPlayer(999)).rejects.toThrow("Not found.");
   });
 
   it("getFixtures leaves a snapshot with no fixtures alone", async () => {
