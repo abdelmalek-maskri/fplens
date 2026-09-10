@@ -175,8 +175,4 @@ Config D is production because FPL is a top-N selection problem: you pick 15 pla
 - Diebold-Mariano tests treat player-gameweek panel data as a time series; clustering by gameweek would widen the intervals.
 - `chance_delta` and `recovery_trajectory` are zero-filled at inference — they need per-gameweek `chance_of_playing` history the live API doesn't expose.
 - Players with no gameweek history (new signings) fall back to approximated rolling features.
-- **Every model is served with a quarter to a third of its features zero-filled.** Config D runs on 113 of 155, the baselines on 47 of 71. The snapshot prints this on every run and records it in the manifest. Two causes:
-  - 32 Understat lag/rolling features. The live fetch fails inside `aiohttp` (pinned at 3.8.3, which has known resolver problems), and the CSV fallback wants `understat_gw_2026-27.csv`, which does not exist because the newest scrape is 2025-26.
-  - 10 future-fixture features (`fdr_*_gw2`, `fdr_*_gw3`, `opponent_gw*`, `was_home_gw*`). Only `job/multi_gw.py` and the training feature builder construct them, so the single-gameweek path has never supplied them.
-
-  These matter: `fdr_attack_gw2` shows up as a top-5 SHAP driver for real players while always being zero. The holdout figures above were measured with all 155 features present, so the served model is not the model that was evaluated.
+- Models are trained on the 2016-17 to 2023-24 scoring rules. FPL added `defensive_contribution` in 2025-26, which raised defenders' mean points by 28% and midfielders' by 9% for 60-minute appearances. The served model has never seen that rule and will underrate defensive players until it is retrained.
