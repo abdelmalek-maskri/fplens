@@ -94,7 +94,11 @@ export function useTransfers(horizon = 3) {
       });
     }
 
-    return { myTeam, targets, gwLabels };
+    // Null rather than 0 when no team is loaded, so the page can tell "no squad
+    // yet" apart from "a squad with nothing in the bank".
+    const bank = myTeamRaw ? (myTeamRaw.bank ?? 0) : null;
+
+    return { myTeam, targets, gwLabels, bank };
   }, [multiGW, myTeamRaw, horizon]);
 
   return { data, isLoading, error };
