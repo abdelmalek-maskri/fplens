@@ -163,6 +163,7 @@ export default function Dashboard() {
           </svg>
           <input
             type="text"
+            aria-label="Search players"
             placeholder="Search..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
