@@ -1,21 +1,20 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { getPlayer } from "../lib/api";
 
 export function usePlayer(playerId) {
   const [data, setData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const cancelledRef = useRef(false);
 
   useEffect(() => {
-    cancelledRef.current = false;
+    let cancelled = false;
     setData(null);
     setIsLoading(true);
     setError(null);
 
     getPlayer(playerId)
       .then((raw) => {
-        if (cancelledRef.current) return;
+        if (cancelled) return;
         const nameParts = (raw.name || raw.web_name || "").split(" ");
         setData({
           ...raw,
@@ -31,14 +30,14 @@ export function usePlayer(playerId) {
         });
       })
       .catch((err) => {
-        if (!cancelledRef.current) setError(err);
+        if (!cancelled) setError(err);
       })
       .finally(() => {
-        if (!cancelledRef.current) setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       });
 
     return () => {
-      cancelledRef.current = true;
+      cancelled = true;
     };
   }, [playerId]);
 

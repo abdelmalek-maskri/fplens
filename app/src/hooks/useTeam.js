@@ -1,11 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { getTeam } from "../lib/api";
 
 export function useTeam(fplId) {
   const [data, setData] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-  const cancelledRef = useRef(false);
 
   useEffect(() => {
     if (!fplId) {
@@ -15,14 +14,14 @@ export function useTeam(fplId) {
       return;
     }
 
-    cancelledRef.current = false;
+    let cancelled = false;
     setData(null);
     setIsLoading(true);
     setError(null);
 
     getTeam(fplId)
       .then((result) => {
-        if (cancelledRef.current) return;
+        if (cancelled) return;
         setData({
           team: {
             manager: result.manager,
@@ -41,14 +40,14 @@ export function useTeam(fplId) {
         });
       })
       .catch((err) => {
-        if (!cancelledRef.current) setError(err);
+        if (!cancelled) setError(err);
       })
       .finally(() => {
-        if (!cancelledRef.current) setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       });
 
     return () => {
-      cancelledRef.current = true;
+      cancelled = true;
     };
   }, [fplId]);
 

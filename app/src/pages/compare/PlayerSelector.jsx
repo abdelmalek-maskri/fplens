@@ -59,6 +59,7 @@ function PlayerSelector({ selected, onChange, label, excludeId, allPlayers }) {
           <div className="p-2 border-b border-surface-700">
             <input
               type="text"
+              aria-label="Search by name, team or position"
               placeholder="Search name, team, position..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}

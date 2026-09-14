@@ -4,6 +4,7 @@ __pycache__/
 *.pyo
 *.pyd
 .ruff_cache/
+.pytest_cache/
 
 # Virtual environments
 venv/
@@ -12,6 +13,8 @@ venv/
 # Environment variables
 .env
 .env.*
+!.env.example
+!*.env.example
 
 # Node
 node_modules/
@@ -24,32 +27,16 @@ app/dist/
 .vscode/
 .idea/
 
-# ML data (large, reproducible from raw)
+# ML inputs and artifacts. Large, and reproducible by rerunning the pipeline.
 data/raw/
 data/features/
 data/processed/
 data/inference/
 ml/data/
-
-# ML binary artifacts (large, reproducible from training)
+outputs/
 *.joblib
 *.npz
 catboost_info/
-
-# ML outputs (generated, reproducible from scripts)
-outputs/
-
-# Exception: commit essential models so inspectors can run the app without training
-!outputs/experiments/ablation/config_D/
-!outputs/experiments/ablation/config_D/model.joblib
-!outputs/experiments/ablation/config_D/summary.json
-!outputs/experiments/ablation/ablation_summary.json
-!outputs/experiments/ablation/config_A/summary.json
-!outputs/experiments/ablation/config_B/summary.json
-!outputs/experiments/ablation/config_C/summary.json
-!outputs/experiments/multi_horizon/gw2/lgbm_reduced/model.joblib
-!outputs/experiments/multi_horizon/gw3/lgbm_reduced/model.joblib
-!outputs/evaluation/shap/config_D/shap_report.json
 
 # logs
 *.log
@@ -57,6 +44,5 @@ outputs/
 # Claude Code / MCP (local config)
 .claude/
 .mcp.json
-
-
 CLAUDE.md
+.ua/

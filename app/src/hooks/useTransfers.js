@@ -8,6 +8,7 @@ const toPos = (v) => {
 };
 
 export function useTransfers(horizon = 3) {
+  // horizon only narrows the already-fetched snapshot; it is not a request param.
   const [multiGW, setMultiGW] = useState(null);
   const [myTeamRaw, setMyTeamRaw] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -19,7 +20,7 @@ export function useTransfers(horizon = 3) {
     setError(null);
 
     const fplId = localStorage.getItem("fpl_id");
-    const promises = [getMultiGW(horizon)];
+    const promises = [getMultiGW()];
     if (fplId) promises.push(getTeam(fplId));
 
     Promise.all(promises)
@@ -93,7 +94,11 @@ export function useTransfers(horizon = 3) {
       });
     }
 
-    return { myTeam, targets, gwLabels };
+    // Null rather than 0 when no team is loaded, so the page can tell "no squad
+    // yet" apart from "a squad with nothing in the bank".
+    const bank = myTeamRaw ? (myTeamRaw.bank ?? 0) : null;
+
+    return { myTeam, targets, gwLabels, bank };
   }, [multiGW, myTeamRaw, horizon]);
 
   return { data, isLoading, error };

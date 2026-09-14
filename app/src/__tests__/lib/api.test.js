@@ -1,12 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   getPredictions,
+  getModels,
+  getManifest,
   getBestSquad,
   getFixtures,
   getTeam,
   getPlayer,
   getModelInsights,
+  getNews,
   getMultiGW,
+  getStatus,
   refresh,
   health,
 } from "../../lib/api";
@@ -32,10 +36,10 @@ beforeEach(() => {
 
 describe("apiFetch shared behavior", () => {
   it("calls correct URL with BASE_URL prefix", async () => {
-    await getPredictions();
+    await getTeam(123);
     expect(mockFetch).toHaveBeenCalledOnce();
     const [url] = mockFetch.mock.calls[0];
-    expect(url).toBe("http://127.0.0.1:8000/api/predictions");
+    expect(url).toBe("http://127.0.0.1:8000/api/team/123");
   });
 
   it("defaults to GET method", async () => {
@@ -58,7 +62,7 @@ describe("apiFetch shared behavior", () => {
       json: () => Promise.resolve({ detail: "not found" }),
     });
 
-    await expect(getPredictions()).rejects.toThrow("Not found.");
+    await expect(getTeam(123)).rejects.toThrow("Not found.");
   });
 
   it("throws friendly message on 422", async () => {
@@ -100,7 +104,7 @@ describe("apiFetch shared behavior", () => {
       return Promise.reject(err);
     });
 
-    await expect(getPredictions()).rejects.toThrow("Request timed out: GET /api/predictions");
+    await expect(getTeam(123)).rejects.toThrow("Request timed out: GET /api/team/123");
   });
 
   it("re-throws non-abort errors as-is", async () => {
@@ -110,56 +114,106 @@ describe("apiFetch shared behavior", () => {
 });
 
 describe("GET endpoints", () => {
-  it("getPredictions hits /api/predictions", async () => {
-    await getPredictions();
-    expect(mockFetch.mock.calls[0][0]).toBe("http://127.0.0.1:8000/api/predictions");
-  });
-
-  it("getBestSquad passes budget query param", async () => {
-    await getBestSquad(85);
-    expect(mockFetch.mock.calls[0][0]).toBe("http://127.0.0.1:8000/api/best-squad?budget=85");
-  });
-
-  it("getBestSquad defaults to budget=100", async () => {
-    await getBestSquad();
-    expect(mockFetch.mock.calls[0][0]).toContain("budget=100");
-  });
-
-  it("getFixtures passes num_gws query param", async () => {
-    await getFixtures(3);
-    expect(mockFetch.mock.calls[0][0]).toBe("http://127.0.0.1:8000/api/fixtures?num_gws=3");
-  });
-
-  it("getFixtures defaults to num_gws=6", async () => {
-    await getFixtures();
-    expect(mockFetch.mock.calls[0][0]).toContain("num_gws=6");
+  it("getNews stays a live call, not a snapshot file", async () => {
+    // The Guardian forbids retaining content past 24h and the snapshot is
+    // committed, so headlines must never be written to a file.
+    await getNews();
+    expect(mockFetch.mock.calls[0][0]).toBe("http://127.0.0.1:8000/api/news");
   });
 
   it("getTeam passes fplId in path", async () => {
     await getTeam(3935276);
     expect(mockFetch.mock.calls[0][0]).toBe("http://127.0.0.1:8000/api/team/3935276");
   });
+});
 
-  it("getPlayer passes elementId in path", async () => {
-    await getPlayer(42);
-    expect(mockFetch.mock.calls[0][0]).toBe("http://127.0.0.1:8000/api/player/42");
+describe("snapshot files", () => {
+  it("getModels reads the static file, not the API", async () => {
+    await getModels();
+    expect(mockFetch.mock.calls[0][0]).toBe("/data/models.json");
   });
 
-  it("getModelInsights hits /api/model-insights", async () => {
+  it("getManifest reads the static file", async () => {
+    await getManifest();
+    expect(mockFetch.mock.calls[0][0]).toBe("/data/manifest.json");
+  });
+
+  it("getPredictions reads the file for the model it was given", async () => {
+    await getPredictions("baseline_tweedie");
+    expect(mockFetch).toHaveBeenCalledOnce();
+    expect(mockFetch.mock.calls[0][0]).toBe("/data/predictions_baseline_tweedie.json");
+  });
+
+  it("getPredictions asks the manifest which model is default", async () => {
+    mockFetch
+      .mockResolvedValueOnce(jsonResponse({ default_model: "config_d" }))
+      .mockResolvedValueOnce(jsonResponse([]));
+
+    await getPredictions();
+    expect(mockFetch.mock.calls[0][0]).toBe("/data/manifest.json");
+    expect(mockFetch.mock.calls[1][0]).toBe("/data/predictions_config_d.json");
+  });
+
+  it("treats the sentinel 'default' the same as no model", async () => {
+    mockFetch
+      .mockResolvedValueOnce(jsonResponse({ default_model: "config_d" }))
+      .mockResolvedValueOnce(jsonResponse([]));
+
+    await getPredictions("default");
+    expect(mockFetch.mock.calls[1][0]).toBe("/data/predictions_config_d.json");
+  });
+
+  it("getBestSquad reads the static file and takes no budget", async () => {
+    // The budget is fixed at £100m, so the squad is the same for everyone.
+    await getBestSquad();
+    expect(mockFetch.mock.calls[0][0]).toBe("/data/best_squad.json");
+    expect(getBestSquad.length).toBe(0);
+  });
+
+  it("getModelInsights reads the static file", async () => {
     await getModelInsights();
-    expect(mockFetch.mock.calls[0][0]).toBe("http://127.0.0.1:8000/api/model-insights");
+    expect(mockFetch.mock.calls[0][0]).toBe("/data/model_insights.json");
   });
 
-  it("getMultiGW passes horizon query param", async () => {
-    await getMultiGW(4);
-    expect(mockFetch.mock.calls[0][0]).toBe(
-      "http://127.0.0.1:8000/api/predictions/multi-gw?horizon=4"
-    );
+  it("getFixtures reads one file and narrows it locally", async () => {
+    const grid = { gw: 4, fixtures: { ARS: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] } };
+    mockFetch.mockResolvedValue(jsonResponse(grid));
+
+    const six = await getFixtures(6);
+    expect(mockFetch.mock.calls[0][0]).toBe("/data/fixtures.json");
+    expect(six.fixtures.ARS).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(six.gw).toBe(4);
   });
 
-  it("getMultiGW defaults to horizon=3", async () => {
+  it("getPlayer looks the player up in the one players file", async () => {
+    mockFetch.mockResolvedValue(jsonResponse({ 42: { web_name: "Salah" } }));
+    await expect(getPlayer(42)).resolves.toEqual({ web_name: "Salah" });
+    expect(mockFetch.mock.calls[0][0]).toBe("/data/players.json");
+  });
+
+  it("getPlayer throws for an id the snapshot does not have", async () => {
+    mockFetch.mockResolvedValue(jsonResponse({ 42: { web_name: "Salah" } }));
+    await expect(getPlayer(999)).rejects.toThrow("Not found.");
+  });
+
+  it("getMultiGW reads the static file and takes no horizon", async () => {
     await getMultiGW();
-    expect(mockFetch.mock.calls[0][0]).toContain("horizon=3");
+    expect(mockFetch.mock.calls[0][0]).toBe("/data/multi_gw.json");
+    expect(getMultiGW.length).toBe(0);
+  });
+
+  it("getStatus reshapes the manifest instead of calling the API", async () => {
+    mockFetch.mockResolvedValue(jsonResponse({ gameweek: 4, deadline: "2026-09-12T17:30:00Z" }));
+    await expect(getStatus()).resolves.toEqual({
+      current_gw: 4,
+      deadline: "2026-09-12T17:30:00Z",
+    });
+    expect(mockFetch.mock.calls[0][0]).toBe("/data/manifest.json");
+  });
+
+  it("getFixtures leaves a snapshot with no fixtures alone", async () => {
+    mockFetch.mockResolvedValue(jsonResponse({ gw: 4 }));
+    await expect(getFixtures()).resolves.toEqual({ gw: 4, fixtures: {} });
   });
 });
 

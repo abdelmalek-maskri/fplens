@@ -6,6 +6,8 @@
 
 .PHONY: api.run web.dev dev test
 
+# Two endpoints, no models. The dashboard reads app/public/data directly, so it
+# works without this running; only My Team and Optimal XI need it.
 api.run:
 	uvicorn api.main:app --reload --port 8000
 
@@ -20,12 +22,15 @@ dev:
 # --- Tests ---
 
 # python -m pytest (not bare pytest) so the project root lands on sys.path
-# and the api.* / ml.* package imports resolve.
+# and the api.* / job.* / ml.* package imports resolve.
 test:
-	python3 -m pytest -q
+	python3 -m pytest api/tests job/tests -q
 
 test.api:
 	python3 -m pytest api/tests -q
+
+test.job:
+	python3 -m pytest job/tests -q
 
 web.build:
 	cd app && npm run build
@@ -111,7 +116,13 @@ ml.ablation.injury:
 # Stage 7: Inference (requires live FPL API)
 .PHONY: ml.predict
 ml.predict:
-	python3 -m ml.pipelines.inference.predict
+	python3 -m job.predict
+
+# Build the JSON the website reads. One live fetch (~800 FPL calls, ~40s),
+# then every model predicts on top of it. Run after a gameweek deadline.
+.PHONY: snapshot
+snapshot:
+	python3 -m job.snapshot
 
 # Stage 8: Analysis (optional)
 .PHONY: ml.shap
