@@ -20,10 +20,12 @@ pip install -r requirements.txt
 cd app && npm install && cd ..
 ```
 
-Note `requirements.txt` covers both training and serving, so it pulls in heavy NLP
-dependencies (torch, transformers, spaCy) that the API itself does not need.
+Note `requirements.txt` covers training and the full pipeline, so it pulls in heavy
+NLP dependencies (torch, transformers, spaCy) that neither the API nor the snapshot
+job needs. See [Deploying the API](#deploying-the-api) for the smaller files.
 
-Before the backend will start you need trained models — see [Models](#models) below.
+The backend starts without any trained models. It reads predictions from the
+committed snapshot in `app/public/data/`.
 
 ## Running
 
@@ -33,7 +35,9 @@ Before the backend will start you need trained models — see [Models](#models) 
 uvicorn api.main:app --reload
 ```
 
-The API starts on `http://127.0.0.1:8000`. On first request, it fetches live player data from the FPL API (~60 seconds), then caches it. Subsequent requests are instant.
+The API starts on `http://127.0.0.1:8000` in about a second, with no models loaded.
+It serves two things: a manager's squad, which it fetches live from the FPL API, and
+Guardian news, which cannot be stored. Predictions come from the snapshot on disk.
 
 ### Frontend (React dashboard)
 
@@ -42,7 +46,9 @@ cd app
 npm run dev
 ```
 
-Opens on `http://localhost:5173`. Requires the backend to be running.
+Opens on `http://localhost:5173`. Most of the dashboard works without the backend,
+because predictions, fixtures, player detail and model insights are read straight
+from `app/public/data/`. Only **My Team** and **News** need the API running.
 
 ## Models
 
@@ -127,8 +133,8 @@ python3 -m pip install -r requirements-api.txt
 uvicorn api.main:app --host 0.0.0.0 --port ${PORT:-8000}
 ```
 
-A clean serving environment boots the nine showcase models plus both horizon models at
-roughly 304MB resident.
+The API loads no models at all, so it boots in about a second and stays small. Only
+`make snapshot` needs the `.joblib` files.
 
 ## Tests
 
