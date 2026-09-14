@@ -31,21 +31,22 @@ the only thing that loads a model.
 **App** reads those files directly. Ten routes: dashboard, optimal XI, my team,
 transfers, fixtures, comparison, news, watchlist, insights, player detail.
 
-**API** answers the two questions a file cannot: what is in a given manager's
-squad, and what is the best squad for a given budget.
+**API** answers what a file cannot: what is in a given manager's squad, and
+Guardian news, whose licence forbids retaining content beyond 24 hours so it can
+never be committed.
 
 ## Repository layout
 
 ```text
-api/          FastAPI backend — two endpoints, no ML dependencies
+api/          FastAPI backend — two endpoints, no ML or scipy
   main.py       app entry and lifespan
   snapshot.py   reads the predictions the job wrote
-  cache.py      thread-safe TTL cache, now only for per-user squads
-  solvers.py    ILP squad optimiser, best XI, transfer suggestions
-  schemas.py    response models for both endpoints
-  routers/      squad.py, team.py
+  cache.py      thread-safe TTL cache, for per-user squads and the news feed
+  schemas.py    response models
+  routers/      news.py, team.py
 job/          everything that runs on a schedule
   snapshot.py     writes the site's JSON
+  solvers.py      ILP squad optimiser, best XI, transfer suggestions
   fetch_live_data.py  FPL, Understat and injury features
   predict.py      feature alignment, prediction, per-player SHAP
   multi_gw.py     GW+2 and GW+3 horizons
@@ -80,8 +81,8 @@ models.json                what fills the model selector
 predictions_<model>.json   one per showcase model, ~650 players each
 players.json               full detail: history, fixtures, SHAP
 multi_gw.json              GW+1/2/3 predictions
+best_squad.json            optimal 15 at £100m, solved by ILP
 fixtures.json              team x gameweek difficulty grid, 10 GWs
-news.json                  Guardian articles with sentiment
 model_insights.json        ablation results and global SHAP importance
 ```
 
@@ -98,7 +99,7 @@ on real outcomes later.
 ## API reference
 
 ```text
-GET  /api/best-squad?budget=100    Optimal 15-man squad (ILP)
+GET  /api/news                     Guardian articles (cannot be precomputed)
 GET  /api/team/{fpl_id}            A manager's squad with transfer suggestions
 GET  /api/health                   Liveness and cache status
 POST /api/refresh                  Drop cached squads (needs X-Refresh-Secret)

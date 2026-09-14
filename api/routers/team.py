@@ -8,8 +8,8 @@ from fastapi import APIRouter, HTTPException, Path, Request
 
 from api.schemas import Team
 from api.snapshot import load_predictions
-from api.solvers import suggest_transfers
 from job.fetch_live_data import fetch_user_team
+from job.solvers import suggest_transfers
 
 logger = logging.getLogger(__name__)
 

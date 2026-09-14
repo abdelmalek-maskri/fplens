@@ -12,7 +12,7 @@ import pytest
 from pydantic import ValidationError
 
 from api.schemas import BestSquad, Player, Team, TransferSuggestion
-from api.solvers import OUTPUT_COLS, solve_best_squad, suggest_transfers
+from job.solvers import OUTPUT_COLS, solve_best_squad, suggest_transfers
 
 
 def _make_pool(n=100):

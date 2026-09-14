@@ -36,10 +36,10 @@ beforeEach(() => {
 
 describe("apiFetch shared behavior", () => {
   it("calls correct URL with BASE_URL prefix", async () => {
-    await getBestSquad();
+    await getTeam(123);
     expect(mockFetch).toHaveBeenCalledOnce();
     const [url] = mockFetch.mock.calls[0];
-    expect(url).toBe("http://127.0.0.1:8000/api/best-squad?budget=100");
+    expect(url).toBe("http://127.0.0.1:8000/api/team/123");
   });
 
   it("defaults to GET method", async () => {
@@ -62,7 +62,7 @@ describe("apiFetch shared behavior", () => {
       json: () => Promise.resolve({ detail: "not found" }),
     });
 
-    await expect(getBestSquad()).rejects.toThrow("Not found.");
+    await expect(getTeam(123)).rejects.toThrow("Not found.");
   });
 
   it("throws friendly message on 422", async () => {
@@ -104,9 +104,7 @@ describe("apiFetch shared behavior", () => {
       return Promise.reject(err);
     });
 
-    await expect(getBestSquad()).rejects.toThrow(
-      "Request timed out: GET /api/best-squad?budget=100"
-    );
+    await expect(getTeam(123)).rejects.toThrow("Request timed out: GET /api/team/123");
   });
 
   it("re-throws non-abort errors as-is", async () => {
@@ -116,14 +114,11 @@ describe("apiFetch shared behavior", () => {
 });
 
 describe("GET endpoints", () => {
-  it("getBestSquad passes budget query param", async () => {
-    await getBestSquad(85);
-    expect(mockFetch.mock.calls[0][0]).toBe("http://127.0.0.1:8000/api/best-squad?budget=85");
-  });
-
-  it("getBestSquad defaults to budget=100", async () => {
-    await getBestSquad();
-    expect(mockFetch.mock.calls[0][0]).toContain("budget=100");
+  it("getNews stays a live call, not a snapshot file", async () => {
+    // The Guardian forbids retaining content past 24h and the snapshot is
+    // committed, so headlines must never be written to a file.
+    await getNews();
+    expect(mockFetch.mock.calls[0][0]).toBe("http://127.0.0.1:8000/api/news");
   });
 
   it("getTeam passes fplId in path", async () => {
@@ -168,15 +163,16 @@ describe("snapshot files", () => {
     expect(mockFetch.mock.calls[1][0]).toBe("/data/predictions_config_d.json");
   });
 
+  it("getBestSquad reads the static file and takes no budget", async () => {
+    // The budget is fixed at £100m, so the squad is the same for everyone.
+    await getBestSquad();
+    expect(mockFetch.mock.calls[0][0]).toBe("/data/best_squad.json");
+    expect(getBestSquad.length).toBe(0);
+  });
+
   it("getModelInsights reads the static file", async () => {
     await getModelInsights();
     expect(mockFetch.mock.calls[0][0]).toBe("/data/model_insights.json");
-  });
-
-  it("getNews reads the static file and takes no window", async () => {
-    await getNews();
-    expect(mockFetch.mock.calls[0][0]).toBe("/data/news.json");
-    expect(getNews.length).toBe(0);
   });
 
   it("getFixtures reads one file and narrows it locally", async () => {

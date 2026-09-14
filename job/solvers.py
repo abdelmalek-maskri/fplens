@@ -3,7 +3,6 @@
 import numpy as np
 import pandas as pd
 from fastapi import HTTPException
-from scipy.optimize import Bounds, LinearConstraint, milp
 
 FORMATIONS = [
     (3, 4, 3),
@@ -115,6 +114,11 @@ def solve_best_squad(df: pd.DataFrame, budget: float = DEFAULT_BUDGET) -> dict:
     n = len(available)
     if n < 15:
         raise HTTPException(status_code=422, detail="Not enough available players")
+
+    # Imported here, not at module level: the API uses suggest_transfers from
+    # this file but never the ILP, and keeping scipy out of its import graph
+    # keeps it off the serving requirements.
+    from scipy.optimize import Bounds, LinearConstraint, milp
 
     # milp minimises, so negate for maximisation
     c = -available["predicted_points"].values

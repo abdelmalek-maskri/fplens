@@ -43,6 +43,7 @@ def _stub(models=("config_d",), predict_side_effect=None, features=("element", "
         patch.object(snapshot, "get_player_fdr", return_value=[]),
         patch.object(snapshot, "load_horizon_models", return_value={}),
         patch.object(snapshot, "predict_multi_gw", return_value=[]),
+        patch.object(snapshot, "solve_best_squad", return_value={"squad": []}),
         # Passthrough: the real one would add the fdr_* columns and change the
         # zero-fill counts these tests assert on.
         patch.object(snapshot, "add_future_fixture_features", side_effect=lambda df, _fx: df),
@@ -50,7 +51,6 @@ def _stub(models=("config_d",), predict_side_effect=None, features=("element", "
         patch.object(snapshot, "prepare_features", return_value=live),
         patch.object(snapshot, "predict", side_effect=predict_side_effect or (lambda *a, **k: _predictions())),
         patch.object(snapshot, "fetch_fixtures", return_value={"teams": [], "fixtures": {}}),
-        patch.object(snapshot, "_build_news", return_value={"articles": [], "trending": []}),
         patch.object(snapshot, "_build_model_insights", return_value={"ablation": {}}),
     ):
         yield
@@ -63,12 +63,12 @@ def test_writes_one_file_per_model_plus_manifest(tmp_path):
 
     written = sorted(p.name for p in out.iterdir())
     assert written == [
+        "best_squad.json",
         "fixtures.json",
         "manifest.json",
         "model_insights.json",
         "models.json",
         "multi_gw.json",
-        "news.json",
         "players.json",
         "predictions_baseline.json",
         "predictions_config_d.json",
@@ -189,11 +189,15 @@ def test_players_file_handles_a_player_with_no_history():
     assert p["shap"] == []
 
 
-def test_news_failure_does_not_sink_the_whole_snapshot():
-    """News is the least important thing on the site. A Guardian outage should
-    cost the news feed, not the predictions."""
-    with patch("job.news.fetch_recent_news", side_effect=RuntimeError("Guardian down")):
-        assert snapshot._build_news({}) == {"articles": [], "trending": []}
+def test_snapshot_never_writes_guardian_content(tmp_path):
+    """The Guardian's free tier forbids retaining content past 24 hours and this
+    output is committed, so headlines must not reach it."""
+    out = tmp_path / "data"
+    with _stub():
+        snapshot.build(out_dir=out, log_predictions=False)
+
+    assert not (out / "news.json").exists()
+    assert "news" not in [p.stem for p in out.iterdir()]
 
 
 def test_prediction_log_appends_rather_than_overwrites(tmp_path, monkeypatch):

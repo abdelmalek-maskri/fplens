@@ -7,12 +7,6 @@ const SNAPSHOT_BASE = "/data";
 
 const DEFAULT_TIMEOUT = 30_000;
 
-function buildUrl(path, params = {}) {
-  const qs = new URLSearchParams(Object.entries(params).filter(([, v]) => v != null));
-  const query = qs.toString();
-  return query ? `${path}?${query}` : path;
-}
-
 async function request(
   base,
   path,
@@ -70,8 +64,10 @@ export function getModels() {
   return snapshotFetch("/models.json");
 }
 
-export function getBestSquad(budget = 100) {
-  return apiFetch(buildUrl("/api/best-squad", { budget }));
+// The budget is fixed at £100m, so the optimal squad is the same for everyone
+// and the job solves it once rather than per request.
+export function getBestSquad() {
+  return snapshotFetch("/best_squad.json");
 }
 
 /**
@@ -110,9 +106,10 @@ export function getModelInsights() {
   return snapshotFetch("/model_insights.json");
 }
 
-// The lookback is fixed when the snapshot is built, so there is no days param.
+// Not in the snapshot. The Guardian's licence forbids retaining content beyond
+// 24 hours, and the snapshot is committed, so this stays a live call.
 export function getNews() {
-  return snapshotFetch("/news.json");
+  return apiFetch("/api/news");
 }
 
 // The snapshot always covers GW+1 through GW+3, and the planner narrows it

@@ -4,8 +4,14 @@ Two endpoints that genuinely need a server. Everything else the site shows is
 identical for every visitor and changes once per gameweek, so the scheduled job
 writes it to JSON and the frontend reads that directly.
 
+/team varies by who is asking. /news cannot be stored at all: the Guardian's
+licence forbids retaining content beyond 24 hours.
+
 No model is loaded here. Predictions come from the snapshot, which is why this
 process needs neither LightGBM nor XGBoost nor SHAP.
+
+News is the exception to the precompute rule: the Guardian's licence forbids
+retaining content beyond 24 hours, so it cannot live in a committed snapshot.
 """
 
 import os
@@ -17,7 +23,7 @@ from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.cache import FPLDataCache
-from api.routers import squad, team
+from api.routers import news, team
 
 # Before any os.environ read below. Previously only the news modules called this,
 # and they import lazily, so API settings placed in .env were ignored at startup.
@@ -52,7 +58,7 @@ app.add_middleware(
     allow_headers=["Content-Type", "X-Refresh-Secret"],
 )
 
-app.include_router(squad.router, prefix="/api")
+app.include_router(news.router, prefix="/api")
 app.include_router(team.router, prefix="/api")
 
 

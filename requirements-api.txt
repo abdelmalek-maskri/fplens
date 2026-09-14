@@ -6,6 +6,8 @@
 # or runs a model. That removes ~200MB:
 #
 #   lightgbm, xgboost, shap    only the job runs models now
+#   scipy                      the squad solver moved to the job; the budget is
+#                              fixed, so the answer is precomputed
 #   scikit-learn, joblib       only needed to unpickle them
 #   numba, llvmlite            pulled in by shap; 130MB between them
 #   aiohttp, understat, bs4    used by the job's Understat and Guardian fetches
@@ -26,9 +28,8 @@ starlette==0.52.1
 pandas==2.3.3
 numpy==2.2.6
 
-# scipy.optimize.milp backs the best-squad solver
-scipy==1.15.3
-
-# The one live call left: a manager's squad from the FPL API
+# Live calls: a manager's squad from the FPL API, and Guardian news, which
+# cannot be precomputed because its licence forbids retaining content.
 requests==2.32.5
+beautifulsoup4==4.11.1
 python-dotenv==1.2.2

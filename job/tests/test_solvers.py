@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from api.solvers import solve_best_squad, suggest_transfers
+from job.solvers import solve_best_squad, suggest_transfers
 
 
 def _make_pool(n=100):

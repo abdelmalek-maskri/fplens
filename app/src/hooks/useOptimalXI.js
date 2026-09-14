@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { getBestSquad, getPredictions } from "../lib/api";
-import { POS_LIMITS, MAX_PER_TEAM } from "../lib/constants";
+import { FPL_BUDGET, POS_LIMITS, MAX_PER_TEAM } from "../lib/constants";
 
-export function useOptimalXI(budget = 100) {
+export function useOptimalXI() {
   const [data, setData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -13,7 +13,7 @@ export function useOptimalXI(budget = 100) {
     setIsLoading(true);
     setError(null);
 
-    Promise.allSettled([getBestSquad(budget), getPredictions()])
+    Promise.allSettled([getBestSquad(), getPredictions()])
       .then(([squadSettled, predictionsSettled]) => {
         if (cancelled) return;
 
@@ -25,7 +25,7 @@ export function useOptimalXI(budget = 100) {
           return;
         }
 
-        const res = { budget, posLimits: POS_LIMITS, maxPerTeam: MAX_PER_TEAM };
+        const res = { budget: FPL_BUDGET, posLimits: POS_LIMITS, maxPerTeam: MAX_PER_TEAM };
 
         if (squad) {
           const xi = squad.best_xi || {};
@@ -61,7 +61,7 @@ export function useOptimalXI(budget = 100) {
     return () => {
       cancelled = true;
     };
-  }, [budget]);
+  }, []);
 
   return { data, isLoading, error };
 }

@@ -34,6 +34,7 @@ from job.fetch_live_data import (
 from job.models import MODEL_REGISTRY, load_models, selected_model_ids
 from job.multi_gw import add_future_fixture_features, load_horizon_models, predict_multi_gw
 from job.predict import compute_player_shap, get_model_features, predict, prepare_features
+from job.solvers import solve_best_squad
 
 logger = logging.getLogger(__name__)
 
@@ -46,11 +47,18 @@ SHAP_IMPORTANCE_PATH = OUTPUTS / "evaluation/shap/config_D/global_importance.csv
 # frontend slice to whatever it wants from one file.
 FIXTURE_GWS = 10
 
-# Guardian lookback. The UI has only ever asked for 7.
-NEWS_DAYS = 7
+# News is deliberately not written here. The Guardian's free tier forbids
+# retaining content beyond 24 hours and this snapshot is committed, so headlines
+# would be kept permanently in git history. /api/news serves it live instead.
+# The model's news features are unaffected: those are derived aggregates built
+# inside fetch_current_gw_data, not article text.
 
 # GW+2 and GW+3 are the only horizons with trained models.
 MULTI_GW_HORIZON = 3
+
+# The squad budget. Fixed, so the optimal squad is the same for everyone and can
+# be precomputed rather than solved per request.
+SQUAD_BUDGET = 100.0
 
 # Appended to rather than overwritten: this is the record of what was predicted
 # before the gameweek was played, which is the only way to score the model on
@@ -183,18 +191,6 @@ def _build_players(predictions: pd.DataFrame, histories: dict, fixtures: dict, s
     return players
 
 
-def _build_news(bootstrap: dict) -> dict:
-    """Guardian articles with sentiment. Degrades to empty rather than failing
-    the whole snapshot, since news is the least important thing on the site."""
-    try:
-        from job.news import fetch_recent_news
-
-        return fetch_recent_news(bootstrap, days=NEWS_DAYS)
-    except Exception as e:
-        logger.error("News fetch failed, writing an empty feed: %s", e)
-        return {"articles": [], "trending": []}
-
-
 def _report_coverage(model_info: list[dict], max_zero_filled: int | None) -> None:
     """Say how much of each model's input was fabricated, and optionally refuse.
 
@@ -286,6 +282,9 @@ def build(
     shap = compute_player_shap(models[default_id], default_X, element_ids, top_n=5)
     players = _build_players(per_model[default_id], histories, fixtures, shap)
 
+    print("Solving the optimal squad...")
+    best_squad = solve_best_squad(per_model[default_id], budget=SQUAD_BUDGET)
+
     print("Predicting GW+2 and GW+3...")
     multi_gw = predict_multi_gw(
         per_model[default_id], live_df, load_horizon_models(), fixtures, horizon=MULTI_GW_HORIZON
@@ -313,8 +312,8 @@ def build(
     _write_json(staging / "models.json", model_info)
     _write_json(staging / "players.json", players)
     _write_json(staging / "multi_gw.json", multi_gw)
+    _write_json(staging / "best_squad.json", best_squad)
     _write_json(staging / "fixtures.json", fixtures)
-    _write_json(staging / "news.json", _build_news(bootstrap))
     _write_json(staging / "model_insights.json", _build_model_insights())
     _write_json(staging / "manifest.json", manifest)
 

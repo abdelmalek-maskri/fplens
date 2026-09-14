@@ -71,48 +71,18 @@ def test_api_serves_only_the_endpoints_that_need_a_server(client):
     """Everything else moved to the snapshot. If a read endpoint reappears here,
     something has been added back that should be a file."""
     paths = {r.path for r in app.routes if hasattr(r, "methods") and r.path.startswith("/api")}
-    assert paths == {"/api/best-squad", "/api/team/{fpl_id}", "/api/health", "/api/refresh"}
+    assert paths == {
+        "/api/team/{fpl_id}",
+        "/api/news",
+        "/api/health",
+        "/api/refresh",
+    }
 
 
 def test_api_loads_no_model(client):
     """The whole point of the rebuild: no joblib in this process."""
     assert not hasattr(app.state, "models")
     assert not hasattr(app.state, "horizon_models")
-
-
-class TestBestSquad:
-    def test_reads_predictions_from_the_snapshot(self, client, snapshot):
-        empty_xi = {
-            "formation": "4-4-2",
-            "total_points": 0.0,
-            "total_with_captain": 0.0,
-            "captain_id": 1,
-            "vice_id": 1,
-            "starters": [],
-            "bench": [],
-        }
-        result = {
-            "squad": [],
-            "total_value": 0.0,
-            "total_points": 0.0,
-            "budget_remaining": 85.0,
-            "best_xi": empty_xi,
-        }
-        with patch("api.routers.squad.solve_best_squad", return_value=result) as solve:
-            r = client.get("/api/best-squad?budget=85")
-        assert r.status_code == 200
-        df = solve.call_args.args[0]
-        assert list(df["web_name"]) == ["Salah"], "the solver is fed the snapshot, not a model"
-        assert solve.call_args.kwargs["budget"] == 85.0
-
-    def test_503_when_no_snapshot_has_been_built(self, client, tmp_path):
-        with patch("api.snapshot.SNAPSHOT_DIR", tmp_path / "missing"):
-            r = client.get("/api/best-squad")
-        assert r.status_code == 503
-        assert "make snapshot" in r.json()["detail"]
-
-    def test_rejects_a_budget_outside_the_allowed_range(self, client):
-        assert client.get("/api/best-squad?budget=10").status_code == 422
 
 
 class TestTeam:
@@ -163,3 +133,22 @@ class TestTeam:
 
     def test_rejects_an_out_of_range_fpl_id(self, client):
         assert client.get("/api/team/99999999").status_code == 422
+
+
+class TestNews:
+    """News cannot be precomputed: the Guardian's free tier forbids retaining
+    content beyond 24 hours, and the snapshot is committed to a public repo."""
+
+    def test_serves_articles_without_writing_them_anywhere(self, client, tmp_path):
+        feed = {"articles": [{"headline": "Salah scores", "sentiment": 0.8}], "trending": []}
+        with patch("job.news.fetch_recent_news", return_value=feed):
+            r = client.get("/api/news")
+        assert r.status_code == 200
+        assert r.json()["articles"][0]["headline"] == "Salah scores"
+        assert not list(tmp_path.glob("**/news.json"))
+
+    def test_degrades_to_an_empty_feed_when_the_guardian_fails(self, client):
+        with patch("job.news.fetch_recent_news", side_effect=RuntimeError("Guardian down")):
+            r = client.get("/api/news")
+        assert r.status_code == 200
+        assert r.json() == {"articles": [], "trending": []}
