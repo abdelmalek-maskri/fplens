@@ -23,6 +23,8 @@ jobs:
     timeout-minutes: 20
 
     steps:
+      # persist-credentials stays on, unlike ci.yml: the commit step below
+      # pushes, and that needs the token in the local git config.
       - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v5
