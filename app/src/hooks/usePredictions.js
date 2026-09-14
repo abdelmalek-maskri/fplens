@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { getPredictions, getModels } from "../lib/api";
 import { DEFAULT_SHAP } from "../lib/constants";
 
@@ -7,7 +7,6 @@ export function usePredictions(modelId) {
   const [models, setModels] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const cancelledRef = useRef(false);
 
   useEffect(() => {
     getModels()
@@ -16,16 +15,16 @@ export function usePredictions(modelId) {
   }, []);
 
   useEffect(() => {
-    // Responses do not arrive in the order they were asked for. Switching models
-    // quickly could let an earlier one land last and overwrite the current
-    // selection, leaving the dropdown and the table disagreeing.
-    cancelledRef.current = false;
+    // Local to this run, not a ref. A shared ref does not work here: the cleanup
+    // sets it true, but the next effect immediately sets it back to false, so a
+    // slow earlier response still passes the check and overwrites the newer one.
+    let cancelled = false;
     setIsLoading(true);
     setError(null);
 
     getPredictions(modelId)
       .then((predictions) => {
-        if (cancelledRef.current) return;
+        if (cancelled) return;
         setData({
           predictions,
           localShap: {},
@@ -33,14 +32,14 @@ export function usePredictions(modelId) {
         });
       })
       .catch((err) => {
-        if (!cancelledRef.current) setError(err);
+        if (!cancelled) setError(err);
       })
       .finally(() => {
-        if (!cancelledRef.current) setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       });
 
     return () => {
-      cancelledRef.current = true;
+      cancelled = true;
     };
   }, [modelId]);
 

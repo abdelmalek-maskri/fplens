@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { getBestSquad, getPredictions } from "../lib/api";
 import { POS_LIMITS, MAX_PER_TEAM } from "../lib/constants";
 
@@ -6,17 +6,16 @@ export function useOptimalXI(budget = 100) {
   const [data, setData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const cancelledRef = useRef(false);
 
   useEffect(() => {
-    cancelledRef.current = false;
+    let cancelled = false;
     setData(null);
     setIsLoading(true);
     setError(null);
 
     Promise.allSettled([getBestSquad(budget), getPredictions()])
       .then(([squadSettled, predictionsSettled]) => {
-        if (cancelledRef.current) return;
+        if (cancelled) return;
 
         const squad = squadSettled.status === "fulfilled" ? squadSettled.value : null;
         const preds = predictionsSettled.status === "fulfilled" ? predictionsSettled.value : null;
@@ -56,11 +55,11 @@ export function useOptimalXI(budget = 100) {
         setData(res);
       })
       .finally(() => {
-        if (!cancelledRef.current) setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       });
 
     return () => {
-      cancelledRef.current = true;
+      cancelled = true;
     };
   }, [budget]);
 
