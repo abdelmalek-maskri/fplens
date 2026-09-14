@@ -769,14 +769,18 @@ def _fetch_live_understat(season: str, fpl_elements: list[dict]) -> pd.DataFrame
             matches_df["match_date"] = pd.to_datetime(matches_df["date"].str[:10])
 
             gw_win = gw_win.sort_values("start_date").reset_index(drop=True)
-            left = gw_win["start_date"] - pd.Timedelta(days=1)
-            right = gw_win["end_date"] + pd.Timedelta(days=1)
-            intervals = pd.IntervalIndex.from_arrays(left, right, closed="both")
             gw_numbers = gw_win["GW"].astype(int).values
 
-            idx = intervals.get_indexer(matches_df["match_date"])
-            matches_df["GW"] = pd.array([gw_numbers[i] if i >= 0 else pd.NA for i in idx], dtype="Int64")
-            matches_df = matches_df.dropna(subset=["GW"])
+            # Split at the midpoint between one gameweek ending and the next
+            # starting, rather than padding each window by a day. Over the
+            # festive period rounds are two days apart, so padded windows
+            # overlap and pandas refuses to index them.
+            ends = gw_win["end_date"].values[:-1]
+            starts = gw_win["start_date"].values[1:]
+            cuts = ends + (starts - ends) / 2
+
+            idx = np.searchsorted(cuts, matches_df["match_date"].values)
+            matches_df["GW"] = gw_numbers[idx]
         else:
             logger.warning("No fixture kickoff times, cannot map Understat matches to gameweeks")
             return None
