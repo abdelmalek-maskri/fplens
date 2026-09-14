@@ -317,9 +317,25 @@ def build(
     _write_json(staging / "model_insights.json", _build_model_insights())
     _write_json(staging / "manifest.json", manifest)
 
-    if out_dir.exists():
-        shutil.rmtree(out_dir)
-    staging.rename(out_dir)
+    # Move the old snapshot aside rather than deleting it first. Deleting then
+    # renaming leaves nothing at all if the rename fails, which is the one
+    # outcome this whole staging dance exists to prevent.
+    previous = out_dir.with_name(out_dir.name + ".previous")
+    if previous.exists():
+        shutil.rmtree(previous)
+
+    had_previous = out_dir.exists()
+    if had_previous:
+        out_dir.rename(previous)
+
+    try:
+        staging.rename(out_dir)
+    except OSError:
+        if had_previous:
+            previous.rename(out_dir)
+        raise
+
+    shutil.rmtree(previous, ignore_errors=True)
 
     if log_predictions:
         _append_prediction_log(gameweek, per_model)

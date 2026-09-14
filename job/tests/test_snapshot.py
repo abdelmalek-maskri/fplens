@@ -8,6 +8,7 @@ I/O or runs a model is patched out.
 
 import json
 from contextlib import contextmanager
+from pathlib import Path
 from unittest.mock import patch
 
 import pandas as pd
@@ -119,6 +120,30 @@ def test_a_failed_run_leaves_the_previous_snapshot_serving(tmp_path):
 
     assert (out / "manifest.json").exists()
     assert (out / "predictions_config_d.json").read_text() == before
+
+
+def test_the_previous_snapshot_survives_a_failed_swap(tmp_path):
+    """The staging dance exists so a bad run degrades to stale, never to empty.
+    Deleting the old directory before the rename broke exactly that."""
+    out = tmp_path / "data"
+    with _stub():
+        snapshot.build(out_dir=out, log_predictions=False)
+    before = (out / "manifest.json").read_text()
+
+    with _stub(), patch.object(Path, "rename", side_effect=OSError("disk full")), pytest.raises(OSError):
+        snapshot.build(out_dir=out, log_predictions=False)
+
+    assert out.exists(), "the old snapshot was destroyed"
+    assert (out / "manifest.json").read_text() == before
+
+
+def test_no_previous_directory_is_left_behind(tmp_path):
+    out = tmp_path / "data"
+    with _stub():
+        snapshot.build(out_dir=out, log_predictions=False)
+        snapshot.build(out_dir=out, log_predictions=False)
+
+    assert not (tmp_path / "data.previous").exists()
 
 
 def test_refuses_to_publish_an_empty_snapshot(tmp_path):
