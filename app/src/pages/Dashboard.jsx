@@ -50,7 +50,7 @@ export default function Dashboard() {
   useEffect(() => {
     if (!selectedModel && models.length > 0) setSelectedModel(models[0].id);
   }, [models, selectedModel]);
-  const predictions = data?.predictions ?? [];
+  const predictions = useMemo(() => data?.predictions ?? [], [data]);
   const activeModel = models.find((m) => m.id === selectedModel) || models[0];
 
   const filteredPredictions = useMemo(() => {

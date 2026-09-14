@@ -57,8 +57,8 @@ export default function TransferPlanner() {
   const [transfers, setTransfers] = useState([]);
   const [freeTransfers, setFreeTransfers] = useState(1);
 
-  const myTeam = transferData?.myTeam || [];
-  const targets = transferData?.targets || [];
+  const myTeam = useMemo(() => transferData?.myTeam || [], [transferData]);
+  const targets = useMemo(() => transferData?.targets || [], [transferData]);
 
   const bank = transferData?.bank ?? null;
 
