@@ -1,0 +1,75 @@
+name: Snapshot
+
+on:
+  schedule:
+    # 06:30 UTC daily. FPL price changes land around 01:30 UK, so this is safely
+    # after them in both BST and GMT. Cron here is best-effort and can drift by
+    # ten minutes or more, which does not matter for a daily rebuild.
+    - cron: "30 6 * * *"
+  workflow_dispatch:
+
+# The default token is read-only; committing the snapshot needs write.
+permissions:
+  contents: write
+
+# Two runs would both try to push. Queue instead of racing.
+concurrency:
+  group: snapshot
+  cancel-in-progress: false
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      # No token on disk. joblib.load below is arbitrary code execution by
+      # design, so nothing should be sitting in .git/config while it runs. The
+      # push step authenticates on its own.
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version-file: .python-version
+          cache: pip
+          cache-dependency-path: requirements-job.txt
+
+      - run: pip install -r requirements-job.txt
+
+      - name: Fetch models from the release
+        # -f makes curl fail on a 404 rather than piping an error page into tar,
+        # which would otherwise surface as a confusing failure much later.
+        #
+        # `tar xz outputs/` extracts only members under outputs/, so a tampered
+        # archive cannot drop files elsewhere in the checkout.
+        run: |
+          curl -sSfL "$MODELS_URL" | tar xz outputs/
+          test -f outputs/experiments/ablation/config_D/model.joblib
+        env:
+          MODELS_URL: https://github.com/abdelmalek-maskri/fplens/releases/download/models-v1/fplens-models-v1.tar.gz
+
+      - name: Build the snapshot
+        # ~800 FPL calls plus Understat and the Guardian, then nine models
+        # predict on the same frame. Around three minutes.
+        run: python -m job.snapshot
+        env:
+          GUARDIAN_API_KEY: ${{ secrets.GUARDIAN_API_KEY }}
+
+      - name: Commit if anything changed
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/public/data data/predictions_log.csv
+          if git diff --cached --quiet; then
+            echo "Snapshot unchanged, nothing to commit"
+          else
+            git commit -m "chore: snapshot $(date -u +%F)"
+            # Token passed here rather than persisted at checkout, so it exists
+            # only for this step and never while the models are being loaded.
+            git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+              "HEAD:${GITHUB_REF_NAME}"
+          fi

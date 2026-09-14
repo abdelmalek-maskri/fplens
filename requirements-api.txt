@@ -1,39 +1,35 @@
 # Serving dependencies only — what `uvicorn api.main:app` needs to run.
 # Use requirements.txt for training and the full data pipeline.
 #
-# Deliberately excluded:
-#   torch, transformers, spacy  training-only NLP for building injury/news features.
-#                               ml/pipelines/inference/news.py guards both imports and
-#                               falls back to regex player linking and keyword sentiment,
-#                               so /api/news works without them. Including them would add
-#                               roughly 400MB of wheels plus a ~500MB model download on
-#                               first request.
-#   pytest, coverage            test-only.
+# The API serves two endpoints: a manager's squad, and the ILP squad solver.
+# Predictions come from the JSON snapshot the job writes, so nothing here loads
+# or runs a model. That removes ~200MB:
+#
+#   lightgbm, xgboost, shap    only the job runs models now
+#   scipy                      the squad solver moved to the job; the budget is
+#                              fixed, so the answer is precomputed
+#   scikit-learn, joblib       only needed to unpickle them
+#   numba, llvmlite            pulled in by shap; 130MB between them
+#   aiohttp, understat, bs4    used by the job's Understat and Guardian fetches
+#   torch, transformers, spacy training-only NLP for building news features
+#   pytest, coverage           test-only
 #
 # Direct dependencies only; pip resolves the rest. Pins match requirements.txt.
 
 fastapi==0.135.1
 uvicorn[standard]==0.41.0
 
-# Feature building and model loading
+# Pinned despite being transitive. Leaving it to pip resolved a newer starlette
+# in CI than the one installed locally, and the two want different HTTP clients
+# for TestClient, so the tests passed here and failed there.
+starlette==0.52.1
+
+# Reading the snapshot and reshaping picks
 pandas==2.3.3
 numpy==2.2.6
-scipy==1.15.3
-scikit-learn==1.7.2
-joblib==1.5.3
 
-# Needed to unpickle the stacked ensemble's base learners
-lightgbm==4.6.0
-xgboost==3.2.0
-
-# Per-player SHAP breakdowns on /api/player/{id}. Pulls numba and llvmlite
-# (~100MB); predict.py imports it lazily, so the endpoint degrades rather than
-# failing if it is ever dropped.
-shap==0.49.1
-
-# External data at inference: FPL and Guardian over HTTP, Understat via its async client
+# Live calls: a manager's squad from the FPL API, and Guardian news, which
+# cannot be precomputed because its licence forbids retaining content.
 requests==2.32.5
-aiohttp==3.8.3
-understat==0.1.14
 beautifulsoup4==4.11.1
 python-dotenv==1.2.2

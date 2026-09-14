@@ -20,10 +20,12 @@ pip install -r requirements.txt
 cd app && npm install && cd ..
 ```
 
-Note `requirements.txt` covers both training and serving, so it pulls in heavy NLP
-dependencies (torch, transformers, spaCy) that the API itself does not need.
+Note `requirements.txt` covers training and the full pipeline, so it pulls in heavy
+NLP dependencies (torch, transformers, spaCy) that neither the API nor the snapshot
+job needs. See [Deploying the API](#deploying-the-api) for the smaller files.
 
-Before the backend will start you need trained models — see [Models](#models) below.
+The backend starts without any trained models. It reads predictions from the
+committed snapshot in `app/public/data/`.
 
 ## Running
 
@@ -33,7 +35,9 @@ Before the backend will start you need trained models — see [Models](#models) 
 uvicorn api.main:app --reload
 ```
 
-The API starts on `http://127.0.0.1:8000`. On first request, it fetches live player data from the FPL API (~60 seconds), then caches it. Subsequent requests are instant.
+The API starts on `http://127.0.0.1:8000` in about a second, with no models loaded.
+It serves two things: a manager's squad, which it fetches live from the FPL API, and
+Guardian news, which cannot be stored. Predictions come from the snapshot on disk.
 
 ### Frontend (React dashboard)
 
@@ -42,24 +46,32 @@ cd app
 npm run dev
 ```
 
-Opens on `http://localhost:5173`. Requires the backend to be running.
+Opens on `http://localhost:5173`. Most of the dashboard works without the backend,
+because predictions, fixtures, player detail and model insights are read straight
+from `app/public/data/`. Only **My Team** and **News** need the API running.
 
 ## Models
 
-**Trained models are not committed to the repository.** `outputs/` and `*.joblib` are
-gitignored (they are large and reproducible), so a fresh clone contains no models and the
-API will refuse to start:
+**Trained models are not committed, and the site does not need them.** `outputs/` and
+`*.joblib` are gitignored because they are large and reproducible. The snapshot in
+`app/public/data/` **is** committed, so a fresh clone serves the whole dashboard with no
+model on disk.
 
-```text
-FileNotFoundError: Model file not found: outputs/experiments/ablation/config_D/model.joblib
+Models are needed for two things only: rebuilding the snapshot, and training.
+
+```bash
+make snapshot   # ~800 FPL API calls, ~30s, rewrites app/public/data/
 ```
 
-The API needs at minimum:
+That needs `outputs/experiments/ablation/config_D/model.joblib` at minimum. The other
+registry models are optional — the job skips any whose `.joblib` is missing and simply
+publishes fewer options in the selector. The GW+2 and GW+3 horizon models are optional
+too; without them `multi_gw.json` degrades to GW+1 only.
 
 | Path | Purpose |
 | ---- | ------- |
-| `outputs/experiments/ablation/config_D/model.joblib` | Production stacked ensemble (GW+1). Required — startup fails without it. |
-| `outputs/experiments/multi_horizon/gw2/lgbm_reduced/model.joblib` | GW+2 horizon (optional; `/api/predictions/multi-gw` degrades without it) |
+| `outputs/experiments/ablation/config_D/model.joblib` | Production stacked ensemble (GW+1) |
+| `outputs/experiments/multi_horizon/gw2/lgbm_reduced/model.joblib` | GW+2 horizon (optional) |
 | `outputs/experiments/multi_horizon/gw3/lgbm_reduced/model.joblib` | GW+3 horizon (optional) |
 | `outputs/experiments/ablation/ablation_summary.json` | Model Insights page |
 | `outputs/evaluation/shap/` | SHAP reports for Model Insights |
@@ -86,10 +98,6 @@ To train just the production model once features exist:
 python3 -m ml.pipelines.train.run_injury_ablation
 ```
 
-The other registry models (baseline, two-head, position-specific, etc.) are optional — the
-API skips any whose `.joblib` is missing and simply offers fewer options in the model
-selector. Reproduce them with the scripts in `ml/pipelines/train/`.
-
 ## Configuration
 
 All read from the environment, and `.env` in the project root is loaded automatically.
@@ -97,29 +105,36 @@ All read from the environment, and `.env` in the project root is loaded automati
 | Variable | Default | Purpose |
 | -------- | ------- | ------- |
 | `GUARDIAN_API_KEY` | unset | Live news sentiment. Without it, news features are zero-filled at inference. Free key from [the Guardian Open Platform](https://open-platform.theguardian.com). |
-| `FPLENS_MODELS` | `showcase` | Which models to load. `showcase` is the five-model deploy set, `all` is the full registry, or pass a comma-separated list of IDs. |
+| `FPLENS_MODELS` | `showcase` | Which models to load. `showcase` is the nine-model published set, `all` is the full registry, or pass a comma-separated list of IDs. |
 | `CORS_ORIGINS` | local Vite | Comma-separated allowed origins. Must include the deployed dashboard's URL. |
 | `REFRESH_SECRET` | unset | Secret for `POST /api/refresh`. Unset disables the endpoint (503) rather than leaving a guessable default. |
-| `MODEL_PATH` | Config D | Fallback model path if `config_d` is not in the loaded set. |
+| `FPLENS_SNAPSHOT_DIR` | `app/public/data` | Where the API reads predictions from. Override when the API is deployed apart from the site. |
 
-Loading all ten models needs about 764MB of RAM; the showcase set needs about 326MB,
-which is why it is the default. `FPLENS_MODELS=all` lists every model you have on disk.
+`FPLENS_MODELS` applies to the snapshot job, not the API — the API loads no models at
+all. The showcase set is nine models; `all` adds catboost_twohead, at roughly 350KB of
+extra JSON (38KB gzipped) and 46MB in the release tarball.
 
 ## Deploying the API
 
-`requirements-api.txt` holds serving dependencies only — 455MB installed against
-1.3GB for the full `requirements.txt`. It omits torch, transformers, and spaCy, which
-exist for building injury and news features during training. The live news endpoint
-guards those imports and falls back to regex player linking and keyword sentiment, so
-it still works without them.
+Three requirements files, smallest first:
+
+| File | For | Notably excludes |
+| ---- | --- | ---------------- |
+| `requirements-api.txt` | serving | LightGBM, XGBoost, SHAP, scikit-learn, joblib (~200MB) |
+| `requirements-job.txt` | `make snapshot` | torch, transformers, spaCy (~400MB) |
+| `requirements.txt` | training | nothing; one flat freeze |
+
+The API loads no models, which is why its file is the thin one. The job guards its
+spaCy and transformers imports and falls back to regex player linking with keyword
+sentiment, so news features still build without them.
 
 ```bash
 python3 -m pip install -r requirements-api.txt
 uvicorn api.main:app --host 0.0.0.0 --port ${PORT:-8000}
 ```
 
-A clean serving environment boots the five showcase models plus both horizon models at
-roughly 304MB resident.
+The API loads no models at all, so it boots in about a second and stays small. Only
+`make snapshot` needs the `.joblib` files.
 
 ## Tests
 

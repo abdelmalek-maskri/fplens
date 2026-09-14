@@ -5,7 +5,7 @@ import { useTransfers } from "../hooks";
 import Loading from "../components/feedback/Loading";
 import ErrorState from "../components/feedback/ErrorState";
 
-function computeSuggestions(squad, targets, horizon, maxTransfers = 1) {
+function computeSuggestions(squad, targets, horizon, maxTransfers = 1, bank = 0) {
   const suggestions = [];
   const candidates = squad
     .map((p) => {
@@ -28,7 +28,7 @@ function computeSuggestions(squad, targets, horizon, maxTransfers = 1) {
       .filter(
         (t) =>
           t.position === out.position &&
-          t.value <= out.selling_price + 2.3 &&
+          t.value <= out.selling_price + bank &&
           !squadIds.has(t.element) &&
           !usedIds.has(t.element)
       )
@@ -57,19 +57,20 @@ export default function TransferPlanner() {
   const [transfers, setTransfers] = useState([]);
   const [freeTransfers, setFreeTransfers] = useState(1);
 
-  const myTeam = transferData?.myTeam || [];
-  const targets = transferData?.targets || [];
+  const myTeam = useMemo(() => transferData?.myTeam || [], [transferData]);
+  const targets = useMemo(() => transferData?.targets || [], [transferData]);
 
-  const bankBalance = 2.3;
+  const bank = transferData?.bank ?? null;
 
   const budget = useMemo(() => {
+    if (bank === null) return null;
     const savings = transfers.reduce((s, t) => {
       const out = myTeam.find((p) => p.element === t.out);
       const inP = targets.find((p) => p.element === t.in);
       return s + ((out?.selling_price || 0) - (inP?.value || 0));
     }, 0);
-    return bankBalance + savings;
-  }, [myTeam, targets, transfers]);
+    return bank + savings;
+  }, [bank, myTeam, targets, transfers]);
 
   const hitCost = Math.max(0, transfers.length - freeTransfers) * 4;
 
@@ -92,8 +93,15 @@ export default function TransferPlanner() {
   }, [currentTeam, horizon]);
 
   const suggestions = useMemo(
-    () => computeSuggestions(myTeam, targets, horizon, freeTransfers >= 5 ? 15 : freeTransfers),
-    [myTeam, targets, horizon, freeTransfers]
+    () =>
+      computeSuggestions(
+        myTeam,
+        targets,
+        horizon,
+        freeTransfers >= 5 ? 15 : freeTransfers,
+        bank ?? 0
+      ),
+    [myTeam, targets, horizon, freeTransfers, bank]
   );
 
   const removeTransfer = (outId) => {
@@ -157,7 +165,9 @@ export default function TransferPlanner() {
             <>
               <span className="text-surface-400">{transfers.length} made</span>
               {hitCost > 0 && <span className="text-danger-400 font-medium">-{hitCost} hit</span>}
-              <span className="text-surface-400">£{budget.toFixed(1)}m ITB</span>
+              {budget !== null && (
+                <span className="text-surface-400">£{budget.toFixed(1)}m ITB</span>
+              )}
               <span className="font-data font-bold text-brand-400">
                 {(teamTotal - hitCost).toFixed(1)} pts
               </span>

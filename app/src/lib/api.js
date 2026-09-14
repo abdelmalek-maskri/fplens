@@ -1,19 +1,22 @@
 const BASE_URL = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000").replace(/\/+$/, "");
 
+// Predictions are identical for every visitor and change once per gameweek, so
+// the job writes them to app/public/data and they are served as static files
+// from this app's own origin. No API, no CORS, no model in memory.
+const SNAPSHOT_BASE = "/data";
+
 const DEFAULT_TIMEOUT = 30_000;
 
-function buildUrl(path, params = {}) {
-  const qs = new URLSearchParams(Object.entries(params).filter(([, v]) => v != null));
-  const query = qs.toString();
-  return query ? `${path}?${query}` : path;
-}
-
-async function apiFetch(path, { method = "GET", headers = {}, timeout = DEFAULT_TIMEOUT } = {}) {
+async function request(
+  base,
+  path,
+  { method = "GET", headers = {}, timeout = DEFAULT_TIMEOUT } = {}
+) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeout);
 
   try {
-    const res = await fetch(`${BASE_URL}${path}`, {
+    const res = await fetch(`${base}${path}`, {
       method,
       signal: controller.signal,
       headers: { ...(method === "POST" ? { "Content-Type": "application/json" } : {}), ...headers },
@@ -38,40 +41,81 @@ async function apiFetch(path, { method = "GET", headers = {}, timeout = DEFAULT_
   }
 }
 
-export function getPredictions(modelId) {
-  return apiFetch(buildUrl("/api/predictions", { model: modelId }));
+const apiFetch = (path, opts) => request(BASE_URL, path, opts);
+const snapshotFetch = (path, opts) => request(SNAPSHOT_BASE, path, opts);
+
+export function getManifest() {
+  return snapshotFetch("/manifest.json");
+}
+
+/**
+ * Predicted points for every player, from the current snapshot.
+ *
+ * Without a modelId this reads the manifest first to learn the default, which
+ * costs a second round trip. The manifest is ~500 bytes and browser-cached, and
+ * the alternative is hardcoding a model name the job already knows.
+ */
+export async function getPredictions(modelId) {
+  const id = modelId && modelId !== "default" ? modelId : (await getManifest()).default_model;
+  return snapshotFetch(`/predictions_${encodeURIComponent(id)}.json`);
 }
 
 export function getModels() {
-  return apiFetch("/api/models");
+  return snapshotFetch("/models.json");
 }
 
-export function getBestSquad(budget = 100) {
-  return apiFetch(buildUrl("/api/best-squad", { budget }));
+// The budget is fixed at £100m, so the optimal squad is the same for everyone
+// and the job solves it once rather than per request.
+export function getBestSquad() {
+  return snapshotFetch("/best_squad.json");
 }
 
-export function getFixtures(numGws = 6) {
-  return apiFetch(buildUrl("/api/fixtures", { num_gws: numGws }));
+/**
+ * Team x gameweek fixture grid with difficulty ratings.
+ *
+ * The snapshot holds the maximum window the API used to allow, so narrowing it
+ * is a slice here rather than a different request.
+ */
+export async function getFixtures(numGws = 6) {
+  const data = await snapshotFetch("/fixtures.json");
+  const fixtures = Object.fromEntries(
+    Object.entries(data.fixtures ?? {}).map(([team, list]) => [team, list.slice(0, numGws)])
+  );
+  return { ...data, fixtures };
 }
 
 export function getTeam(fplId) {
   return apiFetch(`/api/team/${encodeURIComponent(fplId)}`);
 }
 
-export function getPlayer(elementId) {
-  return apiFetch(`/api/player/${encodeURIComponent(elementId)}`);
+/**
+ * Full detail for one player: prediction, history, fixtures, SHAP.
+ *
+ * All 654 live in one file. Gzipped that is ~100KB, paid once, so clicking
+ * through players after the first costs nothing. A file each would be a smaller
+ * first click but would rewrite 654 files every gameweek.
+ */
+export async function getPlayer(elementId) {
+  const players = await snapshotFetch("/players.json");
+  const player = players[elementId];
+  if (!player) throw new Error("Not found.");
+  return player;
 }
 
 export function getModelInsights() {
-  return apiFetch("/api/model-insights");
+  return snapshotFetch("/model_insights.json");
 }
 
-export function getNews(days = 7) {
-  return apiFetch(buildUrl("/api/news", { days }));
+// Not in the snapshot. The Guardian's licence forbids retaining content beyond
+// 24 hours, and the snapshot is committed, so this stays a live call.
+export function getNews() {
+  return apiFetch("/api/news");
 }
 
-export function getMultiGW(horizon = 3) {
-  return apiFetch(buildUrl("/api/predictions/multi-gw", { horizon }));
+// The snapshot always covers GW+1 through GW+3, and the planner narrows it
+// locally, so there is no horizon param.
+export function getMultiGW() {
+  return snapshotFetch("/multi_gw.json");
 }
 
 export function refresh(secret = "dev-secret") {
@@ -85,6 +129,7 @@ export function health() {
   return apiFetch("/api/health");
 }
 
-export function getStatus() {
-  return apiFetch("/api/status");
+export async function getStatus() {
+  const { gameweek, deadline } = await getManifest();
+  return { current_gw: gameweek, deadline };
 }

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
 
 const MOCK_PLAYER = {
@@ -12,12 +12,19 @@ const MOCK_PLAYER = {
   form: 8.8,
 };
 
-vi.mock("../../lib/api", () => ({
-  getPredictions: vi.fn(() => Promise.resolve([MOCK_PLAYER])),
-  getModels: vi.fn(() => Promise.resolve([{ id: "config_d", name: "Config D", mae: 1.016 }])),
+const { getPredictions, getModels } = vi.hoisted(() => ({
+  getPredictions: vi.fn(),
+  getModels: vi.fn(),
 }));
 
+vi.mock("../../lib/api", () => ({ getPredictions, getModels }));
+
 import { usePredictions } from "../../hooks/usePredictions";
+
+beforeEach(() => {
+  getPredictions.mockResolvedValue([MOCK_PLAYER]);
+  getModels.mockResolvedValue([{ id: "config_d", name: "Config D", mae: 1.016 }]);
+});
 
 describe("usePredictions", () => {
   it("starts in loading state", () => {
@@ -73,5 +80,27 @@ describe("usePredictions", () => {
     expect(result.current.models.length).toBeGreaterThan(0);
     expect(result.current.models[0]).toHaveProperty("id");
     expect(result.current.models[0]).toHaveProperty("mae");
+  });
+
+  it("ignores a slow response for a model the user already switched away from", async () => {
+    // Responses do not arrive in send order. Without a guard, the first model's
+    // answer lands last and overwrites the one actually selected, so the
+    // dropdown and the table disagree.
+    let resolveFirst;
+    getPredictions
+      .mockImplementationOnce(() => new Promise((r) => (resolveFirst = r)))
+      .mockResolvedValueOnce([{ ...MOCK_PLAYER, web_name: "Salah" }]);
+
+    const { result, rerender } = renderHook(({ id }) => usePredictions(id), {
+      initialProps: { id: "config_d" },
+    });
+
+    rerender({ id: "baseline" });
+    await waitFor(() => expect(result.current.data?.predictions[0].web_name).toBe("Salah"));
+
+    resolveFirst([{ ...MOCK_PLAYER, web_name: "Haaland" }]);
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(result.current.data.predictions[0].web_name).toBe("Salah");
   });
 });

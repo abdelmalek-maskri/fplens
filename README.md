@@ -53,7 +53,7 @@ cd app && npm test     # 83 frontend tests
 
 Four data sources are merged into 155 features per player per gameweek: FPL match stats, Understat expected goals, injury records reconstructed from git history, and Guardian article sentiment. None of these share a common identifier, so linking them needed per-season team maps and a three-strategy name matcher.
 
-Six diverse base learners (two LightGBMs, XGBoost, Random Forest, Ridge, and a classifier for whether a player features at all) are combined by inverse-MAE weighting. A FastAPI backend serves live predictions with a TTL cache; a React dashboard renders them.
+Six diverse base learners (two LightGBMs, XGBoost, Random Forest, Ridge, and a classifier for whether a player features at all) are combined by inverse-MAE weighting. A scheduled job runs the models once per gameweek and writes JSON; the React dashboard reads those files directly, and a two-endpoint FastAPI service handles the only things that depend on who is asking.
 
 Every rolling feature is computed with a one-gameweek lag, and injury snapshots are shifted forward a gameweek, so no feature uses information unavailable at prediction time.
 

@@ -61,6 +61,7 @@ export default function Watchlist() {
           <div className="relative mb-3">
             <input
               type="text"
+              aria-label="Search player or team"
               placeholder="Search player or team..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}

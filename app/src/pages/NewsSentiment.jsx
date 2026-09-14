@@ -184,6 +184,7 @@ export default function NewsSentiment() {
       <div className="flex items-center gap-3 flex-wrap">
         <input
           type="text"
+          aria-label="Search players or headlines"
           placeholder="Search players or headlines..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}

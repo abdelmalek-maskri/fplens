@@ -119,6 +119,7 @@ export default function MyTeam() {
             pattern="[0-9]*"
             value={fplId}
             onChange={(e) => setFplId(e.target.value.replace(/\D/g, ""))}
+            aria-label="FPL Team ID"
             placeholder="Enter your FPL Team ID"
             className="w-full bg-surface-800 border border-surface-700 rounded pl-9 pr-20 py-2.5 text-surface-100 font-data tabular-nums placeholder:text-surface-600 focus:border-brand-500 focus:outline-none transition-colors"
           />
