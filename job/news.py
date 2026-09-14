@@ -216,16 +216,27 @@ def _link_articles_to_players(articles, lookup, nlp=None):
     # pre-compile regex patterns once (avoids re-compiling per article)
     compiled = {variant: re.compile(r"\b" + re.escape(variant) + r"\b", re.IGNORECASE) for variant in lookup}
 
+    # Longest variant first. One player's web_name can be another's first name:
+    # a Hull defender is "Jacob", so "Jacob Ramsey" in a headline would match
+    # both unless the full name claims that text first.
+    by_length = sorted(lookup, key=len, reverse=True)
+
     for article in articles:
         title = article["title"]
         body = article["body_text"][:5000]
         found = {}
 
         # regex on title (all variants, low FP risk)
-        for variant, element in lookup.items():
-            if compiled[variant].search(title):
-                found[element] = True
+        claimed: list[tuple[int, int]] = []
+        for variant in by_length:
+            for m in compiled[variant].finditer(title):
+                if any(start <= m.start() and m.end() <= end for start, end in claimed):
+                    continue
+                found[lookup[variant]] = True
+                claimed.append((m.start(), m.end()))
 
+        # Body uses full names only, so the nesting problem above cannot occur
+        # here: no single-token web_name is ever tested against the body.
         # regex on body for full names only (2+ words)
         for variant, element in lookup.items():
             if " " not in variant:

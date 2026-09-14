@@ -162,3 +162,28 @@ class TestComputeSentiment:
         articles = [{"title": "Test", "snippet": "injury blow doubt ruled out sidelined"}]
         result = _compute_sentiment(articles, sentiment_pipe=None)
         assert -1.0 <= result[0]["sentiment"] <= 1.0
+
+
+class TestNameCollisions:
+    """One player's web_name can be another player's first name."""
+
+    LOOKUP = {
+        "jacob ramsey": 100,  # Newcastle midfielder, full name
+        "ramsey": 100,
+        "jacob": 283,  # a Hull defender whose web_name is just "Jacob"
+    }
+
+    def _link(self, title):
+        from job.news import _link_articles_to_players
+
+        articles = [{"title": title, "body_text": ""}]
+        return set(_link_articles_to_players(articles, self.LOOKUP)[0]["player_elements"])
+
+    def test_full_name_wins_over_a_first_name_that_is_someone_elses_web_name(self):
+        assert self._link("Jacob Ramsey scores twice") == {100}
+
+    def test_the_shorter_name_still_matches_on_its_own(self):
+        assert self._link("Jacob keeps a clean sheet") == {283}
+
+    def test_both_match_when_genuinely_both_present(self):
+        assert self._link("Jacob Ramsey praised by Jacob") == {100, 283}
