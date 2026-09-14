@@ -771,13 +771,17 @@ def _fetch_live_understat(season: str, fpl_elements: list[dict]) -> pd.DataFrame
             gw_win = gw_win.sort_values("start_date").reset_index(drop=True)
             gw_numbers = gw_win["GW"].astype(int).values
 
-            # Split at the midpoint between one gameweek ending and the next
-            # starting, rather than padding each window by a day. Over the
-            # festive period rounds are two days apart, so padded windows
-            # overlap and pandas refuses to index them.
-            ends = gw_win["end_date"].values[:-1]
-            starts = gw_win["start_date"].values[1:]
-            cuts = ends + (starts - ends) / 2
+            # Split midway between consecutive gameweek *starts*. End dates are
+            # unusable: a single postponed fixture drags its round's end months
+            # forward, which makes the boundaries non-monotonic and silently
+            # files later matches under the wrong gameweek. Starts stay ordered
+            # because postponing moves a match later, not earlier.
+            starts = gw_win["start_date"].values
+            cuts = starts[:-1] + (starts[1:] - starts[:-1]) / 2
+
+            if not (np.diff(cuts) >= np.timedelta64(0)).all():
+                logger.warning("Gameweek starts are not in order; cannot map Understat matches")
+                return None
 
             idx = np.searchsorted(cuts, matches_df["match_date"].values)
             matches_df["GW"] = gw_numbers[idx]
