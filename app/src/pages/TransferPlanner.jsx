@@ -2,53 +2,9 @@ import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import TeamBadge from "../components/badges/TeamBadge";
 import { useTransfers } from "../hooks";
+import { computeSuggestions, WILDCARD, SQUAD_SIZE } from "./transfers/suggestions";
 import Loading from "../components/feedback/Loading";
 import ErrorState from "../components/feedback/ErrorState";
-
-function computeSuggestions(squad, targets, horizon, maxTransfers = 1, bank = 0) {
-  const suggestions = [];
-  const candidates = squad
-    .map((p) => {
-      const sum = p.predicted.slice(0, horizon).reduce((s, v) => s + v, 0);
-      const avgFdr = p.fdr.slice(0, horizon).reduce((s, v) => s + v, 0) / horizon;
-      let reason = null;
-      if (p.status === "i") reason = "Injured";
-      else if (p.status === "d") reason = "Doubtful";
-      else if (sum / horizon < 3.0 && avgFdr >= 3) reason = "Low pts + tough run";
-      else if (sum / horizon < 2.5) reason = "Low predicted";
-      return { ...p, sum, avgFdr, reason };
-    })
-    .filter((p) => p.reason)
-    .sort((a, b) => a.sum - b.sum);
-
-  for (const out of candidates) {
-    const squadIds = new Set(squad.map((p) => p.element));
-    const usedIds = new Set(suggestions.map((s) => s.in.element));
-    const options = targets
-      .filter(
-        (t) =>
-          t.position === out.position &&
-          t.value <= out.selling_price + bank &&
-          !squadIds.has(t.element) &&
-          !usedIds.has(t.element)
-      )
-      .map((t) => ({
-        ...t,
-        sum: t.predicted.slice(0, horizon).reduce((s, v) => s + v, 0),
-      }))
-      .sort((a, b) => b.sum - a.sum);
-
-    if (options.length > 0) {
-      suggestions.push({
-        out,
-        in: options[0],
-        points_gain: options[0].sum - out.sum,
-        reason: out.reason,
-      });
-    }
-  }
-  return suggestions.slice(0, maxTransfers);
-}
 
 export default function TransferPlanner() {
   const navigate = useNavigate();
@@ -72,7 +28,11 @@ export default function TransferPlanner() {
     return bank + savings;
   }, [bank, myTeam, targets, transfers]);
 
-  const hitCost = Math.max(0, transfers.length - freeTransfers) * 4;
+  // The dropdown uses 5 as the Wildcard sentinel. A Wildcard is unlimited
+  // transfers with no points penalty, so treating it as "five free" would
+  // charge a hit from the sixth move onwards.
+  const isWildcard = freeTransfers >= WILDCARD;
+  const hitCost = isWildcard ? 0 : Math.max(0, transfers.length - freeTransfers) * 4;
 
   const currentTeam = useMemo(() => {
     return myTeam.map((p) => {
@@ -98,10 +58,10 @@ export default function TransferPlanner() {
         myTeam,
         targets,
         horizon,
-        freeTransfers >= 5 ? 15 : freeTransfers,
+        isWildcard ? SQUAD_SIZE : freeTransfers,
         bank ?? 0
       ),
-    [myTeam, targets, horizon, freeTransfers, bank]
+    [myTeam, targets, horizon, freeTransfers, isWildcard, bank]
   );
 
   const removeTransfer = (outId) => {
