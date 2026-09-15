@@ -1,10 +1,6 @@
 // Cloudflare Workers static assets. There is no server-side Worker here: this
 // only tells Cloudflare which directory holds the built site.
-//
-// The config sits at the repo root rather than in app/ so `npx wrangler deploy`
-// works without a working-directory setting. The build command has to cd into
-// app/ itself, because that is where package.json lives.
-//
+
 // Routing is handled by app/public/_redirects rather than
 // assets.not_found_handling, because that setting would serve index.html for a
 // missing /data/*.json too, turning a clear 404 into a JSON parse error.
@@ -12,6 +8,6 @@
   "name": "fplens",
   "compatibility_date": "2026-09-15",
   "assets": {
-    "directory": "./app/dist"
+    "directory": "./dist"
   }
 }
