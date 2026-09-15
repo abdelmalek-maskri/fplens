@@ -1,9 +1,0 @@
-# Single page app: the server only has index.html, React Router handles the
-# rest. Without this, loading /optimal-xi directly returns 404, because the
-# host looks for a file at that path. Navigating inside the app still works,
-# so this only breaks refreshes and shared links.
-#
-# /data/* is excluded: those are real files the job writes, and they must 404
-# honestly rather than returning the HTML shell when one is missing.
-/data/*  /data/:splat  200
-/*       /index.html   200
