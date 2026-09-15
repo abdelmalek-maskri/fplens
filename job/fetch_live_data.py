@@ -74,6 +74,12 @@ def get_bootstrap_data() -> dict:
     return response.json()
 
 
+def current_season(events: list[dict]) -> str:
+    """Season label like "2026-27", derived from gameweek 1's deadline."""
+    year = int(events[0]["deadline_time"][:4])
+    return f"{year}-{str(year + 1)[-2:]}"
+
+
 def get_current_gameweek(events: list[dict]) -> dict:
     """
     Determine the next gameweek to predict for.
@@ -1096,9 +1102,7 @@ def fetch_current_gw_data(
     print(f"Current gameweek: {current_gw}")
 
     # Derive season string from GW1 deadline (e.g. Aug 2025 → "2025-26")
-    gw1_deadline = events[0]["deadline_time"]
-    gw1_year = int(gw1_deadline[:4])
-    season = f"{gw1_year}-{str(gw1_year + 1)[-2:]}"
+    season = current_season(events)
     print(f"Season: {season}")
 
     # Get fixtures

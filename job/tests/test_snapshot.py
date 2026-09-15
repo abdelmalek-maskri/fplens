@@ -36,8 +36,17 @@ def _stub(models=("config_d",), predict_side_effect=None, features=("element", "
 
     with (
         patch.object(snapshot, "load_models", return_value=({m: object() for m in models}, info)),
-        patch.object(snapshot, "get_bootstrap_data", return_value={"events": [], "elements": []}),
-        patch.object(snapshot, "get_current_gameweek", return_value={"id": 12}),
+        patch.object(
+            snapshot,
+            "get_bootstrap_data",
+            # GW1's deadline is what the season label is derived from.
+            return_value={"events": [{"id": 1, "deadline_time": "2026-08-14T17:30:00Z"}], "elements": []},
+        ),
+        patch.object(
+            snapshot,
+            "get_current_gameweek",
+            return_value={"id": 12, "deadline_time": "2026-11-21T11:30:00Z"},
+        ),
         patch.object(snapshot, "fetch_all_player_histories", return_value={}),
         patch.object(snapshot, "fetch_current_gw_data", return_value=live),
         patch.object(snapshot, "compute_player_shap", return_value={}),
@@ -225,6 +234,48 @@ def test_snapshot_never_writes_guardian_content(tmp_path):
     assert "news" not in [p.stem for p in out.iterdir()]
 
 
+def test_prediction_log_records_when_each_forecast_was_made(tmp_path, monkeypatch):
+    """The job runs daily, so a gameweek collects several forecasts. Without a
+    timestamp there is no way to pick the last one before the deadline, which
+    is the only thing the log is for."""
+    log = tmp_path / "predictions_log.csv"
+    monkeypatch.setattr(snapshot, "PREDICTION_LOG", log)
+
+    out = tmp_path / "data"
+    with _stub():
+        snapshot.build(out_dir=out)
+
+    rows = pd.read_csv(log)
+    assert set(rows.columns) == {
+        "season",
+        "gameweek",
+        "deadline",
+        "generated_at",
+        "model",
+        "element",
+        "predicted_points",
+    }
+    assert rows["generated_at"].notna().all()
+    assert rows["season"].iloc[0] == "2026-27"
+
+
+def test_prediction_log_migrates_an_older_schema(tmp_path, monkeypatch):
+    """Appending wider rows to a four-column file leaves it unreadable, so the
+    first run after the change rewrites it instead."""
+    log = tmp_path / "predictions_log.csv"
+    monkeypatch.setattr(snapshot, "PREDICTION_LOG", log)
+    pd.DataFrame([{"gameweek": 4, "model": "config_d", "element": 1, "predicted_points": 2.5}]).to_csv(log, index=False)
+
+    out = tmp_path / "data"
+    with _stub():
+        snapshot.build(out_dir=out)
+
+    rows = pd.read_csv(log)
+    assert len(rows) == 4, "the old row is kept alongside the three new ones"
+    assert rows["generated_at"].isna().sum() == 1, "the old row has no timestamp to backfill"
+    assert rows["generated_at"].notna().sum() == 3
+
+
 def test_prediction_log_appends_rather_than_overwrites(tmp_path, monkeypatch):
     log = tmp_path / "predictions_log.csv"
     monkeypatch.setattr(snapshot, "PREDICTION_LOG", log)
@@ -236,4 +287,4 @@ def test_prediction_log_appends_rather_than_overwrites(tmp_path, monkeypatch):
 
     rows = pd.read_csv(log)
     assert len(rows) == 6, "two runs of three players should append, not replace"
-    assert set(rows.columns) == {"gameweek", "model", "element", "predicted_points"}
+    assert rows["generated_at"].nunique() >= 1, "each run stamps its own rows"

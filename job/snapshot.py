@@ -24,6 +24,7 @@ from pathlib import Path
 import pandas as pd
 
 from job.fetch_live_data import (
+    current_season,
     fetch_all_player_histories,
     fetch_current_gw_data,
     fetch_fixtures,
@@ -113,13 +114,29 @@ def _write_json(path: Path, payload) -> None:
     path.write_text(json.dumps(payload, separators=(",", ":")), encoding="utf-8")
 
 
-def _append_prediction_log(gameweek: int, per_model: dict[str, pd.DataFrame]) -> None:
+def _append_prediction_log(
+    season: str,
+    gameweek: int,
+    deadline: str | None,
+    generated_at: str,
+    per_model: dict[str, pd.DataFrame],
+) -> None:
+    """Record what was predicted, and when.
+
+    The job runs daily, so a gameweek collects several forecasts. Without
+    generated_at there is no way to tell them apart, which makes the log
+    unusable for the thing it exists for: scoring the last forecast made before
+    the deadline against what players actually went on to score.
+    """
     rows = []
     for model_id, df in per_model.items():
         for r in df[["element", "predicted_points"]].itertuples(index=False):
             rows.append(
                 {
+                    "season": season,
                     "gameweek": gameweek,
+                    "deadline": deadline,
+                    "generated_at": generated_at,
                     "model": model_id,
                     "element": int(r.element),
                     "predicted_points": round(float(r.predicted_points), 4),
@@ -128,8 +145,20 @@ def _append_prediction_log(gameweek: int, per_model: dict[str, pd.DataFrame]) ->
 
     log = pd.DataFrame(rows)
     PREDICTION_LOG.parent.mkdir(parents=True, exist_ok=True)
-    header = not PREDICTION_LOG.exists()
-    log.to_csv(PREDICTION_LOG, mode="a", header=header, index=False)
+
+    if not PREDICTION_LOG.exists():
+        log.to_csv(PREDICTION_LOG, index=False)
+        return
+
+    # Appending rows with more columns than the header would leave the file
+    # unreadable, so on a schema change rewrite it once. Rows written before
+    # this keep blank season/deadline/generated_at: they cannot be backfilled,
+    # and they are the rows that were never usable anyway.
+    existing = pd.read_csv(PREDICTION_LOG)
+    if list(existing.columns) != list(log.columns):
+        pd.concat([existing, log], ignore_index=True).to_csv(PREDICTION_LOG, index=False)
+    else:
+        log.to_csv(PREDICTION_LOG, mode="a", header=False, index=False)
 
 
 def _build_model_insights() -> dict:
@@ -338,7 +367,13 @@ def build(
     shutil.rmtree(previous, ignore_errors=True)
 
     if log_predictions:
-        _append_prediction_log(gameweek, per_model)
+        _append_prediction_log(
+            season=current_season(bootstrap["events"]),
+            gameweek=gameweek,
+            deadline=event.get("deadline_time"),
+            generated_at=manifest["generated_at"],
+            per_model=per_model,
+        )
 
     print(f"Wrote {len(per_model)} prediction files for GW{gameweek} to {out_dir}")
     return manifest
