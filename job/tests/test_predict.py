@@ -96,3 +96,31 @@ def test_shap_feature_value_survives_a_categorical():
     assert _feature_value(90.0) == 90.0
     assert _feature_value("GK") == "GK"
     assert _feature_value(None) == "None"
+
+
+class TestPriceUnits:
+    """Training tables store FPL's raw price (tenths of a million); the live
+    fetch divides by 10 for display. The model must see the training form."""
+
+    def test_price_is_converted_to_training_units(self):
+        from job.predict import align_features
+
+        df = pd.DataFrame({"value": [4.7, 15.5], "form": [3.0, 5.0]})
+        X = align_features(df, ["value", "form"])
+        assert list(X["value"]) == [47.0, 155.0]
+        assert list(X["form"]) == [3.0, 5.0], "only price is rescaled"
+
+    def test_conversion_is_skipped_when_the_model_has_no_price_feature(self):
+        from job.predict import align_features
+
+        df = pd.DataFrame({"value": [4.7], "form": [3.0]})
+        X = align_features(df, ["form"])
+        assert "value" not in X.columns
+
+    def test_a_zero_filled_price_stays_zero(self):
+        """A model expecting price when live data has none still gets 0, not
+        something that looks like a real 0.0m player after scaling."""
+        from job.predict import align_features
+
+        X = align_features(pd.DataFrame({"form": [3.0]}), ["value", "form"])
+        assert list(X["value"]) == [0.0]

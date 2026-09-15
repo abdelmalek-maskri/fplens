@@ -110,7 +110,24 @@ def align_features(
     # Select and order features
     df = df[expected_features].copy()
 
-    return df
+    return _to_training_units(df)
+
+
+# FPL stores prices in tenths of a million: a £4.7m player is 47. The training
+# tables keep that raw form, but fetch_live_data divides by 10 so the site can
+# display "£4.7m". Feeding 4.7 to a model that learned splits at 47 makes every
+# price rule unreachable, since the dearest live player is 15.5.
+#
+# Converted here rather than upstream so display and the squad solver keep
+# millions, which is what the £100m budget is expressed in.
+PRICE_SCALE = 10.0
+
+
+def _to_training_units(X: pd.DataFrame) -> pd.DataFrame:
+    if "value" in X.columns:
+        X = X.copy()
+        X["value"] = pd.to_numeric(X["value"], errors="coerce") * PRICE_SCALE
+    return X
 
 
 def prepare_features(
