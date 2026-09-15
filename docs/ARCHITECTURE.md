@@ -35,6 +35,31 @@ transfers, fixtures, comparison, news, watchlist, insights, player detail.
 Guardian news, whose licence forbids retaining content beyond 24 hours so it can
 never be committed.
 
+## Where it runs
+
+| Piece | Host | Why there |
+| ----- | ---- | --------- |
+| Dashboard | Cloudflare Workers | It is a folder of files. A CDN serves those from the edge and there is no server to keep alive. |
+| API | Render | Two endpoints that need a running Python process. It loads no model, so it boots in about a second. |
+| Snapshot job | GitHub Actions | Needs to run once a day, not once a request. A scheduled runner is the cheapest place to put 40 seconds of work. |
+
+The loop closes on itself. The job commits new JSON to `main`, the commit
+redeploys the dashboard, and the site updates with nobody involved.
+
+This shape is what the precompute decision buys. Because predictions are files,
+the expensive part runs on a machine that exists for three minutes a day, and
+the part that must stay up is small enough to be free. Serving predictions from
+an endpoint instead would mean keeping ~200MB of ML dependencies and a loaded
+model resident all day to answer a question whose answer never changes between
+gameweeks.
+
+The trade is staleness. Predictions are at most a day old, and a manager reading
+the dashboard an hour after a price change sees the old price. For a weekly game
+with a weekly deadline, that is fine. It would not be for anything live.
+
+Setup, environment variables and the deployment gotchas are in
+[RUNNING.md](RUNNING.md#deployment).
+
 ## Repository layout
 
 ```text
@@ -177,3 +202,5 @@ Config D is production because FPL is a top-N selection problem: you pick 15 pla
 - `chance_delta` and `recovery_trajectory` are zero-filled at inference — they need per-gameweek `chance_of_playing` history the live API doesn't expose.
 - Players with no gameweek history (new signings) fall back to approximated rolling features.
 - Models are trained on the 2016-17 to 2023-24 scoring rules. FPL added `defensive_contribution` in 2025-26, which raised defenders' mean points by 28% and midfielders' by 9% for 60-minute appearances. The served model has never seen that rule and will underrate defensive players until it is retrained.
+- **The news features are built differently in production than in training.** Training links players with spaCy and scores sentiment with RoBERTa. `requirements-job.txt` installs neither, because they cost about 400MB, so the scheduled job falls back to regex matching and a keyword sentiment score. On the same 200 Guardian articles the keyword score returns 6 distinct values against RoBERTa's ~190, and agrees on sign 63% of the time where it fires at all. The ablation therefore measures the heavy pipeline, not the deployed one. It is left this way on purpose: news is worth about 0.002 Spearman ρ (config B 0.685 → config D 0.687), which does not justify 400MB of wheels in a scheduled job or a retrain.
+- **The future-fixture difficulty features no longer mean the same thing live as in training.** Training normalises FPL's published team strength ratings, `(rating - 900) / 500`, giving values from 0.02 to 1.00. FPL stopped publishing those ratings: as of 2026-27 every `strength_attack_*` and `strength_defence_*` field returns 0 and `strength` returns null. The live path substitutes fixture difficulty, an integer from 1 to 5. Same column names, different quantities. This affects the GW+2 and GW+3 models only, where the fixture block carries 10.4% and 12.7% of importance; GW+1 does not use these features. Fixing it means rebuilding both sides on `team_h_difficulty`, the one field still published on the same 1 to 5 scale in every season, and retraining.

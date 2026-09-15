@@ -2,6 +2,10 @@
 
 Predicts how many points every Fantasy Premier League player will score next gameweek, then turns those predictions into decisions: who to start, who to captain, who to transfer.
 
+**[Live dashboard](https://fplens.abdelmalekmaskri18.workers.dev)** · [API health](https://fplens.onrender.com/api/health)
+
+The dashboard loads instantly because it is static files. **My Team** and **News** call the API, which sleeps on Render's free plan, so the first of those after a quiet period takes about half a minute.
+
 ![Dashboard](docs/screenshots/dashboard.png)
 
 ## What it does
@@ -45,9 +49,21 @@ make dev     # API on :8000, dashboard on :5173
 Trained models aren't committed (they're large and reproducible) — see [docs/RUNNING.md](docs/RUNNING.md) to obtain or rebuild them.
 
 ```bash
-make test              # 78 Python tests
-cd app && npm test     # 83 frontend tests
+make test              # 113 Python tests
+cd app && npm test     # 99 frontend tests
 ```
+
+## Where it runs
+
+Three pieces, each free to host.
+
+| Piece | Runs on | What it does |
+| ----- | ------- | ------------ |
+| Dashboard | Cloudflare Workers | Static files on a CDN. No server. |
+| API | Render | Two endpoints. Boots in about a second, loads no model. |
+| Snapshot job | GitHub Actions | Runs daily at 06:30 UTC, rebuilds the predictions, commits them. |
+
+The job commits new JSON to `main`, which redeploys the dashboard. So the site updates itself once a day with nobody touching it. Setup steps are in [docs/RUNNING.md](docs/RUNNING.md#deployment).
 
 ## How it works
 
