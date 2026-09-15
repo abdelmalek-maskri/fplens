@@ -2,7 +2,16 @@
 
 import numpy as np
 import pandas as pd
-from fastapi import HTTPException
+
+
+class SolverError(RuntimeError):
+    """The squad constraints could not be satisfied.
+
+    A plain exception, not fastapi.HTTPException: this module runs in the
+    scheduled job, which has no web framework installed. The job should fail
+    loudly and leave the previous snapshot in place.
+    """
+
 
 FORMATIONS = [
     (3, 4, 3),
@@ -75,7 +84,7 @@ def _solve_best_xi(df: pd.DataFrame) -> dict:
             best_formation = f"{n_def}-{n_mid}-{n_fwd}"
 
     if best_xi is None:
-        raise HTTPException(status_code=422, detail="Not enough available players to form a valid XI")
+        raise SolverError("Not enough available players to form a valid XI")
 
     # captain and vice: highest predicted_points
     sorted_xi = best_xi.sort_values("predicted_points", ascending=False)
@@ -113,7 +122,7 @@ def solve_best_squad(df: pd.DataFrame, budget: float = DEFAULT_BUDGET) -> dict:
     available = _available_players(df).reset_index(drop=True)
     n = len(available)
     if n < 15:
-        raise HTTPException(status_code=422, detail="Not enough available players")
+        raise SolverError("Not enough available players")
 
     # Imported here, not at module level: the API uses suggest_transfers from
     # this file but never the ILP, and keeping scipy out of its import graph
@@ -153,12 +162,12 @@ def solve_best_squad(df: pd.DataFrame, budget: float = DEFAULT_BUDGET) -> dict:
 
     result = milp(c, constraints=constraints, integrality=integrality, bounds=bounds)
     if not result.success:
-        raise HTTPException(status_code=500, detail=f"ILP solver failed: {result.message}")
+        raise SolverError(f"ILP solver failed: {result.message}")
 
     # extract selected players (binary, but solver returns floats)
     squad = available[result.x > 0.5].copy()
     if len(squad) != 15:
-        raise HTTPException(status_code=500, detail=f"Solver selected {len(squad)} players instead of 15")
+        raise SolverError(f"Solver selected {len(squad)} players instead of 15")
 
     total_value = squad["value"].sum()
     total_points = squad["predicted_points"].sum()
