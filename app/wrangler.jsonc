@@ -1,13 +1,20 @@
 // Cloudflare Workers static assets. There is no server-side Worker here: this
 // only tells Cloudflare which directory holds the built site.
 
-// Routing is handled by app/public/_redirects rather than
-// assets.not_found_handling, because that setting would serve index.html for a
-// missing /data/*.json too, turning a clear 404 into a JSON parse error.
+// not_found_handling makes any unmatched path return index.html, which is what
+// a single page app needs: React Router reads the address and draws the right
+// page. A _redirects catch-all would be more precise, but Cloudflare rejects
+// "/* -> /index.html" as an infinite loop, so this is the supported route.
+//
+// Real files still win: /data/*.json exists on disk and is served normally.
+// Only a genuinely missing file falls through to index.html, which turns a 404
+// into a JSON parse error when debugging. Acceptable, since those files are
+// committed and always present.
 {
   "name": "fplens",
   "compatibility_date": "2026-09-15",
   "assets": {
-    "directory": "./dist"
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
   }
 }
