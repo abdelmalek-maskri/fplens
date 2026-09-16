@@ -5,7 +5,7 @@ import { useWatchlist } from "../hooks";
 import Loading from "../components/feedback/Loading";
 import ErrorState from "../components/feedback/ErrorState";
 import SuggestedSection from "./watchlist/SuggestedSection";
-import WatchedPlayerRow from "./watchlist/WatchedPlayerRow";
+import WatchedPlayerRow, { ROW_COLS } from "./watchlist/WatchedPlayerRow";
 
 export default function Watchlist() {
   const navigate = useNavigate();
@@ -14,7 +14,10 @@ export default function Watchlist() {
   const [showAdd, setShowAdd] = useState(false);
 
   const allPlayers = useMemo(() => watchData?.allPlayers ?? [], [watchData]);
-  const watchedPlayers = useMemo(() => watchData?.players ?? [], [watchData]);
+  const watchedPlayers = useMemo(
+    () => [...(watchData?.players ?? [])].sort((a, b) => b.predicted_points - a.predicted_points),
+    [watchData]
+  );
 
   const searchResults = useMemo(() => {
     if (!search) return [];
@@ -23,110 +26,102 @@ export default function Watchlist() {
       .filter((p) => !watchIds.includes(p.element))
       .filter(
         (p) => p.web_name.toLowerCase().includes(q) || (p.team_name || "").toLowerCase().includes(q)
-      );
+      )
+      .slice(0, 8);
   }, [allPlayers, search, watchIds]);
 
-  const toggleWatch = (id) => {
-    watchIds.includes(id) ? remove(id) : add(id);
-  };
-
   if (isLoading) return <Loading />;
-
   if (error) return <ErrorState message="Failed to load watchlist." />;
-
   if (!watchData) return null;
 
   return (
-    <div className="space-y-6 stagger">
-      <SuggestedSection allPlayers={allPlayers} watchedIds={watchIds} onAdd={add} />
+    <div className="space-y-8 stagger">
+      <div>
+        <div className="flex items-center justify-between">
+          <span className="section-label">Your watchlist</span>
+          <button
+            onClick={() => {
+              setShowAdd(!showAdd);
+              setSearch("");
+            }}
+            className={`px-3 py-1.5 text-sm font-medium rounded transition-colors ${
+              showAdd
+                ? "bg-surface-700 text-surface-200"
+                : "bg-brand-600 text-white hover:bg-brand-700"
+            }`}
+          >
+            {showAdd ? "Done" : "+ Add player"}
+          </button>
+        </div>
 
-      <div className="flex items-center justify-between border-t border-surface-800 pt-4">
-        <p className="text-xs text-surface-500 uppercase tracking-wider font-medium">
-          Your Watchlist
-        </p>
-        <button
-          onClick={() => setShowAdd(!showAdd)}
-          className={`px-3 py-1.5 text-sm font-medium rounded transition-colors ${
-            showAdd
-              ? "bg-surface-700 text-surface-200"
-              : "bg-brand-600 text-white hover:bg-brand-700"
-          }`}
-        >
-          {showAdd ? "Done" : "+ Add Player"}
-        </button>
-      </div>
-
-      {showAdd && (
-        <div className="pb-4 border-b border-surface-800">
-          <div className="relative mb-3">
+        {showAdd && (
+          <div className="mt-3 max-w-md">
             <input
               type="text"
               aria-label="Search player or team"
-              placeholder="Search player or team..."
+              placeholder="Search player or team"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full bg-surface-900 border border-surface-700 rounded-md px-4 py-2 pl-9 text-sm text-surface-100 placeholder:text-surface-500 focus:border-brand-500 focus:outline-none"
+              autoFocus
+              className="w-full bg-surface-900 border border-surface-700 rounded-md px-3 py-2 text-sm text-surface-100 placeholder:text-surface-500 focus:border-brand-500 focus:outline-none"
             />
-            <svg
-              className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-500"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.5}
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-              />
-            </svg>
-          </div>
-          {searchResults.length > 0 && (
-            <div className="space-y-1 max-h-48 overflow-y-auto">
-              {searchResults.map((p) => (
-                <div
-                  key={p.element}
-                  onClick={() => {
-                    toggleWatch(p.element);
-                    setSearch("");
-                  }}
-                  className="flex items-center justify-between px-3 py-2 rounded-md hover:bg-surface-800 cursor-pointer transition-colors"
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-surface-100">{p.web_name}</span>
-                    <span className="text-2xs text-surface-500">
-                      {p.team_name} ·{" "}
-                      <span className={POSITION_COLORS[p.position]}>{p.position}</span> · £{p.value}
-                      m
+            {searchResults.length > 0 && (
+              <div className="mt-1 border border-surface-800 rounded-md divide-y divide-surface-800/60">
+                {searchResults.map((p) => (
+                  <button
+                    key={p.element}
+                    onClick={() => {
+                      add(p.element);
+                      setSearch("");
+                    }}
+                    className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-surface-800 transition-colors"
+                  >
+                    <span className="text-sm text-surface-100">
+                      {p.web_name}
+                      <span className="text-2xs text-surface-500 ml-2">
+                        {p.team_name} ·{" "}
+                        <span className={POSITION_COLORS[p.position]}>{p.position}</span> · £
+                        {p.value.toFixed(1)}m
+                      </span>
                     </span>
-                  </div>
-                  <span className="text-xs text-brand-400">+ Add</span>
-                </div>
-              ))}
-            </div>
-          )}
-          {search && searchResults.length === 0 && (
-            <p className="text-xs text-surface-500 text-center py-3">No players found</p>
-          )}
-        </div>
-      )}
+                    <span className="text-xs text-brand-400">+ Add</span>
+                  </button>
+                ))}
+              </div>
+            )}
+            {search && searchResults.length === 0 && (
+              <p className="text-xs text-surface-500 py-3">No players found</p>
+            )}
+          </div>
+        )}
 
-      {watchedPlayers.length > 0 ? (
-        <div className="space-y-0">
-          {watchedPlayers.map((p) => (
-            <WatchedPlayerRow
-              key={p.element}
-              p={p}
-              onNavigate={navigate}
-              onRemove={() => toggleWatch(p.element)}
-            />
-          ))}
-        </div>
-      ) : (
-        <p className="text-xs text-surface-500 text-center py-6">
-          No players tracked yet — add from suggestions or search above.
-        </p>
-      )}
+        {watchedPlayers.length > 0 ? (
+          <div className="mt-3">
+            <div className={`${ROW_COLS} py-1 text-2xs text-surface-500 uppercase tracking-wide`}>
+              <span>Player</span>
+              <span className="text-right">Predicted</span>
+              <span className="text-right">Form</span>
+              <span className="text-right">Next</span>
+              <span className="text-right">Owned</span>
+              <span />
+            </div>
+            {watchedPlayers.map((p) => (
+              <WatchedPlayerRow
+                key={p.element}
+                p={p}
+                onNavigate={navigate}
+                onRemove={() => remove(p.element)}
+              />
+            ))}
+          </div>
+        ) : (
+          <p className="mt-3 text-sm text-surface-500">
+            Nothing here yet. Add a player above, or pick one from the lists below.
+          </p>
+        )}
+      </div>
+
+      <SuggestedSection allPlayers={allPlayers} watchedIds={watchIds} onAdd={add} />
     </div>
   );
 }
