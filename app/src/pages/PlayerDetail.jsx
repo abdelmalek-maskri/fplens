@@ -7,37 +7,47 @@ import Loading from "../components/feedback/Loading";
 import SentimentDot from "../components/badges/SentimentDot";
 import { usePlayer } from "../hooks";
 
-const FormChart = ({ pts, labels }) => {
-  return (
-    <div className="flex gap-2">
-      {pts.map((p, i) => (
-        <div
-          key={i}
-          className={`flex-1 flex flex-col items-center py-2 rounded ${
-            p >= 8 ? "bg-brand-500/15" : p >= 5 ? "bg-surface-800/50" : "bg-transparent"
-          }`}
-        >
-          <span
-            className={`text-sm font-data tabular-nums font-bold ${
-              p >= 8
-                ? "text-brand-400"
-                : p >= 5
-                  ? "text-surface-100"
-                  : p >= 3
-                    ? "text-surface-400"
-                    : "text-surface-600"
-            }`}
-          >
-            {p}
-          </span>
-          <span className="text-[9px] text-surface-600 mt-0.5">
-            GW{labels[i]?.replace("GW", "")}
-          </span>
-        </div>
-      ))}
-    </div>
-  );
-};
+const num = (v, dp = 1) => (Number.isInteger(v) ? String(v) : Number(v).toFixed(dp));
+
+// One plain sentence per SHAP row. Only the features that show up often get
+// their own wording; everything else falls back to the job's display name.
+function describe(s, player) {
+  const f = s.feature;
+  const v = s.value;
+
+  // s.value is in model units (tenths), the header price is what people know
+  if (f === "value") return `Price £${player.value.toFixed(1)}m`;
+  if (f === "minutes_lag1" || f === "us_time_lag1") {
+    if (v >= 90) return "Played the full 90 last GW";
+    return v > 0 ? `Played ${num(v, 0)} mins last GW` : "Did not play last GW";
+  }
+  if (f === "minutes_roll3") return `${num(v, 0)} mins per game over the last 3`;
+  if (f === "minutes_roll5") return `${num(v, 0)} mins per game over the last 5`;
+  if (f === "total_points_season_avg") return `Averaging ${num(v)} pts this season`;
+  if (f === "total_points_roll3") return `Averaging ${num(v)} pts over the last 3`;
+  if (f === "total_points_roll10") return `Averaging ${num(v)} pts over the last 10`;
+  if (f === "total_points_lag1") return `${num(v, 0)} pts last GW`;
+  if (f === "chance_next_round" || f === "chance_this_round")
+    return `${num(v, 0)}% chance of playing`;
+  if (f === "status_encoded") return "Availability status";
+  if (f === "team") return "Team";
+  if (f === "opponent_team") return "This week's opponent";
+  if (f === "news_sentiment_pos") return "Positive news coverage";
+  if (f === "news_sentiment_neg") return "Negative news coverage";
+  if (f === "injury_count_season") return `${num(v, 0)} injuries this season`;
+  if (f === "gws_since_last_injury") return `${num(v, 0)} GWs since last injury`;
+  if (f.startsWith("fdr_")) return "Upcoming fixture difficulty";
+  if (f === "position") return `Position: ${v}`;
+
+  return typeof v === "number" ? `${s.display}: ${num(v)}` : s.display;
+}
+
+const Stat = ({ value, label, tone = "text-surface-100" }) => (
+  <div>
+    <span className={`text-lg font-bold font-data tabular-nums ${tone}`}>{value}</span>
+    <span className="text-xs text-surface-500 ml-1">{label}</span>
+  </div>
+);
 
 export default function PlayerDetail() {
   const { id } = useParams();
@@ -48,10 +58,13 @@ export default function PlayerDetail() {
   if (!player) return null;
 
   const netTransfers = player.transfers_in_event - player.transfers_out_event;
-  const ppg = player.minutes > 0 ? (player.total_points / (player.minutes / 90)).toFixed(1) : "0.0";
+  const [low, high] = player.predicted_range;
+  const displayName = player.first_name?.startsWith(player.web_name)
+    ? player.web_name
+    : `${player.first_name?.split(" ")[0]} ${player.web_name}`;
 
   return (
-    <div className="space-y-6 stagger">
+    <div className="space-y-8 stagger">
       <button
         onClick={() => navigate(-1)}
         className="flex items-center gap-1 text-xs text-surface-500 hover:text-surface-300 transition-colors"
@@ -62,8 +75,8 @@ export default function PlayerDetail() {
         Back
       </button>
 
-      <div className="flex items-start gap-4">
-        <div className="flex-1">
+      <div className="flex items-start justify-between gap-6">
+        <div>
           <div className="flex items-center gap-3 mb-1">
             <TeamBadge team={player.team_name} />
             <span
@@ -75,88 +88,117 @@ export default function PlayerDetail() {
               <StatusBadge status={player.status} chance={player.chance_of_playing} compact />
             )}
           </div>
-          <h2 className="text-xl font-bold text-surface-100">
-            {player.first_name?.startsWith(player.web_name)
-              ? player.web_name
-              : `${player.first_name?.split(" ")[0]} ${player.web_name}`}
-          </h2>
+          <h2 className="text-xl font-bold text-surface-100">{displayName}</h2>
           <p className="text-sm text-surface-500">
-            {player.team_name} · £{player.value}m · {player.selected_by_percent}% owned
+            {player.team_name} · £{player.value.toFixed(1)}m · {player.selected_by_percent}% owned
           </p>
           {player.news && <p className="text-xs text-warning-400 mt-1">{player.news}</p>}
         </div>
-        <div className="text-right">
-          <span className="text-xl font-bold text-brand-400 font-data tabular-nums">
+
+        <div className="text-right shrink-0">
+          <span className="text-4xl font-bold text-brand-400 font-data tabular-nums leading-none">
             {player.predicted_points.toFixed(1)}
           </span>
-          <p className="text-xs text-surface-500">predicted pts</p>
-          <p className="text-2xs text-surface-600 font-data tabular-nums">
-            {player.predicted_range[0].toFixed(1)} – {player.predicted_range[1].toFixed(1)} range
+          <p className="text-xs text-surface-500 mt-1">predicted points</p>
+          <p className="text-xs text-surface-500 font-data tabular-nums">
+            likely {low.toFixed(1)} to {high.toFixed(1)}
           </p>
         </div>
       </div>
 
+      {player.shap?.length > 0 && (
+        <div>
+          <span className="section-label">Why {player.predicted_points.toFixed(1)}</span>
+          <div className="mt-3 max-w-md space-y-1.5">
+            {player.shap.map((s) => (
+              <div key={s.feature} className="flex items-center justify-between gap-4 text-sm">
+                <span className="text-surface-300">{describe(s, player)}</span>
+                <span
+                  className={`font-data tabular-nums font-medium ${s.impact > 0 ? "text-success-400" : "text-danger-400"}`}
+                >
+                  {s.impact > 0 ? "+" : "−"}
+                  {Math.abs(s.impact).toFixed(1)}
+                </span>
+              </div>
+            ))}
+            <p className="text-2xs text-surface-500 pt-1">
+              The {player.shap.length} biggest factors, in points. Smaller ones make up the rest.
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center gap-5 flex-wrap py-3 border-y border-surface-800">
-        <div>
-          <span className="text-lg font-bold text-surface-100 font-data tabular-nums">
-            {player.total_points}
-          </span>
-          <span className="text-xs text-surface-500 ml-1">total pts</span>
-        </div>
+        <Stat value={player.total_points} label="pts this season" />
         <div className="w-px h-4 bg-surface-700" />
-        <div>
-          <span className="text-lg font-bold text-surface-100 font-data tabular-nums">
-            {player.form}
-          </span>
-          <span className="text-xs text-surface-500 ml-1">form</span>
-        </div>
+        <Stat value={player.form} label="form" />
         <div className="w-px h-4 bg-surface-700" />
-        <div>
-          <span className="text-lg font-bold text-surface-100 font-data tabular-nums">{ppg}</span>
-          <span className="text-xs text-surface-500 ml-1">pts/90</span>
-        </div>
+        <Stat value={player.minutes.toLocaleString()} label="mins" />
         <div className="w-px h-4 bg-surface-700" />
-        <div>
-          <span className="text-lg font-bold text-surface-100 font-data tabular-nums">
-            {player.ict_index}
-          </span>
-          <span className="text-xs text-surface-500 ml-1">ICT</span>
-        </div>
-        <div className="w-px h-4 bg-surface-700" />
-        <div>
-          <span
-            className={`text-lg font-bold font-data tabular-nums ${netTransfers > 0 ? "text-success-400" : netTransfers < 0 ? "text-danger-400" : "text-surface-100"}`}
-          >
-            {netTransfers > 0 ? "+" : ""}
-            {(netTransfers / 1000).toFixed(1)}k
-          </span>
-          <span className="text-xs text-surface-500 ml-1">net transfers</span>
-        </div>
+        <Stat
+          value={`${netTransfers > 0 ? "+" : ""}${(netTransfers / 1000).toFixed(1)}k`}
+          label="transfers this GW"
+          tone={
+            netTransfers > 0
+              ? "text-success-400"
+              : netTransfers < 0
+                ? "text-danger-400"
+                : "text-surface-100"
+          }
+        />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div>
           <span className="section-label">Recent form</span>
-          <div className="mt-3">
-            <FormChart pts={player.pts_history} labels={player.gw_labels} />
+          <div className="mt-3 max-w-sm">
+            <div className="flex items-center gap-3 py-1 text-2xs text-surface-500 uppercase tracking-wide">
+              <span className="w-10">GW</span>
+              <span className="w-10 text-right">Pts</span>
+              <span className="w-10 text-right">Mins</span>
+              <span className="w-10 text-right">xG</span>
+              <span className="w-10 text-right">xA</span>
+              <span className="w-10 text-right">Bonus</span>
+            </div>
+            {player.pts_history.map((p, i) => (
+              <div key={i} className="flex items-center gap-3 py-1 text-sm font-data tabular-nums">
+                <span className="w-10 text-xs text-surface-500">{player.gw_labels[i]}</span>
+                <span
+                  className={`w-10 text-right font-bold ${p >= 8 ? "text-brand-400" : p >= 3 ? "text-surface-100" : "text-surface-500"}`}
+                >
+                  {p}
+                </span>
+                <span className="w-10 text-right text-surface-300">
+                  {player.minutes_history[i]}
+                </span>
+                <span className="w-10 text-right text-surface-300">
+                  {num(player.xg_history[i], 2)}
+                </span>
+                <span className="w-10 text-right text-surface-300">
+                  {num(player.xa_history[i], 2)}
+                </span>
+                <span className="w-10 text-right text-surface-300">{player.bonus_history[i]}</span>
+              </div>
+            ))}
           </div>
         </div>
 
         <div>
           <span className="section-label">Upcoming fixtures</span>
-          <div className="mt-3 space-y-1.5">
+          <div className="mt-3 space-y-1">
             {player.fixtures.map((f) => (
-              <div key={f.gw} className="flex items-center gap-3 py-1.5">
+              <div key={f.gw} className="flex items-center gap-3 py-1 text-sm">
                 <span className="text-xs text-surface-500 w-10 font-data tabular-nums">
                   GW{f.gw}
                 </span>
+                <span className="text-surface-100 w-10">{f.opponent}</span>
+                <span className="text-xs text-surface-500 w-4">{f.home ? "H" : "A"}</span>
                 <span
                   className={`inline-flex items-center justify-center w-5 h-5 rounded text-2xs font-bold ${FDR_COLORS[f.fdr].bg} ${FDR_COLORS[f.fdr].text}`}
+                  title={FDR_COLORS[f.fdr].label}
                 >
                   {f.fdr}
                 </span>
-                <span className="text-sm text-surface-100">{f.opponent}</span>
-                <span className="text-xs text-surface-500">{f.home ? "(H)" : "(A)"}</span>
               </div>
             ))}
           </div>
@@ -164,107 +206,26 @@ export default function PlayerDetail() {
       </div>
 
       <div>
-        <span className="section-label">Season stats</span>
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4 mt-3">
+        <span className="section-label">This season</span>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-3">
           {[
-            { label: "Goals", value: player.goals, compare: player.xG, compareLabel: "xG" },
-            { label: "Assists", value: player.assists, compare: player.xA, compareLabel: "xA" },
-            { label: "Clean Sheets", value: player.clean_sheets },
-            { label: "Minutes", value: player.minutes.toLocaleString() },
+            { label: "Goals", value: player.goals, sub: `${num(player.xG, 2)} xG` },
+            { label: "Assists", value: player.assists, sub: `${num(player.xA, 2)} xA` },
+            { label: "Clean sheets", value: player.clean_sheets },
             { label: "Bonus", value: player.bonus },
-            { label: "BPS", value: player.bps },
           ].map((stat) => (
-            <div key={stat.label} className="py-2">
+            <div key={stat.label}>
               <span className="text-lg font-bold text-surface-100 font-data tabular-nums">
                 {stat.value}
               </span>
-              {stat.compare !== undefined && (
-                <span className="text-xs text-surface-500 ml-1.5">
-                  / {stat.compare} {stat.compareLabel}
-                </span>
-              )}
+              {stat.sub && <span className="text-xs text-surface-500 ml-1.5">{stat.sub}</span>}
               <p className="text-xs text-surface-500 mt-0.5">{stat.label}</p>
             </div>
           ))}
         </div>
       </div>
 
-      {player.shap &&
-        player.shap.length > 0 &&
-        (() => {
-          const positives = player.shap.filter((s) => s.impact > 0);
-          const negatives = player.shap.filter((s) => s.impact < 0);
-
-          const translate = (s) => {
-            const val = s.value;
-            if (s.feature === "minutes_lag1")
-              return val >= 80
-                ? "Played full match last GW"
-                : val > 0
-                  ? `Played ${val} mins last GW`
-                  : "Did not play last GW";
-            if (s.feature === "was_home") return val > 0.5 ? "Playing at home" : "Playing away";
-            if (s.feature === "form") return `Form rating: ${val}`;
-            if (s.feature === "value") return `Price: £${val}m`;
-            if (s.feature.includes("season_avg"))
-              return `Season avg: ${typeof val === "number" ? val.toFixed(1) : val} pts`;
-            if (s.feature.includes("ict"))
-              return `ICT Index: ${typeof val === "number" ? val.toFixed(1) : val}`;
-            if (s.feature.includes("roll3")) return `Last 3 games average`;
-            if (s.feature.includes("roll5")) return `Last 5 games average`;
-            if (s.feature.includes("opponent") || s.feature.includes("strength"))
-              return `Fixture difficulty`;
-            if (s.feature.includes("injury") || s.feature.includes("gws_since"))
-              return val > 0 ? `${Math.round(val)} GWs since injury` : "Recent injury";
-            if (s.feature === "team") return "Team strength";
-            if (s.feature.includes("bonus")) return "Bonus points record";
-            if (s.feature === "position") return "Position";
-            return s.display || s.feature.replace(/_/g, " ");
-          };
-
-          return (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {positives.length > 0 && (
-                <div>
-                  <span className="text-xs font-medium text-success-400 uppercase tracking-wide">
-                    In favour
-                  </span>
-                  <div className="mt-2 space-y-1">
-                    {positives.map((s) => (
-                      <div
-                        key={s.feature}
-                        className="flex items-center gap-2 text-sm text-surface-300"
-                      >
-                        <span className="w-1 h-1 rounded-full bg-success-400 shrink-0" />
-                        {translate(s)}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {negatives.length > 0 && (
-                <div>
-                  <span className="text-xs font-medium text-danger-400 uppercase tracking-wide">
-                    Against
-                  </span>
-                  <div className="mt-2 space-y-1">
-                    {negatives.map((s) => (
-                      <div
-                        key={s.feature}
-                        className="flex items-center gap-2 text-sm text-surface-300"
-                      >
-                        <span className="w-1 h-1 rounded-full bg-danger-400 shrink-0" />
-                        {translate(s)}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          );
-        })()}
-
-      {player.news_mentions && player.news_mentions.length > 0 && (
+      {player.news_mentions?.length > 0 && (
         <div>
           <span className="section-label">News mentions</span>
           <div className="mt-3 space-y-2">
@@ -279,18 +240,6 @@ export default function PlayerDetail() {
                   <div className="flex items-center gap-2 mt-0.5">
                     <span className="text-2xs text-surface-500">{a.source}</span>
                     <span className="text-2xs text-surface-600">{a.date}</span>
-                    <span
-                      className={`text-2xs font-data tabular-nums ${
-                        a.sentiment >= 0.5
-                          ? "text-success-400"
-                          : a.sentiment >= 0
-                            ? "text-surface-400"
-                            : "text-danger-400"
-                      }`}
-                    >
-                      {a.sentiment > 0 ? "+" : ""}
-                      {a.sentiment.toFixed(2)}
-                    </span>
                   </div>
                 </div>
               </div>

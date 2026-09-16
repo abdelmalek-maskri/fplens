@@ -23,10 +23,10 @@ export function usePlayer(playerId) {
           predicted_range: [raw.predicted_range_low ?? 0, raw.predicted_range_high ?? 0],
           transfers_in_event: raw.transfers_in_event ?? raw.transfers_in ?? 0,
           transfers_out_event: raw.transfers_out_event ?? raw.transfers_out ?? 0,
-          fixtures: (raw.fixtures || []).map((f) => ({
-            ...f,
-            fdr: f.fdr ?? Math.round((f.atkFdr + f.defFdr) / 2),
-          })),
+          // atkFdr is this team's own difficulty, the number FPL shows. defFdr is
+          // the opponent's, which for a strong club is the same every week, so
+          // averaging the two made every fixture look identical.
+          fixtures: (raw.fixtures || []).map((f) => ({ ...f, fdr: f.fdr ?? f.atkFdr })),
         });
       })
       .catch((err) => {
