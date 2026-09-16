@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { TEAM_COLORS, POSITION_COLORS } from "../lib/constants";
+import { TEAM_COLORS } from "../lib/constants";
 import TeamBadge from "../components/badges/TeamBadge";
 import TabBar from "../components/ui/TabBar";
 import { useNews } from "../hooks";
@@ -10,27 +10,15 @@ import EmptyState from "../components/feedback/EmptyState";
 
 const PLAYER_TAG_LIMIT = 4;
 
-function sentimentBorderClass(v) {
-  if (v >= 0.3) return "border-l-success-400";
-  if (v >= 0) return "border-l-surface-600";
-  return "border-l-danger-400";
+// The score behind this is a keyword count with five possible values in
+// production, so showing "+0.33" claims a precision that does not exist.
+// Three words is what the number actually means.
+function sentiment(v) {
+  if (v >= 0.3)
+    return { label: "Positive", text: "text-success-400", border: "border-l-success-400" };
+  if (v < 0) return { label: "Negative", text: "text-danger-400", border: "border-l-danger-400" };
+  return { label: "Neutral", text: "text-surface-500", border: "border-l-surface-600" };
 }
-
-function sentimentTextClass(v) {
-  if (v >= 0.3) return "text-success-400";
-  if (v >= 0) return "text-surface-400";
-  return "text-danger-400";
-}
-
-const SentimentBar = ({ value }) => {
-  const pct = ((value + 1) / 2) * 100;
-  const bg = value >= 0.3 ? "bg-success-400" : value >= 0 ? "bg-surface-400" : "bg-danger-400";
-  return (
-    <div className="w-24 h-2 bg-surface-700 rounded-full overflow-hidden">
-      <div className={`h-full rounded-full ${bg}`} style={{ width: `${pct}%` }} />
-    </div>
-  );
-};
 
 function PlayerTags({ players, navigate }) {
   const [expanded, setExpanded] = useState(false);
@@ -221,11 +209,7 @@ export default function NewsSentiment() {
 
       <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
         <div className="lg:sticky lg:top-[44px] lg:self-start">
-          <span className="section-label">Trending players</span>
-          <div className="flex items-center justify-between mt-2 mb-1 text-2xs text-surface-500">
-            <span>Player</span>
-            <span className="text-surface-600">Sentiment</span>
-          </div>
+          <span className="section-label">Most mentioned</span>
           <div className="mt-3 space-y-0 lg:max-h-[calc(100vh-160px)] lg:overflow-y-auto lg:scrollbar-thin">
             {trendingPlayers.map((p, i) => (
               <div
@@ -242,13 +226,10 @@ export default function NewsSentiment() {
                   <span className="text-sm text-surface-200 group-hover:text-brand-400 transition-colors">
                     {p.web_name}
                   </span>
-                  <span className="text-2xs text-surface-500">{p.mentions} mentions</span>
+                  <span className="text-2xs text-surface-500 ml-1.5">{p.mentions} mentions</span>
                 </div>
-                <span
-                  className={`text-xs font-data tabular-nums ${sentimentTextClass(p.avgSentiment)}`}
-                >
-                  {p.avgSentiment > 0 ? "+" : ""}
-                  {p.avgSentiment.toFixed(2)}
+                <span className={`text-2xs ${sentiment(p.avgSentiment).text}`}>
+                  {sentiment(p.avgSentiment).label}
                 </span>
               </div>
             ))}
@@ -268,7 +249,7 @@ export default function NewsSentiment() {
               {filteredArticles.map((a) => (
                 <div
                   key={a.id}
-                  className={`border-l-2 ${sentimentBorderClass(a.sentiment)} rounded-r bg-surface-850/50 hover:bg-surface-800/70 transition-colors`}
+                  className={`border-l-2 ${sentiment(a.sentiment).border} rounded-r bg-surface-850/50 hover:bg-surface-800/70 transition-colors`}
                 >
                   <div className="px-4 py-3">
                     <div className="flex items-start justify-between gap-3">
@@ -318,11 +299,8 @@ export default function NewsSentiment() {
                             Injury
                           </span>
                         )}
-                        <span
-                          className={`text-xs font-data tabular-nums font-medium ${sentimentTextClass(a.sentiment)}`}
-                        >
-                          {a.sentiment > 0 ? "+" : ""}
-                          {a.sentiment.toFixed(2)}
+                        <span className={`text-2xs ${sentiment(a.sentiment).text}`}>
+                          {sentiment(a.sentiment).label}
                         </span>
                       </div>
                     </div>
@@ -343,86 +321,6 @@ export default function NewsSentiment() {
         </div>
       </div>
 
-      <div>
-        <span className="section-label">Player sentiment summary</span>
-        <div className="mt-3 overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-surface-700">
-                <th scope="col" className="py-2 pr-4 text-xs text-surface-500 font-medium">
-                  Player
-                </th>
-                <th
-                  scope="col"
-                  className="py-2 pr-4 text-xs text-surface-500 font-medium text-center"
-                >
-                  Mentions
-                </th>
-                <th
-                  scope="col"
-                  className="py-2 pr-4 text-xs text-surface-500 font-medium text-center"
-                >
-                  Avg sentiment
-                </th>
-                <th
-                  scope="col"
-                  className="py-2 pr-4 text-xs text-surface-500 font-medium text-center"
-                >
-                  Injury
-                </th>
-                <th scope="col" className="py-2 text-xs text-surface-500 font-medium">
-                  Latest
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {trendingPlayers.map((p) => (
-                <tr
-                  key={p.element}
-                  className="border-b border-surface-800/40 hover:bg-surface-800/30 cursor-pointer transition-colors"
-                  style={{ borderLeftColor: TEAM_COLORS[p.team_name], borderLeftWidth: 2 }}
-                  onClick={() => navigate(`/player/${p.element}`)}
-                >
-                  <td className="py-2 pr-4">
-                    <div className="flex items-center gap-2">
-                      <TeamBadge team={p.team_name} size="sm" />
-                      <span className="text-surface-200 hover:text-brand-400 transition-colors">
-                        {p.web_name}
-                      </span>
-                      <span className={`text-2xs ${POSITION_COLORS[p.position]}`}>
-                        {p.position}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="py-2 pr-4 text-center">
-                    <span className="font-data tabular-nums text-surface-200">{p.mentions}</span>
-                  </td>
-                  <td className="py-2 pr-4">
-                    <div className="flex items-center justify-center gap-2">
-                      <SentimentBar value={p.avgSentiment} />
-                      <span
-                        className={`text-xs font-data tabular-nums ${sentimentTextClass(p.avgSentiment)}`}
-                      >
-                        {p.avgSentiment > 0 ? "+" : ""}
-                        {p.avgSentiment.toFixed(2)}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="py-2 pr-4 text-center">
-                    {p.injuryMentions > 0 ? (
-                      <span className="text-warning-400 text-xs">{p.injuryMentions}</span>
-                    ) : (
-                      <span className="text-surface-700">—</span>
-                    )}
-                  </td>
-                  <td className="py-2 text-2xs text-surface-500">{p.latestDate}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
       <p className="text-2xs text-surface-500 pt-2 border-t border-surface-800">
         Content powered by{" "}
         <a
@@ -433,7 +331,7 @@ export default function NewsSentiment() {
         >
           the Guardian Open Platform
         </a>
-        . Sentiment scores are generated by this project and are not endorsed by the Guardian.
+        . Sentiment labels are generated by this project and are not endorsed by the Guardian.
       </p>
     </div>
   );

@@ -146,12 +146,17 @@ def _fetch_guardian_articles(days=7):
             if not _is_pl_relevant(title, body_text):
                 continue
 
+            # The standfirst is the editor's one-line summary. The opening of
+            # a live blog is the sign-off ("that's it from me, thanks all"),
+            # so the body is only a fallback.
+            snippet = _html_to_text(fields.get("trailText", "")) or _extract_snippet(body_text)
+
             articles.append(
                 {
                     "guardian_id": r["id"],
                     "title": title,
                     "body_text": body_text,
-                    "snippet": _extract_snippet(body_text),
+                    "snippet": snippet,
                     "published_date": r.get("webPublicationDate", ""),
                 }
             )
@@ -170,7 +175,10 @@ def _build_player_lookup(bootstrap_data):
     teams = {t["id"]: t["short_name"] for t in bootstrap_data["teams"]}
     position_map = {1: "GK", 2: "DEF", 3: "MID", 4: "FWD"}
 
-    lookup = {}
+    # Every player who could be meant by each variant. A bare surname like
+    # "Silva" belongs to four players, so it links to none of them; the full
+    # name still does.
+    claims = {}
     player_info = {}
 
     for p in bootstrap_data["elements"]:
@@ -201,11 +209,10 @@ def _build_player_lookup(bootstrap_data):
         if len(wn_lower) >= MIN_SURNAME_LENGTH:
             variants.append(wn_lower)
 
-        for v in variants:
-            # only keep unambiguous (first wins, collisions ignored)
-            if v not in lookup:
-                lookup[v] = element
+        for v in set(variants):
+            claims.setdefault(v, set()).add(element)
 
+    lookup = {v: next(iter(owners)) for v, owners in claims.items() if len(owners) == 1}
     return lookup, player_info
 
 
@@ -266,7 +273,14 @@ def _link_articles_to_players(articles, lookup, nlp=None):
                 logger.warning("spaCy NER failed for article: %s", e)
 
         article["player_elements"] = list(found.keys())
-        article["injury_flag"] = bool(INJURY_KEYWORDS.search(body))
+        # Headline, standfirst and the first paragraph. Scanning the whole body
+        # flagged half of all articles, because "knee" or "injured" turns up
+        # somewhere in most match reports. If the injury is the story, it is
+        # in the opening. 500 characters keeps the weekly team-news piece,
+        # which lists who is out, and drops the reports that mention a knock
+        # in passing.
+        lead = f"{title} {article.get('snippet', '')} {body[:500]}"
+        article["injury_flag"] = bool(INJURY_KEYWORDS.search(lead))
 
     return articles
 

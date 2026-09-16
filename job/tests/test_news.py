@@ -95,6 +95,35 @@ class TestBuildPlayerLookup:
         assert lookup == {}
         assert player_info == {}
 
+    def test_surname_shared_by_two_players_links_to_neither(self):
+        # Forty bare surnames in the current squad list belong to more than
+        # one player. "First one wins" sent every "Silva" to one arbitrary
+        # Silva. Full names stay unique and still match.
+        bootstrap = self._make_bootstrap(
+            [
+                {
+                    "id": 1,
+                    "web_name": "B.Silva",
+                    "first_name": "Bernardo",
+                    "second_name": "Silva",
+                    "team": 1,
+                    "element_type": 3,
+                },
+                {
+                    "id": 2,
+                    "web_name": "F.Silva",
+                    "first_name": "Fabio",
+                    "second_name": "Silva",
+                    "team": 2,
+                    "element_type": 4,
+                },
+            ]
+        )
+        lookup, _ = _build_player_lookup(bootstrap)
+        assert "silva" not in lookup
+        assert lookup["bernardo silva"] == 1
+        assert lookup["fabio silva"] == 2
+
 
 class TestLinkArticlesToPlayers:
     def _make_lookup(self):
@@ -122,12 +151,25 @@ class TestLinkArticlesToPlayers:
         assert 1 in result[0]["player_elements"]
 
     def test_injury_flag_set_for_injury_article(self):
-        articles = [{"title": "Salah ruled out", "body_text": "He is sidelined with a hamstring injury."}]
+        articles = [{"title": "Salah ruled out", "snippet": "Sidelined with a hamstring injury.", "body_text": ""}]
         result = _link_articles_to_players(articles, self._make_lookup(), nlp=None)
         assert result[0]["injury_flag"] is True
 
     def test_injury_flag_false_for_clean_article(self):
-        articles = [{"title": "Salah scores again", "body_text": "Another brilliant performance."}]
+        articles = [{"title": "Salah scores again", "snippet": "Another brilliant performance.", "body_text": ""}]
+        result = _link_articles_to_players(articles, self._make_lookup(), nlp=None)
+        assert result[0]["injury_flag"] is False
+
+    def test_injury_deep_in_the_body_does_not_flag(self):
+        # A match report that mentions a knee in paragraph nine is not an
+        # injury story. Body scanning flagged 15 of 30 real articles.
+        articles = [
+            {
+                "title": "Salah scores again",
+                "snippet": "Liverpool cruise to a comfortable win.",
+                "body_text": "..." * 200 + " Late on, Jones went down holding his knee.",
+            }
+        ]
         result = _link_articles_to_players(articles, self._make_lookup(), nlp=None)
         assert result[0]["injury_flag"] is False
 
