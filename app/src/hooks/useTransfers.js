@@ -53,8 +53,11 @@ export function useTransfers(horizon = 3) {
       mgwByElement[p.element] = p;
     }
 
+    // Never suggest buying someone who cannot play. "u" has left the club,
+    // "i" is injured, "s" is suspended. Doubtful stays in, with the flag.
     const targets = multiGW
       .filter((p) => p.predicted && p.predicted.length > 0)
+      .filter((p) => !["u", "i", "s"].includes(p.status))
       .map((p) => ({
         element: p.element,
         web_name: p.web_name,

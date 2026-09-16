@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { POSITION_COLORS } from "../lib/constants";
 import TeamBadge from "../components/badges/TeamBadge";
 import { useTransfers } from "../hooks";
 import { computeSuggestions, WILDCARD, SQUAD_SIZE } from "./transfers/suggestions";
@@ -126,7 +127,7 @@ export default function TransferPlanner() {
               <span className="text-surface-400">{transfers.length} made</span>
               {hitCost > 0 && <span className="text-danger-400 font-medium">-{hitCost} hit</span>}
               {budget !== null && (
-                <span className="text-surface-400">£{budget.toFixed(1)}m ITB</span>
+                <span className="text-surface-400">£{budget.toFixed(1)}m in the bank</span>
               )}
               <span className="font-data font-bold text-brand-400">
                 {(teamTotal - hitCost).toFixed(1)} pts
@@ -140,8 +141,10 @@ export default function TransferPlanner() {
             </>
           )}
           {transfers.length === 0 && (
-            <span className="font-data text-surface-300">
-              {teamTotal.toFixed(1)} pts ({horizon} GW)
+            <span className="text-surface-400">
+              Squad <span className="font-data text-surface-200">{teamTotal.toFixed(1)} pts</span>{" "}
+              over {horizon} GW{horizon > 1 ? "s" : ""}
+              {bank !== null && ` · £${bank.toFixed(1)}m in the bank`}
             </span>
           )}
         </div>
@@ -166,7 +169,7 @@ export default function TransferPlanner() {
         <div className="border border-surface-700/50 rounded-md overflow-hidden">
           <div className="flex items-center justify-between px-4 py-2.5 bg-surface-800/50">
             <span className="text-xs font-medium text-surface-300">
-              ML Suggested Transfers ({horizon} GW horizon)
+              Suggested, judged over the next {horizon} gameweek{horizon > 1 ? "s" : ""}
             </span>
           </div>
           <div className="divide-y divide-surface-800/40">
@@ -205,7 +208,7 @@ export default function TransferPlanner() {
                       <TeamBadge team={s.in.team} size="sm" />
                       <span className="text-sm text-surface-100 truncate">{s.in.web_name}</span>
                       <span className="text-xs text-surface-500">
-                        {s.in.sum.toFixed(1)} pts · £{s.in.value}m
+                        {s.in.sum.toFixed(1)} pts · £{s.in.value.toFixed(1)}m
                       </span>
                     </div>
                   </div>
@@ -222,6 +225,13 @@ export default function TransferPlanner() {
             })}
           </div>
         </div>
+      )}
+
+      {suggestions.length === 0 && !noTeam && transfers.length === 0 && (
+        <p className="text-sm text-surface-500">
+          No transfer improves the squad with £{(bank ?? 0).toFixed(1)}m in the bank. Keep the free
+          transfer.
+        </p>
       )}
 
       {transfers.length > 0 && (
@@ -278,6 +288,71 @@ export default function TransferPlanner() {
               pts
             </div>
           )}
+        </div>
+      )}
+      {!noTeam && (
+        <div>
+          <span className="section-label">Your squad, as the planner sees it</span>
+          <div className="mt-3 max-w-xl">
+            <div className="grid grid-cols-[1fr_4rem_5rem_6rem] gap-3 py-1 text-2xs text-surface-500 uppercase tracking-wide">
+              <span>Player</span>
+              <span className="text-right">Price</span>
+              <span className="text-right">Next GW</span>
+              <span className="text-right">{horizon} GW total</span>
+            </div>
+            {currentTeam
+              // "u" is a player who has left the club. Still in the squad and
+              // still a sell candidate, but not worth a row here.
+              .filter((p) => p.status !== "u")
+              .sort((a, b) => {
+                const order = { GK: 0, DEF: 1, MID: 2, FWD: 3 };
+                return (
+                  order[a.position] - order[b.position] ||
+                  b.predicted.slice(0, horizon).reduce((s, v) => s + v, 0) -
+                    a.predicted.slice(0, horizon).reduce((s, v) => s + v, 0)
+                );
+              })
+              .map((p) => {
+                const sum = p.predicted.slice(0, horizon).reduce((s, v) => s + v, 0);
+                return (
+                  <div
+                    key={p.element}
+                    className={`grid grid-cols-[1fr_4rem_5rem_6rem] gap-3 items-center py-1.5 text-sm border-t border-surface-800/60 ${
+                      p.isTransferIn ? "bg-brand-500/5" : ""
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <TeamBadge team={p.team} size="sm" />
+                      <button
+                        onClick={() => navigate(`/player/${p.element}`)}
+                        className="text-surface-100 hover:text-brand-400 transition-colors truncate"
+                      >
+                        {p.web_name}
+                      </button>
+                      <span className={`text-2xs ${POSITION_COLORS[p.position]}`}>
+                        {p.position}
+                      </span>
+                      {p.status === "i" && (
+                        <span className="text-2xs text-danger-400">injured</span>
+                      )}
+                      {p.status === "d" && (
+                        <span className="text-2xs text-warning-400">doubtful</span>
+                      )}
+                      {p.isTransferIn && <span className="text-2xs text-brand-400">in</span>}
+                    </div>
+                    <span className="text-right text-surface-400 font-data tabular-nums">
+                      £{p.value.toFixed(1)}m
+                    </span>
+                    <span className="text-right text-surface-300 font-data tabular-nums">
+                      {(p.predicted[0] ?? 0).toFixed(1)}
+                    </span>
+                    <span className="text-right font-data tabular-nums font-medium text-surface-100">
+                      {sum.toFixed(1)}
+                    </span>
+                  </div>
+                );
+              })}
+          </div>
         </div>
       )}
     </div>
