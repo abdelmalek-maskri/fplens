@@ -57,7 +57,20 @@ describe("useTeam", () => {
     expect(team.overallRank).toBe(48201);
     expect(team.totalPoints).toBe(1284);
     expect(team.budget).toBe(2.3);
-    expect(team.freeTransfers).toBe(1);
+  });
+
+  it("maps the vice captain flag to the name the pitch and table read", async () => {
+    // The API says is_vice_captain; the components say is_vice. Without this
+    // mapping the vice marker never rendered anywhere.
+    const { result } = renderHook(() => useTeam(3935276));
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    const vices = result.current.data.team.picks.filter((p) => p.is_vice);
+    expect(vices).toHaveLength(1);
+    expect(vices[0].is_vice_captain).toBe(true);
   });
 
   it("team has 15 picks (FPL squad size)", async () => {

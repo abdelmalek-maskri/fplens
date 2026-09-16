@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { POSITION_COLORS, FDR_MAP } from "../lib/constants";
+import { POSITION_COLORS } from "../lib/constants";
 import { PitchView } from "../components/pitch";
 import StatusBadge from "../components/badges/StatusBadge";
 import TeamBadge from "../components/badges/TeamBadge";
 import FdrBadge from "../components/badges/FdrBadge";
 import ErrorState from "../components/feedback/ErrorState";
 import AlertRow from "../components/feedback/AlertRow";
-import { useTeam } from "../hooks";
+import { useTeam, useFixtures } from "../hooks";
 import FplIdHelp from "./my-team/FplIdHelp";
 
 export default function MyTeam() {
@@ -21,8 +21,10 @@ export default function MyTeam() {
       return p;
     });
   };
-  const submittedId = searchParams.get("fpl_id") || null;
-  const [fplId, setFplId] = useState(submittedId || localStorage.getItem("fpl_id") || "");
+  // A remembered ID loads without a click. The transfers page already treats
+  // the saved ID as "your team"; this page used to make you press Load again.
+  const submittedId = searchParams.get("fpl_id") || localStorage.getItem("fpl_id") || null;
+  const [fplId, setFplId] = useState(submittedId || "");
 
   const getRecentIds = () => {
     try {
@@ -68,6 +70,12 @@ export default function MyTeam() {
   };
 
   const { data: teamData, isLoading, error } = useTeam(submittedId);
+  const { data: fixtureData } = useFixtures();
+
+  // FPL's own rating of each club's next fixture. Replaces a hardcoded map of
+  // club strengths that was a season out of date and missing four clubs.
+  const fdrFor = (teamName) =>
+    fixtureData?.fixtures[teamName]?.find((f) => f.gw === fixtureData.currentGw)?.atkFdr;
 
   const team = teamData?.team ?? null;
   const transferSuggestions = teamData?.transferSuggestions ?? [];
@@ -131,10 +139,7 @@ export default function MyTeam() {
             {isLoading ? "Loading…" : "Load"}
           </button>
         </form>
-        <p className="text-xs text-surface-500 -mt-3">
-          Any valid FPL ID works, try a random number between 1 and 11,500,000 to explore other
-          managers' teams.
-        </p>
+        <p className="text-xs text-surface-500 -mt-3">Any manager's ID works, not only your own.</p>
         {error && (
           <p className="text-sm text-danger-400">
             {error.message?.includes("Not found") || error.message?.includes("404")
@@ -198,9 +203,7 @@ export default function MyTeam() {
 
   const injuredStarters = starters.filter((p) => p.status === "i");
   const doubtfulStarters = starters.filter((p) => p.status === "d");
-  const toughFixtureStarters = starters.filter(
-    (p) => p.status !== "i" && FDR_MAP[p.opponent_name] >= 4
-  );
+  const toughFixtureStarters = starters.filter((p) => p.status !== "i" && fdrFor(p.team_name) >= 4);
   const benchOutscoring = bench.filter((bp) =>
     starters.some(
       (sp) =>
@@ -312,18 +315,9 @@ export default function MyTeam() {
         <div className="w-px h-5 bg-surface-700" />
         <div>
           <span className="text-lg font-bold text-surface-100 font-data tabular-nums">
-            £{team.budget}m
+            £{team.budget.toFixed(1)}m
           </span>
-          <span className="text-xs text-surface-500 ml-1.5">ITB</span>
-        </div>
-        <div className="w-px h-5 bg-surface-700" />
-        <div>
-          <span className="text-lg font-bold text-surface-100 font-data tabular-nums">
-            {team.freeTransfers}
-          </span>
-          <span className="text-xs text-surface-500 ml-1.5">
-            FT{team.freeTransfers !== 1 ? "s" : ""}
-          </span>
+          <span className="text-xs text-surface-500 ml-1.5">in the bank</span>
         </div>
 
         <div className="ml-auto flex items-center border border-surface-700 rounded overflow-hidden">
@@ -378,7 +372,7 @@ export default function MyTeam() {
               <>
                 {" — tough fixture vs "}
                 <span className="text-surface-200">{p.opponent_name}</span>
-                {` (FDR ${FDR_MAP[p.opponent_name]})`}
+                {` (difficulty ${fdrFor(p.team_name)})`}
               </>
             )}
           />
@@ -478,13 +472,13 @@ export default function MyTeam() {
                       {p.is_captain && <span className="text-xs text-warning-400 ml-1">×2</span>}
                     </td>
                     <td className="py-2.5 px-3 text-surface-300 font-data tabular-nums">
-                      {p.form}
+                      {p.form.toFixed(1)}
                     </td>
                     <td className="py-2.5 px-3">
-                      <FdrBadge opponent={p.opponent_name} fdrMap={FDR_MAP} />
+                      <FdrBadge opponent={p.opponent_name} fdr={fdrFor(p.team_name)} />
                     </td>
                     <td className="py-2.5 px-3 text-surface-300 font-data tabular-nums">
-                      £{p.value}m
+                      £{p.value.toFixed(1)}m
                     </td>
                     <td className="py-2.5 px-3">
                       {p.status !== "a" ? (
@@ -530,12 +524,14 @@ export default function MyTeam() {
                   <td className="py-2.5 px-3 text-surface-500 font-data tabular-nums">
                     {p.predicted_points.toFixed(1)}
                   </td>
-                  <td className="py-2.5 px-3 text-surface-500 font-data tabular-nums">{p.form}</td>
+                  <td className="py-2.5 px-3 text-surface-500 font-data tabular-nums">
+                    {p.form.toFixed(1)}
+                  </td>
                   <td className="py-2.5 px-3">
-                    <FdrBadge opponent={p.opponent_name} fdrMap={FDR_MAP} />
+                    <FdrBadge opponent={p.opponent_name} fdr={fdrFor(p.team_name)} />
                   </td>
                   <td className="py-2.5 px-3 text-surface-500 font-data tabular-nums">
-                    £{p.value}m
+                    £{p.value.toFixed(1)}m
                   </td>
                   <td className="py-2.5 px-3">
                     <span className="text-xs text-surface-600">Bench {idx + 1}</span>
@@ -603,7 +599,7 @@ export default function MyTeam() {
                   {t.in.position} · {t.in.team_name} · {t.in.predicted_points.toFixed(1)} pts
                 </p>
                 <p className="text-xs text-surface-500 mt-1">
-                  £{t.in.value}m
+                  £{t.in.value.toFixed(1)}m
                   {t.cost_saving > 0 && (
                     <span className="text-success-400"> (save £{t.cost_saving.toFixed(1)}m)</span>
                   )}

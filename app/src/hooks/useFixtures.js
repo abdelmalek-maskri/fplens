@@ -20,6 +20,7 @@ export function useFixtures(numGws = 6) {
           teams: res.teams || [],
           teamFull: res.team_full || {},
           fixtures: res.fixtures || {},
+          currentGw: res.current_gw ?? null,
           fdrBg: res.fdr_bg || FDR_BG,
           fdrText: res.fdr_text || FDR_TEXT,
         });
