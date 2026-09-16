@@ -37,7 +37,7 @@ function PlayerSelector({ selected, onChange, label, excludeId, allPlayers }) {
                 <span className={POSITION_COLORS[selectedPlayer.position]}>
                   {selectedPlayer.position}
                 </span>{" "}
-                · £{selectedPlayer.value}m
+                · £{selectedPlayer.value.toFixed(1)}m
               </p>
             </div>
           </div>
@@ -84,8 +84,8 @@ function PlayerSelector({ selected, onChange, label, excludeId, allPlayers }) {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-surface-100 truncate">{p.web_name}</p>
                     <p className="text-xs text-surface-500">
-                      <span className={POSITION_COLORS[p.position]}>{p.position}</span> · £{p.value}
-                      m · {p.predicted_points.toFixed(1)} pts
+                      <span className={POSITION_COLORS[p.position]}>{p.position}</span> · £
+                      {p.value.toFixed(1)}m · {p.predicted_points.toFixed(1)} pts
                     </p>
                   </div>
                   <span
