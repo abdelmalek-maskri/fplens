@@ -47,27 +47,33 @@ export default function PitchView({
       <div className="bg-surface-800/60 px-4 py-3 border-t border-surface-700 shrink-0">
         <p className="section-label mb-3">{benchLabel}</p>
         <div className="flex justify-around">
-          {bench.map((p, idx) => (
-            <div key={p.element} className="flex flex-col items-center gap-0.5">
-              <span className="text-2xs text-surface-500 font-medium mb-1">{idx + 1}</span>
-              <Jersey
-                teamName={p.team_name}
-                position={p.position}
-                isCaptain={false}
-                isVice={false}
-                status={p.status}
-              />
-              <div
-                className={`bg-surface-700/80 px-2 py-0.5 rounded-sm text-[11px] font-semibold text-surface-300 text-center min-w-[72px] max-w-[100px] truncate${onPlayerClick ? " cursor-pointer hover:text-brand-400" : ""} transition-colors`}
+          {bench.map((p, idx) => {
+            const Wrapper = onPlayerClick ? "button" : "div";
+            return (
+              <Wrapper
+                key={p.element}
+                type={onPlayerClick ? "button" : undefined}
                 onClick={onPlayerClick ? () => onPlayerClick(p.element) : undefined}
+                aria-label={onPlayerClick ? `Open ${p.web_name}` : undefined}
+                className={`flex flex-col items-center gap-0.5${onPlayerClick ? " cursor-pointer group" : ""}`}
               >
-                {p.web_name}
-              </div>
-              <div className="text-2xs text-surface-500 whitespace-nowrap">
-                {p.predicted_points.toFixed(1)} &middot; {p.opponent_name}
-              </div>
-            </div>
-          ))}
+                <span className="text-2xs text-surface-500 font-medium mb-1">{idx + 1}</span>
+                <Jersey
+                  teamName={p.team_name}
+                  position={p.position}
+                  isCaptain={false}
+                  isVice={false}
+                  status={p.status}
+                />
+                <div className="bg-surface-700/80 px-2 py-0.5 rounded-sm text-[11px] font-semibold text-surface-300 text-center min-w-[72px] max-w-[100px] truncate group-hover:text-brand-400 transition-colors">
+                  {p.web_name}
+                </div>
+                <div className="text-2xs text-surface-500 whitespace-nowrap">
+                  {p.predicted_points.toFixed(1)} &middot; {p.opponent_name}
+                </div>
+              </Wrapper>
+            );
+          })}
         </div>
       </div>
     </div>

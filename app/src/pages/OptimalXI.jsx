@@ -1,9 +1,11 @@
+import { useNavigate } from "react-router-dom";
 import { PitchView } from "../components/pitch";
 import ErrorState from "../components/feedback/ErrorState";
 import Loading from "../components/feedback/Loading";
 import { useOptimalXI } from "../hooks";
 
 export default function OptimalXI() {
+  const navigate = useNavigate();
   const { data: plannerData, isLoading, error } = useOptimalXI();
 
   const recommended = plannerData?.recommended;
@@ -56,6 +58,7 @@ export default function OptimalXI() {
           viceId={recommended.viceId}
           id="season"
           benchLabel="Bench"
+          onPlayerClick={(id) => navigate(`/player/${id}`)}
           fill
         />
       </div>
