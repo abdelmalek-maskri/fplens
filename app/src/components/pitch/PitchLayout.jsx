@@ -1,9 +1,9 @@
-export default function PitchLayout({ id = "pitch", children }) {
+export default function PitchLayout({ id = "pitch", className = "", children }) {
   const patternId = `grass-${id}`;
   const filterId = `grassNoise-${id}`;
 
   return (
-    <div className="relative overflow-hidden">
+    <div className={`relative overflow-hidden ${className}`}>
       <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none">
         <defs>
           <pattern id={patternId} width="100%" height="90" patternUnits="userSpaceOnUse">

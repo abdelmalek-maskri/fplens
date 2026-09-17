@@ -10,6 +10,7 @@ export default function PitchView({
   viceId,
   id = "pitch",
   benchLabel = "Substitutes",
+  fill = false,
 }) {
   const gk = starters.filter((p) => p.position === "GK");
   const def = starters.filter((p) => p.position === "DEF");
@@ -26,12 +27,15 @@ export default function PitchView({
     />
   );
 
+  // fill: take the height the parent gives and spread the rows over it, so
+  // a page can size the pitch to the viewport instead of the pitch sizing the
+  // page. Default keeps a fixed minimum so it reads well inside a long page.
   return (
-    <div className="card overflow-hidden">
-      <PitchLayout id={id}>
+    <div className={`card overflow-hidden ${fill ? "flex flex-col h-full" : ""}`}>
+      <PitchLayout id={id} className={fill ? "flex-1 min-h-0" : ""}>
         <div
-          className="relative z-10 flex flex-col justify-around py-8 px-4"
-          style={{ minHeight: "560px" }}
+          className={`relative z-10 flex flex-col justify-around px-4 ${fill ? "h-full py-4" : "py-8"}`}
+          style={fill ? undefined : { minHeight: "560px" }}
         >
           <div className="flex justify-center gap-8">{gk.map(renderCard)}</div>
           <div className="flex justify-center gap-4 sm:gap-6 lg:gap-10">{def.map(renderCard)}</div>
@@ -40,8 +44,8 @@ export default function PitchView({
         </div>
       </PitchLayout>
 
-      <div className="bg-surface-800/60 px-4 py-4 border-t border-surface-700">
-        <p className="section-label mb-4">{benchLabel}</p>
+      <div className="bg-surface-800/60 px-4 py-3 border-t border-surface-700 shrink-0">
+        <p className="section-label mb-3">{benchLabel}</p>
         <div className="flex justify-around">
           {bench.map((p, idx) => (
             <div key={p.element} className="flex flex-col items-center gap-0.5">

@@ -13,9 +13,12 @@ export default function OptimalXI() {
   if (error) return <ErrorState message="Failed to load season data." />;
   if (!plannerData || !recommended) return <ErrorState message="No squad data available." />;
 
+  // Header is 2.75rem and the page has 1.25rem padding top and bottom, so this
+  // is the full viewport on a desktop. Phones cannot fit a pitch and bench in
+  // one screen whatever we do, so they keep scrolling.
   return (
-    <div className="space-y-6 stagger">
-      <div className="flex items-center gap-5 flex-wrap py-3 border-b border-surface-800">
+    <div className="flex flex-col gap-4 stagger lg:h-[calc(100vh-5.25rem)]">
+      <div className="flex items-center gap-5 flex-wrap py-3 border-b border-surface-800 shrink-0">
         <div>
           <span className="text-lg font-bold text-brand-400 font-data tabular-nums">
             {recommended.totalPoints.toFixed(1)}
@@ -45,14 +48,17 @@ export default function OptimalXI() {
         </div>
       </div>
 
-      <PitchView
-        starters={recommended.starters}
-        bench={recommended.bench}
-        captainId={recommended.captainId}
-        viceId={recommended.viceId}
-        id="season"
-        benchLabel="Bench"
-      />
+      <div className="flex-1 min-h-0">
+        <PitchView
+          starters={recommended.starters}
+          bench={recommended.bench}
+          captainId={recommended.captainId}
+          viceId={recommended.viceId}
+          id="season"
+          benchLabel="Bench"
+          fill
+        />
+      </div>
     </div>
   );
 }
