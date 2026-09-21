@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { POSITION_COLORS } from "../lib/constants";
 import { useAccuracy } from "../hooks";
 import Loading from "../components/feedback/Loading";
@@ -141,7 +141,16 @@ export default function Accuracy() {
                     {i + 1}
                   </td>
                   <td className="py-2 px-3">
-                    <span className="text-sm text-surface-100">{p.name}</span>
+                    {/* A Link, not a span, so keyboard users can reach it. The row
+                        click stays for mouse users; stopPropagation prevents the
+                        two from navigating twice. */}
+                    <Link
+                      to={`/player/${p.element}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="text-sm text-surface-100 hover:text-brand-400 transition-colors"
+                    >
+                      {p.name}
+                    </Link>
                     {p.position && (
                       <span className={`ml-2 text-2xs font-medium ${POSITION_COLORS[p.position]}`}>
                         {p.position}
