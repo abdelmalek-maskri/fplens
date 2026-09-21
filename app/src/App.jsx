@@ -6,6 +6,7 @@ import Loading from "./components/feedback/Loading";
 
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const OptimalXI = lazy(() => import("./pages/OptimalXI"));
+const Accuracy = lazy(() => import("./pages/Accuracy"));
 const MyTeam = lazy(() => import("./pages/MyTeam"));
 const TransferPlanner = lazy(() => import("./pages/TransferPlanner"));
 const FixtureTicker = lazy(() => import("./pages/FixtureTicker"));
@@ -25,6 +26,7 @@ export default function App() {
             <Routes>
               <Route path="/" element={<Dashboard />} />
               <Route path="/optimal-xi" element={<OptimalXI />} />
+              <Route path="/accuracy" element={<Accuracy />} />
               <Route path="/my-team" element={<MyTeam />} />
               <Route path="/transfers" element={<TransferPlanner />} />
               <Route path="/fixtures" element={<FixtureTicker />} />

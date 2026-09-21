@@ -118,6 +118,12 @@ export function getMultiGW() {
   return snapshotFetch("/multi_gw.json");
 }
 
+// Lives beside /data rather than inside it: the snapshot replaces that whole
+// directory each run and would wipe this file. Written by job/accuracy.py.
+export function getAccuracy() {
+  return request("", "/accuracy.json");
+}
+
 export function refresh(secret = "dev-secret") {
   return apiFetch("/api/refresh", {
     method: "POST",
