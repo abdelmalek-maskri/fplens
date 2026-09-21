@@ -4,6 +4,7 @@ import { refresh } from "../../lib/api";
 
 const PAGE_TITLES = {
   "/optimal-xi": "Optimal XI",
+  "/accuracy": "Accuracy",
   "/my-team": "My Team",
   "/transfers": "Transfers",
   "/fixtures": "Fixture Ticker",

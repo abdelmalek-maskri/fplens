@@ -124,6 +124,12 @@ ml.predict:
 snapshot:
 	python3 -m job.snapshot
 
+# Score the last finished gameweek against what was predicted for it.
+# Two FPL calls, a couple of seconds. Writes app/public/accuracy.json.
+.PHONY: accuracy
+accuracy:
+	python3 -m job.accuracy
+
 # Stage 8: Analysis (optional)
 .PHONY: ml.shap
 ml.shap:

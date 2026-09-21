@@ -66,7 +66,7 @@ def get_bootstrap_data() -> dict:
     # Fetch bootstrap-static data from FPL API.
     # Contains: all players, teams, gameweeks, game settings.
     print("Fetching FPL bootstrap-static data...")
-    response = requests.get(BOOTSTRAP_URL)
+    response = requests.get(BOOTSTRAP_URL, timeout=30)
 
     if response.status_code != 200:
         raise RuntimeError(f"FPL API error: {response.status_code}")

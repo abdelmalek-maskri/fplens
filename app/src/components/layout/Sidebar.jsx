@@ -7,6 +7,7 @@ const navItems = [
     items: [
       { name: "Dashboard", path: "/" },
       { name: "Optimal XI", path: "/optimal-xi" },
+      { name: "Accuracy", path: "/accuracy" },
     ],
   },
   {
