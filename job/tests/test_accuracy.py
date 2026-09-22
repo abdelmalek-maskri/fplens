@@ -13,6 +13,7 @@ import pandas as pd
 from job import accuracy
 
 DEADLINE = "2026-09-18T17:30:00Z"
+SEASON = "2026-27"
 
 
 def _log():
@@ -28,21 +29,28 @@ def _log():
     ]
     return pd.DataFrame(
         [
-            {"gameweek": 5, "model": "config_d", "element": e, "predicted_points": p, "generated_at": ts}
+            {
+                "season": SEASON,
+                "gameweek": 5,
+                "model": "config_d",
+                "element": e,
+                "predicted_points": p,
+                "generated_at": ts,
+            }
             for ts, e, p in rows
         ]
     )
 
 
 def test_picks_latest_pre_deadline_run_only():
-    forecasts = accuracy.pre_deadline_forecasts(_log(), 5, DEADLINE)
+    forecasts = accuracy.pre_deadline_forecasts(_log(), SEASON, 5, DEADLINE)
     chosen = forecasts["config_d"]
     assert sorted(chosen.element) == [1, 2, 3]
     assert chosen.set_index("element").predicted_points[1] == 5.0
 
 
 def test_score_keeps_missing_as_none_and_ranks_by_spearman():
-    forecast = accuracy.pre_deadline_forecasts(_log(), 5, DEADLINE)["config_d"]
+    forecast = accuracy.pre_deadline_forecasts(_log(), SEASON, 5, DEADLINE)["config_d"]
     actuals = {1: {"total_points": 8, "minutes": 90}, 2: {"total_points": 0, "minutes": 0}}
     players = {1: {"web_name": "Haaland", "element_type": 4}}
 
@@ -66,7 +74,10 @@ def test_score_keeps_missing_as_none_and_ranks_by_spearman():
 def _xi_log():
     rows = [(1, "captain"), (2, "vice"), (3, "starter")]
     return pd.DataFrame(
-        [{"gameweek": 5, "generated_at": "2026-09-18T10:00:00Z", "element": e, "role": r} for e, r in rows]
+        [
+            {"season": SEASON, "gameweek": 5, "generated_at": "2026-09-18T10:00:00Z", "element": e, "role": r}
+            for e, r in rows
+        ]
     )
 
 
@@ -113,8 +124,8 @@ def test_xi_missing_player_counts_zero_but_stays_null():
 
 def test_pre_deadline_xi_is_none_without_a_timely_run():
     late = _xi_log().assign(generated_at="2026-09-19T10:00:00Z")
-    assert accuracy.pre_deadline_xi(late, 5, DEADLINE) is None
-    assert accuracy.pre_deadline_xi(_xi_log(), 5, DEADLINE) is not None
+    assert accuracy.pre_deadline_xi(late, SEASON, 5, DEADLINE) is None
+    assert accuracy.pre_deadline_xi(_xi_log(), SEASON, 5, DEADLINE) is not None
 
 
 def test_build_skips_finished_weeks_without_forecasts(tmp_path):
@@ -124,7 +135,7 @@ def test_build_skips_finished_weeks_without_forecasts(tmp_path):
     bootstrap = {
         "elements": [],
         "events": [
-            {"id": 4, "deadline_time": "2026-09-12T12:30:00Z", "finished": True, "data_checked": True},
+            {"id": 1, "deadline_time": "2026-08-14T17:30:00Z", "finished": True, "data_checked": True},
             {"id": 5, "deadline_time": DEADLINE, "finished": True, "data_checked": False},
             {"id": 6, "deadline_time": "2026-10-10T10:00:00Z", "finished": False, "data_checked": False},
         ],
@@ -154,3 +165,13 @@ def test_build_writes_nothing_when_no_week_is_scorable(tmp_path):
     with patch("job.accuracy.get_bootstrap_data", return_value=bootstrap):
         assert accuracy.build(log_path, tmp_path / "no_xi.csv", out_path) is None
     assert not out_path.exists()
+
+
+def test_last_seasons_gameweek_five_is_not_scored_as_this_one():
+    """Gameweek numbers repeat, so the season has to be part of the filter."""
+    old = _log().assign(season="2025-26", predicted_points=99.0)
+    forecasts = accuracy.pre_deadline_forecasts(pd.concat([old, _log()]), SEASON, 5, DEADLINE)
+    assert (forecasts["config_d"].predicted_points != 99.0).all()
+
+    old_xi = _xi_log().assign(season="2025-26")
+    assert accuracy.pre_deadline_xi(old_xi, SEASON, 5, DEADLINE) is None

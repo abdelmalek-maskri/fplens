@@ -14,7 +14,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
-from job.fetch_live_data import FPL_BASE_URL, get_bootstrap_data
+from job.fetch_live_data import FPL_BASE_URL, current_season, get_bootstrap_data
 
 LOG = Path("data/predictions_log.csv")
 XI_LOG = Path("data/xi_log.csv")
@@ -33,26 +33,27 @@ def fetch_actuals(gw: int) -> dict:
     return {p["id"]: p["stats"] for p in response.json()["elements"]}
 
 
-def _before_deadline(log: pd.DataFrame, gw: int, deadline: str) -> pd.DataFrame:
-    """Rows for this gameweek that were logged before its deadline.
+def _before_deadline(log: pd.DataFrame, season: str, gw: int, deadline: str) -> pd.DataFrame:
+    """Rows for this season's gameweek that were logged before its deadline.
 
-    Rows with no timestamp cannot prove they were made in time, so they are
-    excluded rather than trusted.
+    Gameweek numbers repeat every season, so filtering on the number alone would
+    let last season's GW5 score this season's. Rows with no timestamp cannot
+    prove they were made in time, so they are excluded rather than trusted.
     """
-    rows = log[log.gameweek == gw].copy()
+    rows = log[(log.season == season) & (log.gameweek == gw)].copy()
     rows["ts"] = pd.to_datetime(rows.generated_at, utc=True, errors="coerce")
     return rows[rows.ts < pd.Timestamp(deadline)]
 
 
-def pre_deadline_forecasts(log: pd.DataFrame, gw: int, deadline: str) -> dict:
+def pre_deadline_forecasts(log: pd.DataFrame, season: str, gw: int, deadline: str) -> dict:
     """The latest run per model that was logged before the deadline."""
-    rows = _before_deadline(log, gw, deadline)
+    rows = _before_deadline(log, season, gw, deadline)
     return {model: g[g.ts == g.ts.max()] for model, g in rows.groupby("model")}
 
 
-def pre_deadline_xi(log: pd.DataFrame, gw: int, deadline: str) -> pd.DataFrame | None:
+def pre_deadline_xi(log: pd.DataFrame, season: str, gw: int, deadline: str) -> pd.DataFrame | None:
     """The last optimal XI logged before the deadline, or None if there wasn't one."""
-    rows = _before_deadline(log, gw, deadline)
+    rows = _before_deadline(log, season, gw, deadline)
     return None if rows.empty else rows[rows.ts == rows.ts.max()]
 
 
@@ -135,20 +136,22 @@ def build(log_path: Path = LOG, xi_log_path: Path = XI_LOG, out_path: Path = OUT
     # The XI log arrived later than the prediction log, so it may not exist yet
     xi_log = pd.read_csv(xi_log_path) if xi_log_path.exists() else None
     players = {p["id"]: p for p in bootstrap["elements"]}
+    season = current_season(bootstrap["events"])
 
     for event in reversed(bootstrap["events"]):
         if not event["finished"]:
             continue
-        forecasts = pre_deadline_forecasts(log, event["id"], event["deadline_time"])
+        forecasts = pre_deadline_forecasts(log, season, event["id"], event["deadline_time"])
         if forecasts:
             break
     else:
-        print("No finished gameweek has a pre-deadline forecast yet")
+        print(f"No finished {season} gameweek has a pre-deadline forecast yet")
         return None
 
     actuals = fetch_actuals(event["id"])
-    xi = pre_deadline_xi(xi_log, event["id"], event["deadline_time"]) if xi_log is not None else None
+    xi = pre_deadline_xi(xi_log, season, event["id"], event["deadline_time"]) if xi_log is not None else None
     result = {
+        "season": season,
         "gameweek": event["id"],
         "deadline": event["deadline_time"],
         # data_checked is FPL's sign-off; before it, bonus points can still move
@@ -159,7 +162,7 @@ def build(log_path: Path = LOG, xi_log_path: Path = XI_LOG, out_path: Path = OUT
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(result, separators=(",", ":"), allow_nan=False), encoding="utf-8")
-    print(f"GW{event['id']}: scored {len(forecasts)} models, final={result['final']}")
+    print(f"{season} GW{event['id']}: scored {len(forecasts)} models, final={result['final']}")
     return result
 
 
