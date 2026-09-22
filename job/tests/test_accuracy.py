@@ -63,6 +63,60 @@ def test_score_keeps_missing_as_none_and_ranks_by_spearman():
     assert out["spearman"] == 1.0  # predicted 5 > 1 and actual 8 > 0 agree on order
 
 
+def _xi_log():
+    rows = [(1, "captain"), (2, "vice"), (3, "starter")]
+    return pd.DataFrame(
+        [{"gameweek": 5, "generated_at": "2026-09-18T10:00:00Z", "element": e, "role": r} for e, r in rows]
+    )
+
+
+def test_xi_doubles_the_captain():
+    actuals = {
+        1: {"total_points": 8, "minutes": 90},
+        2: {"total_points": 3, "minutes": 90},
+        3: {"total_points": 1, "minutes": 5},
+    }
+    out = accuracy.score_xi(_xi_log(), actuals, {}, {"average_entry_score": 48, "highest_score": 126})
+    assert out["points"] == 8 * 2 + 3 + 1
+    assert out["average_manager"] == 48
+    assert [p["captain"] for p in out["players"]] == [True, False, False]
+
+
+def test_xi_armband_passes_to_vice_when_captain_does_not_play():
+    actuals = {
+        1: {"total_points": 0, "minutes": 0},
+        2: {"total_points": 3, "minutes": 90},
+        3: {"total_points": 1, "minutes": 5},
+    }
+    out = accuracy.score_xi(_xi_log(), actuals, {}, {})
+    assert out["points"] == 0 + 3 * 2 + 1
+    assert {p["element"]: p["captain"] for p in out["players"]} == {1: False, 2: True, 3: False}
+
+
+def test_xi_nobody_doubled_when_neither_plays():
+    actuals = {
+        1: {"total_points": 0, "minutes": 0},
+        2: {"total_points": 0, "minutes": 0},
+        3: {"total_points": 5, "minutes": 90},
+    }
+    out = accuracy.score_xi(_xi_log(), actuals, {}, {})
+    assert out["points"] == 5
+    assert not any(p["captain"] for p in out["players"])
+
+
+def test_xi_missing_player_counts_zero_but_stays_null():
+    actuals = {1: {"total_points": 4, "minutes": 90}}
+    out = accuracy.score_xi(_xi_log(), actuals, {}, {})
+    assert out["points"] == 8
+    assert {p["element"]: p["actual"] for p in out["players"]} == {1: 4, 2: None, 3: None}
+
+
+def test_pre_deadline_xi_is_none_without_a_timely_run():
+    late = _xi_log().assign(generated_at="2026-09-19T10:00:00Z")
+    assert accuracy.pre_deadline_xi(late, 5, DEADLINE) is None
+    assert accuracy.pre_deadline_xi(_xi_log(), 5, DEADLINE) is not None
+
+
 def test_build_skips_finished_weeks_without_forecasts(tmp_path):
     log_path, out_path = tmp_path / "log.csv", tmp_path / "accuracy.json"
     _log().to_csv(log_path, index=False)
@@ -81,13 +135,14 @@ def test_build_skips_finished_weeks_without_forecasts(tmp_path):
         patch("job.accuracy.get_bootstrap_data", return_value=bootstrap),
         patch("job.accuracy.fetch_actuals", return_value=live) as fetch,
     ):
-        accuracy.build(log_path, out_path)
+        accuracy.build(log_path, tmp_path / "no_xi.csv", out_path)
 
     fetch.assert_called_once_with(5)
     written = json.loads(out_path.read_text())
     assert written["gameweek"] == 5
     assert written["final"] is False
     assert written["models"]["config_d"]["count"] == 1
+    assert written["xi"] is None  # no XI log yet is a valid state
 
 
 def test_build_writes_nothing_when_no_week_is_scorable(tmp_path):
@@ -97,5 +152,5 @@ def test_build_writes_nothing_when_no_week_is_scorable(tmp_path):
     _log().to_csv(log_path, index=False)
 
     with patch("job.accuracy.get_bootstrap_data", return_value=bootstrap):
-        assert accuracy.build(log_path, out_path) is None
+        assert accuracy.build(log_path, tmp_path / "no_xi.csv", out_path) is None
     assert not out_path.exists()

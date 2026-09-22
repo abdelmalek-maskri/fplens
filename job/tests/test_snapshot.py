@@ -53,7 +53,14 @@ def _stub(models=("config_d",), predict_side_effect=None, features=("element", "
         patch.object(snapshot, "get_player_fdr", return_value=[]),
         patch.object(snapshot, "load_horizon_models", return_value={}),
         patch.object(snapshot, "predict_multi_gw", return_value=[]),
-        patch.object(snapshot, "solve_best_squad", return_value={"squad": []}),
+        patch.object(
+            snapshot,
+            "solve_best_squad",
+            return_value={
+                "squad": [],
+                "best_xi": {"captain_id": 1, "vice_id": 2, "starters": [{"element": 1}, {"element": 2}]},
+            },
+        ),
         # Passthrough: the real one would add the fdr_* columns and change the
         # zero-fill counts these tests assert on.
         patch.object(snapshot, "add_future_fixture_features", side_effect=lambda df, _fx: df),
@@ -240,6 +247,7 @@ def test_prediction_log_records_when_each_forecast_was_made(tmp_path, monkeypatc
     is the only thing the log is for."""
     log = tmp_path / "predictions_log.csv"
     monkeypatch.setattr(snapshot, "PREDICTION_LOG", log)
+    monkeypatch.setattr(snapshot, "XI_LOG", log.with_name("xi.csv"))
 
     out = tmp_path / "data"
     with _stub():
@@ -264,6 +272,7 @@ def test_prediction_log_migrates_an_older_schema(tmp_path, monkeypatch):
     first run after the change rewrites it instead."""
     log = tmp_path / "predictions_log.csv"
     monkeypatch.setattr(snapshot, "PREDICTION_LOG", log)
+    monkeypatch.setattr(snapshot, "XI_LOG", log.with_name("xi.csv"))
     pd.DataFrame([{"gameweek": 4, "model": "config_d", "element": 1, "predicted_points": 2.5}]).to_csv(log, index=False)
 
     out = tmp_path / "data"
@@ -279,6 +288,7 @@ def test_prediction_log_migrates_an_older_schema(tmp_path, monkeypatch):
 def test_prediction_log_appends_rather_than_overwrites(tmp_path, monkeypatch):
     log = tmp_path / "predictions_log.csv"
     monkeypatch.setattr(snapshot, "PREDICTION_LOG", log)
+    monkeypatch.setattr(snapshot, "XI_LOG", log.with_name("xi.csv"))
 
     out = tmp_path / "data"
     with _stub():
