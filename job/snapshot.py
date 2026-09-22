@@ -65,6 +65,7 @@ SQUAD_BUDGET = 100.0
 # before the gameweek was played, which is the only way to score the model on
 # real outcomes later. Nothing else in the project keeps it.
 PREDICTION_LOG = Path("data/predictions_log.csv")
+XI_LOG = Path("data/xi_log.csv")
 
 # Player info carried into each prediction file alongside the predicted points.
 PLAYER_INFO_COLS = [
@@ -220,6 +221,37 @@ def _build_players(predictions: pd.DataFrame, histories: dict, fixtures: dict, s
     return players
 
 
+def _append_xi_log(
+    season: str,
+    gameweek: int,
+    deadline: str | None,
+    generated_at: str,
+    best_squad: dict,
+) -> None:
+    """Record the optimal XI so it can be scored against the average manager.
+
+    The prediction log alone is not enough to rebuild the XI later: the solver
+    also depends on prices, which move during the week. Eleven rows per run.
+    """
+    xi = best_squad["best_xi"]
+    role = {xi["captain_id"]: "captain", xi["vice_id"]: "vice"}
+    log = pd.DataFrame(
+        [
+            {
+                "season": season,
+                "gameweek": gameweek,
+                "deadline": deadline,
+                "generated_at": generated_at,
+                "element": int(s["element"]),
+                "role": role.get(s["element"], "starter"),
+            }
+            for s in xi["starters"]
+        ]
+    )
+    XI_LOG.parent.mkdir(parents=True, exist_ok=True)
+    log.to_csv(XI_LOG, mode="a", header=not XI_LOG.exists(), index=False)
+
+
 def _report_coverage(model_info: list[dict], max_zero_filled: int | None) -> None:
     """Say how much of each model's input was fabricated, and optionally refuse.
 
@@ -367,12 +399,20 @@ def build(
     shutil.rmtree(previous, ignore_errors=True)
 
     if log_predictions:
+        season = current_season(bootstrap["events"])
         _append_prediction_log(
-            season=current_season(bootstrap["events"]),
+            season=season,
             gameweek=gameweek,
             deadline=event.get("deadline_time"),
             generated_at=manifest["generated_at"],
             per_model=per_model,
+        )
+        _append_xi_log(
+            season=season,
+            gameweek=gameweek,
+            deadline=event.get("deadline_time"),
+            generated_at=manifest["generated_at"],
+            best_squad=best_squad,
         )
 
     print(f"Wrote {len(per_model)} prediction files for GW{gameweek} to {out_dir}")

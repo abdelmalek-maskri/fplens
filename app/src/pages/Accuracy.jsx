@@ -41,20 +41,84 @@ export default function Accuracy() {
     );
   }
 
+  const xi = data.xi;
+  const margin = xi && xi.average_manager != null ? xi.points - xi.average_manager : null;
+
   return (
     <div className="space-y-6 stagger">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-surface-500">Gameweek {data.gameweek}</span>
-          {!data.final && (
-            <span
-              className="badge badge-warning"
-              title="Bonus points can still change until FPL signs off the gameweek"
-            >
-              provisional
-            </span>
-          )}
+      <div className="flex items-center gap-3">
+        <span className="text-sm text-surface-300">Gameweek {data.gameweek}</span>
+        <span className="text-xs text-surface-500">how last week's predictions held up</span>
+        {!data.final && (
+          <span
+            className="badge badge-warning"
+            title="Bonus points can still change until FPL signs off the gameweek"
+          >
+            provisional
+          </span>
+        )}
+      </div>
+
+      {xi && (
+        /* The outcome before the statistics. rho says the model ranks well;
+           this says whether fielding the team it picked would have beaten the field. */
+        <div className="py-3 border-y border-surface-800 space-y-2.5">
+          <div className="flex items-center gap-6 flex-wrap">
+            <div>
+              <span className="text-lg font-bold font-data tabular-nums text-surface-100">
+                {xi.points}
+              </span>
+              <span className="text-xs text-surface-500 ml-1.5">the model's team</span>
+            </div>
+            {xi.average_manager != null && (
+              <div>
+                <span className="text-lg font-bold font-data tabular-nums text-surface-100">
+                  {xi.average_manager}
+                </span>
+                <span className="text-xs text-surface-500 ml-1.5">average FPL manager</span>
+              </div>
+            )}
+            {xi.highest != null && (
+              <div>
+                <span className="text-lg font-bold font-data tabular-nums text-surface-400">
+                  {xi.highest}
+                </span>
+                <span className="text-xs text-surface-500 ml-1.5">best manager</span>
+              </div>
+            )}
+            {margin != null && (
+              <span
+                className={`badge ${margin > 0 ? "badge-success" : margin < 0 ? "badge-danger" : "badge-info"}`}
+              >
+                {margin > 0
+                  ? `beat the average by ${margin}`
+                  : margin < 0
+                    ? `${-margin} behind the average`
+                    : "level with the average"}
+              </span>
+            )}
+          </div>
+          <div className="text-xs font-data tabular-nums text-surface-500">
+            <span className="text-surface-600 mr-1.5">Team it picked</span>
+            {xi.players.map((p, i) => (
+              <span key={p.element}>
+                {i > 0 && <span className="text-surface-700"> · </span>}
+                <span className="text-surface-400">{p.name}</span>
+                {p.captain && (
+                  <span className="text-brand-400" title="Captain, points doubled">
+                    {" "}
+                    C
+                  </span>
+                )}{" "}
+                {p.actual ?? "—"}
+              </span>
+            ))}
+          </div>
         </div>
+      )}
+
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <span className="text-xs text-surface-500">Every player, by model</span>
         <div className="flex items-center gap-3">
           <select
             value={selected}
@@ -67,20 +131,23 @@ export default function Accuracy() {
               </option>
             ))}
           </select>
-          {/* rho first, MAE second: same order as the dashboard, same reason.
-              A model can win on MAE by predicting low for everyone. */}
+          {/* Ranking first, error second: same order as the dashboard, same reason.
+              A model can win on error by predicting low for everyone. */}
           <span className="text-2xs font-data tabular-nums text-surface-500">
             {model.spearman != null && (
               <>
-                <span className="text-brand-400" title="Spearman rank correlation">
-                  ρ {model.spearman.toFixed(3)}
+                <span title="Spearman rank correlation. 1.0 means the predicted order matched the actual order exactly.">
+                  ranking <span className="text-brand-400">{model.spearman.toFixed(2)}</span>
+                  <span className="text-surface-600"> / 1</span>
                 </span>
                 <span className="mx-1.5 text-surface-700">·</span>
               </>
             )}
-            <span title="Mean absolute error">MAE {model.mae?.toFixed(2) ?? "—"}</span>
+            <span title="Mean absolute error: on average, how many points each prediction was off by">
+              avg miss <span className="text-surface-300">{model.mae?.toFixed(1) ?? "—"} pts</span>
+            </span>
             <span className="mx-1.5 text-surface-700">·</span>
-            <span>{model.count} scored</span>
+            <span>{model.count} players</span>
           </span>
         </div>
       </div>
@@ -120,7 +187,11 @@ export default function Accuracy() {
               <th scope="col" className="table-header text-right py-2.5 px-3">
                 Actual
               </th>
-              <th scope="col" className="table-header text-right py-2.5 px-3">
+              <th
+                scope="col"
+                className="table-header text-right py-2.5 px-3"
+                title="Actual minus predicted. Green: scored 3+ more than predicted. Red: 3+ fewer."
+              >
                 Diff
               </th>
               <th scope="col" className="table-header text-right py-2.5 px-3">
