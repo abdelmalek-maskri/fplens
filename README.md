@@ -97,6 +97,6 @@ Full terms for each in [docs/DATA_SOURCES.md](docs/DATA_SOURCES.md). Not affilia
 
 ## Licence
 
-Source code is [MIT](LICENSE). The licence covers this repository's code only — data
+Source code is [MIT](LICENSE). The licence covers this repository's code only, data
 retrieved from third-party sources at build or run time remains subject to its own terms,
 detailed in [docs/DATA_SOURCES.md](docs/DATA_SOURCES.md).
