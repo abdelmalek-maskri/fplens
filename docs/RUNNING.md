@@ -68,6 +68,26 @@ registry models are optional — the job skips any whose `.joblib` is missing an
 publishes fewer options in the selector. The GW+2 and GW+3 horizon models are optional
 too; without them `multi_gw.json` degrades to GW+1 only.
 
+```bash
+make accuracy   # 2 FPL API calls, a few seconds, rewrites app/public/accuracy.json
+```
+
+This scores the last finished gameweek against what was predicted for it, and needs
+no models at all: it reads `data/predictions_log.csv` and `data/xi_log.csv`, both of
+which the snapshot writes and both of which are committed. It prints the gameweek it
+scored, or says why it could not:
+
+```text
+2026-27 GW5: scored 9 models, final=True
+```
+
+`final=False` means FPL has not signed the week off yet, so bonus points can still
+move. A later run overwrites the file with the final numbers. Nothing is written at
+all if no finished gameweek has a forecast logged before its deadline, which is the
+correct state early in a season.
+
+Both jobs run in the same daily GitHub Action, snapshot first.
+
 | Path | Purpose |
 | ---- | ------- |
 | `outputs/experiments/ablation/config_D/model.joblib` | Production stacked ensemble (GW+1) |
