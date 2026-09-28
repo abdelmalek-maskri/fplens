@@ -2,7 +2,7 @@
 
 Predicts how many points every Fantasy Premier League player will score next gameweek, then turns those predictions into decisions: who to start, who to captain, who to transfer.
 
-**[Live dashboard](https://fplens.abdelmalekmaskri18.workers.dev)** · [API health](https://fplens.onrender.com/api/health)
+**[Live dashboard](https://fplens.abdelmalekmaskri18.workers.dev)** 
 
 The dashboard loads instantly because it is static files. **My Team** and **News** call the API, which sleeps on Render's free plan, so the first of those after a quiet period takes about half a minute.
 
