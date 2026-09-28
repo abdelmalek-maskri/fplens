@@ -160,6 +160,9 @@ The API loads no models, which is why its file is the thin one. The job guards i
 spaCy and transformers imports and falls back to regex player linking with keyword
 sentiment, so news features still build without them.
 
+Every dependency is pinned. The job commits to `main` unattended, so an unpinned
+upgrade that broke overnight would publish a broken build with nobody watching.
+
 ### Dashboard on Cloudflare
 
 The dashboard is a folder of files. There is no server, so there is nothing to keep

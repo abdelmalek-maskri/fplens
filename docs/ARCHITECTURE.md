@@ -55,6 +55,10 @@ never be committed.
 The loop closes on itself. The jobs commit new JSON to `main`, the commit
 redeploys the dashboard, and the site updates with nobody involved.
 
+No Dockerfile. Cloudflare builds the dashboard from source, Render builds the API
+from `requirements-api.txt`, and the jobs run on a GitHub runner that is already a
+fixed image, so a container would add a build step without removing one.
+
 This shape is what the precompute decision buys. Because predictions are files,
 the expensive part runs on a machine that exists for three minutes a day, and
 the part that must stay up is small enough to be free. Serving predictions from
