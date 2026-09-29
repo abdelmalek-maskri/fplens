@@ -68,6 +68,26 @@ registry models are optional — the job skips any whose `.joblib` is missing an
 publishes fewer options in the selector. The GW+2 and GW+3 horizon models are optional
 too; without them `multi_gw.json` degrades to GW+1 only.
 
+```bash
+make accuracy   # 2 FPL API calls, a few seconds, rewrites app/public/accuracy.json
+```
+
+This scores the last finished gameweek against what was predicted for it, and needs
+no models at all: it reads `data/predictions_log.csv` and `data/xi_log.csv`, both of
+which the snapshot writes and both of which are committed. It prints the gameweek it
+scored, or says why it could not:
+
+```text
+2026-27 GW5: scored 9 models, final=True
+```
+
+`final=False` means FPL has not signed the week off yet, so bonus points can still
+move. A later run overwrites the file with the final numbers. Nothing is written at
+all if no finished gameweek has a forecast logged before its deadline, which is the
+correct state early in a season.
+
+Both jobs run in the same daily GitHub Action, snapshot first.
+
 | Path | Purpose |
 | ---- | ------- |
 | `outputs/experiments/ablation/config_D/model.joblib` | Production stacked ensemble (GW+1) |
@@ -140,6 +160,9 @@ The API loads no models, which is why its file is the thin one. The job guards i
 spaCy and transformers imports and falls back to regex player linking with keyword
 sentiment, so news features still build without them.
 
+Every dependency is pinned. The job commits to `main` unattended, so an unpinned
+upgrade that broke overnight would publish a broken build with nobody watching.
+
 ### Dashboard on Cloudflare
 
 The dashboard is a folder of files. There is no server, so there is nothing to keep
@@ -159,6 +182,19 @@ the build runs out of disk.
 any unknown path return `index.html`, which React Router needs: the whole app is one
 HTML file that reads the address and draws the right page. Without it, opening
 `/transfers` directly returns 404, even though clicking through to it works.
+
+`app/public/_headers` sets how long a browser may keep each file. Vite copies it
+into `dist/` and Cloudflare reads it at deploy time. Without it everything is served
+`max-age=0, must-revalidate`, so a repeat visit revalidates every file over the
+network before using a copy it already has. The reasoning behind each window is in
+[ARCHITECTURE.md](ARCHITECTURE.md#caching).
+
+Check it took, because a wrong path here fails silently:
+
+```bash
+curl -sI https://<your-site>/assets/index-<hash>.js | grep -i cache-control
+# expect: cache-control: public, max-age=31536000, immutable
+```
 
 **`VITE_API_URL` is a build variable, not a runtime one.** Vite writes its value
 straight into the JavaScript bundle at build time. The running site never reads an

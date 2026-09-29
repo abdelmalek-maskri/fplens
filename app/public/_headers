@@ -1,0 +1,27 @@
+# Cloudflare reads this at deploy time and attaches these headers to matching
+# paths. Without it everything is served max-age=0, must-revalidate, so a
+# repeat visit revalidates every file over the network before using a copy it
+# already has.
+
+# Vite puts a content hash in these filenames, so the contents can never change
+# without the name changing too. Safe to keep forever.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# The snapshot job rewrites these once a day. Nothing reads them from a store,
+# so every page mount refetches: three pages pull predictions_*.json and the
+# player page pulls players.json.
+#
+# max-age covers a browsing session. After that stale-while-revalidate serves
+# the cached copy immediately and refreshes it in the background, so the user
+# never waits and is at most one page view behind.
+/data/*
+  Cache-Control: public, max-age=600, stale-while-revalidate=3600
+
+/accuracy.json
+  Cache-Control: public, max-age=600, stale-while-revalidate=3600
+
+# index.html deliberately has no rule here. It keeps Cloudflare's
+# must-revalidate default, and that is what makes the immutable rule above
+# safe: the HTML is the only file whose name never changes, so it has to be
+# rechecked to discover the new hashed asset names after a deploy.

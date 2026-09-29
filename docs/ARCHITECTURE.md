@@ -7,29 +7,38 @@ they are computed on a schedule and written to files rather than computed per
 request. Only two things genuinely need a server.
 
 ```text
-  once per gameweek deadline
+  daily
   ┌────────────────┐   ~800 calls, ~40s   ┌────────────────────────────┐
   │  job/snapshot  │────────────────────▶ │ FPL · Understat · Guardian │
   └───────┬────────┘                      └────────────────────────────┘
-          │ loads the models, writes JSON
+          │ loads the models, writes JSON      ▲
+          │                                    │ real points, once a week is played
+  ┌───────┴────────┐                           │
+  │  job/accuracy  │───────────────────────────┘
+  └───────┬────────┘  scores the last finished gameweek
           ▼
-  ┌────────────────────────┐
-  │  app/public/data/      │  12 files, ~2.9 MB raw / ~200 KB gzipped
+  ┌────────────────────────┐  data/     16 files, 4.5 MB raw / ~510 KB gzipped
+  │  app/public/           │  accuracy.json   last week, scored
   └───────────┬────────────┘
               │ served as static files
               ▼
   ┌────────────────────────┐   2 endpoints    ┌──────────────────┐
-  │  React app, 10 routes  │────────────────▶ │ FastAPI          │──▶ FPL API
+  │  React app, 11 routes  │────────────────▶ │ FastAPI          │──▶ FPL API
   └────────────────────────┘                  │ no model loaded  │
   every request                               └──────────────────┘
 ```
 
-**Job** fetches live data from three external APIs, rebuilds the training
+**Snapshot** fetches live data from three external APIs, rebuilds the training
 features, runs every showcase model, and writes the JSON the site reads. It is
 the only thing that loads a model.
 
-**App** reads those files directly. Ten routes: dashboard, optimal XI, my team,
-transfers, fixtures, comparison, news, watchlist, insights, player detail.
+**Accuracy** runs straight after it, and looks backwards instead: it takes the
+predictions logged before a past deadline and scores them against what players
+actually went on to do.
+
+**App** reads those files directly. Eleven routes: dashboard, optimal XI,
+accuracy, my team, transfers, fixtures, comparison, news, watchlist, insights,
+player detail.
 
 **API** answers what a file cannot: what is in a given manager's squad, and
 Guardian news, whose licence forbids retaining content beyond 24 hours so it can
@@ -41,10 +50,14 @@ never be committed.
 | ----- | ---- | --------- |
 | Dashboard | Cloudflare Workers | It is a folder of files. A CDN serves those from the edge and there is no server to keep alive. |
 | API | Render | Two endpoints that need a running Python process. It loads no model, so it boots in about a second. |
-| Snapshot job | GitHub Actions | Needs to run once a day, not once a request. A scheduled runner is the cheapest place to put 40 seconds of work. |
+| Snapshot and accuracy jobs | GitHub Actions | They need to run once a day, not once a request. A scheduled runner is the cheapest place to put a few minutes of work. |
 
-The loop closes on itself. The job commits new JSON to `main`, the commit
+The loop closes on itself. The jobs commit new JSON to `main`, the commit
 redeploys the dashboard, and the site updates with nobody involved.
+
+No Dockerfile. Cloudflare builds the dashboard from source, Render builds the API
+from `requirements-api.txt`, and the jobs run on a GitHub runner that is already a
+fixed image, so a container would add a build step without removing one.
 
 This shape is what the precompute decision buys. Because predictions are files,
 the expensive part runs on a machine that exists for three minutes a day, and
@@ -71,6 +84,7 @@ api/          FastAPI backend — two endpoints, no ML or scipy
   routers/      news.py, team.py
 job/          everything that runs on a schedule
   snapshot.py     writes the site's JSON
+  accuracy.py     scores the last finished gameweek against what was predicted
   solvers.py      ILP squad optimiser, best XI, transfer suggestions
   fetch_live_data.py  FPL, Understat and injury features
   predict.py      feature alignment, prediction, per-player SHAP
@@ -117,9 +131,45 @@ than a mixture of two gameweeks. It refuses to publish if no model loaded, and
 `--max-zero-filled N` makes it refuse when too much of a model's input is
 absent.
 
-Each run also appends to `data/predictions_log.csv`, the record of what was
-predicted before a gameweek was played. That is the only way to score the model
-on real outcomes later.
+Each run also appends to two logs, which is what makes scoring possible later:
+
+```text
+data/predictions_log.csv   every model's prediction for every player, timestamped
+data/xi_log.csv            the eleven the solver picked, and who wore the armband
+```
+
+The XI needs its own log because the solver also depends on prices, which move
+during the week, so the team cannot be reconstructed from the predictions alone.
+
+## Scoring a finished gameweek
+
+`make accuracy` runs `job/accuracy.py` after the snapshot in the same daily job.
+It finds the newest finished gameweek, reads both logs, fetches the real points
+from `event/{gw}/live`, and writes one file:
+
+```text
+app/public/accuracy.json   per-model player scores, plus the XI's total
+```
+
+That file sits beside `app/public/data/` rather than inside it, because the
+snapshot replaces that whole directory on every run and would delete it.
+
+Two rules keep the score honest:
+
+- Only the last run logged **before** the deadline counts. A row with no
+  timestamp cannot prove it was made in time, so it is excluded rather than
+  trusted. Filtering is on `(season, gameweek)`, since gameweek numbers repeat
+  every year.
+- A player missing from the live feed stays `null`. It is never read as zero.
+
+Scores appear the morning after a gameweek ends, marked provisional until FPL
+sets `data_checked`, because bonus points can still move until then. The job
+overwrites the file with final numbers on a later run.
+
+The XI is scored the way FPL scores it: the captain counts double, the vice
+takes over if the captain did not play, and nobody is doubled if neither did.
+It is shown next to `average_entry_score` from the same bootstrap call, so the
+page can say whether following the model would have beaten the field.
 
 ## API reference
 
@@ -139,6 +189,42 @@ moment it lands.
 `api/cache.py` survives for one job: a manager's squad has to be fetched from
 the FPL API on demand, because there are millions of possible IDs and nothing
 can be precomputed until someone types theirs in.
+
+## Caching
+
+Four layers, cheapest first. Each one that answers saves the ones below it.
+
+| Layer | Holds | For how long |
+| ----- | ----- | ------------ |
+| Browser | Hashed bundles | Forever. The filename changes when the contents do. |
+| Browser | `data/*.json`, `accuracy.json` | 10 minutes, then served stale while refreshing |
+| Browser | `/api/news` | 60 minutes, matching the server's own window |
+| Cloudflare edge | Everything static | Managed by the platform |
+| API process | Squads, news, bootstrap | 15 or 60 minutes, per key |
+
+**Precomputing the snapshot is the cache that matters.** Sixteen files built
+once a day instead of computed per request. The layers above only decide how
+often a visitor re-fetches them.
+
+`app/public/_headers` carries the browser rules, and Cloudflare attaches them at
+deploy time. Two of those choices are load-bearing:
+
+- `index.html` deliberately has no rule, so it keeps the platform's
+  `must-revalidate` default. It is the only file whose name never changes, so it
+  has to be rechecked to discover the new hashed asset names after a deploy.
+  Caching it is what would pin visitors to an old build.
+- The JSON uses `stale-while-revalidate`, so after the fresh window a visitor
+  gets the cached copy immediately and a new one arrives in the background. They
+  are at most one page view behind, and never wait.
+
+Browser windows are deliberately not shorter than the server's. A browser
+revalidating `/api/news` after five minutes would be handed identical bytes,
+having paid a round trip that costs tens of seconds against a sleeping
+free-tier instance. `BROWSER_CACHE_SECONDS` is derived from `NEWS_CACHE_TTL` so
+the two cannot drift apart.
+
+`/api/team/{id}` is `private, no-store`. It is one manager's squad, and nothing
+between the server and that browser may keep it.
 
 ## Models
 

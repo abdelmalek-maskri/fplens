@@ -1,99 +1,113 @@
-# ==============================================================================
-# FPLens - Makefile
-# ==============================================================================
+# FPLens
+#
+# make          list the targets below
+# make dev      run the site locally
+# make test     run everything
+#
+# Three groups: develop, operate (what the daily job runs), train.
 
-# --- Development servers ---
+.DEFAULT_GOAL := help
 
-.PHONY: api.run web.dev dev test
+.PHONY: help
+help:
+	@grep -E '^[a-zA-Z0-9._-]+:.*## ' $(MAKEFILE_LIST) \
+		| sed 's/:.*## /\t/' \
+		| awk -F'\t' '{printf "  \033[36m%-22s\033[0m %s\n", $$1, $$2}'
+
+# --- Develop ---------------------------------------------------------------
+
+.PHONY: api.run web.dev dev test test.api test.job web.build web.lint
+
+API_CMD = uvicorn api.main:app --reload --port 8000
+WEB_CMD = cd app && npm run dev
 
 # Two endpoints, no models. The dashboard reads app/public/data directly, so it
-# works without this running; only My Team and Optimal XI need it.
-api.run:
-	uvicorn api.main:app --reload --port 8000
+# works without this running; only My Team and News need it.
+api.run: ## Start the API on :8000
+	$(API_CMD)
 
-web.dev:
-	cd app && npm run dev
+web.dev: ## Start the dashboard on :5173
+	$(WEB_CMD)
 
-dev:
-	@echo "Starting API and frontend..."
-	$(MAKE) api.run &
-	$(MAKE) web.dev
-
-# --- Tests ---
+# trap + wait, not a bare `&`. Backgrounding the API without them left uvicorn
+# holding :8000 after Ctrl-C, so the next run failed with "address already in use".
+#
+# The trap names the two jobs rather than `kill 0`, which signals make's whole
+# process group. The recipe shell shares that group with whatever ran make, so
+# `kill 0` also killed the caller: a script invoking this target never reached
+# its next line.
+#
+# `set -m` puts each job in its own process group, so `kill -- -PID` still
+# reaches uvicorn's reload worker and vite, which is what `kill 0` was for.
+#
+# The commands are inlined rather than called through $(MAKE), because recipes
+# containing $(MAKE) run even under `make -n`. A dry run would otherwise start
+# both servers and then fire the EXIT trap.
+dev: ## Run both, and stop both on Ctrl-C
+	@set -m; \
+	$(API_CMD) & api=$$!; \
+	($(WEB_CMD)) & web=$$!; \
+	trap 'kill -- -$$api -$$web 2>/dev/null' EXIT INT TERM; \
+	wait
 
 # python -m pytest (not bare pytest) so the project root lands on sys.path
 # and the api.* / job.* / ml.* package imports resolve.
-test:
+test: ## Run the Python tests
 	python3 -m pytest api/tests job/tests -q
 
-test.api:
+test.api: ## Python tests for the API only
 	python3 -m pytest api/tests -q
 
-test.job:
+test.job: ## Python tests for the job only
 	python3 -m pytest job/tests -q
 
-web.build:
+web.build: ## Build the dashboard
 	cd app && npm run build
 
-web.lint:
+web.lint: ## Lint the dashboard
 	cd app && npm run lint
 
-# --- ML Pipeline: Full reproduction from raw data ---
-# Run stages in order. Each depends on the previous.
+# --- Operate ---------------------------------------------------------------
+# What the daily GitHub Action runs, in this order.
 
-# Stage 1: Build base FPL table from raw GW CSVs
-.PHONY: ml.fpl
-ml.fpl:
+.PHONY: snapshot accuracy
+
+snapshot: ## Rebuild the site's JSON (~800 FPL calls, ~40s, needs models)
+	python3 -m job.snapshot
+
+accuracy: ## Score the last finished gameweek (2 FPL calls, no models needed)
+	python3 -m job.accuracy
+
+# --- Train -----------------------------------------------------------------
+# Each step reads the previous one's output from disk, so the order is fixed.
+
+.PHONY: ml.fpl ml.understat ml.target ml.features.baseline ml.features.extended
+.PHONY: ml.injury ml.news ml.news.fetch ml.news.link ml.news.features ml.news.merge
+.PHONY: ml.train.baseline ml.train.ablation ml.train.all ml.shap ml.predict
+.PHONY: ml.data ml.full baseline_v1
+
+ml.fpl: ## 1. Build the base FPL table from raw gameweek CSVs
 	python3 -m ml.pipelines.fpl.build_fpl_table
 
-# Stage 2: Fetch Understat data, build mappings, merge with FPL
-# run_data_pipeline covers steps 1-10 (it re-runs the Stage 1 FPL build too)
-.PHONY: ml.understat
-ml.understat:
+# run_data_pipeline covers the whole FPL + Understat chain, including the ml.fpl
+# build above, so running it alone is enough.
+ml.understat: ## 2. Fetch Understat, map players and fixtures, merge
 	python3 -m ml.pipelines.runners.run_data_pipeline
 
-# Stage 3: Create prediction target (points_next_gw)
-.PHONY: ml.target
-ml.target:
+ml.target: ## 3. Create the prediction target
 	python3 -m ml.pipelines.features.create_target
 
-# Stage 4: Build features
-.PHONY: ml.features.baseline ml.features.extended
-ml.features.baseline:
+ml.features.baseline: ## 4a. Lag-1, roll-3, roll-5 only
 	python3 -m ml.pipelines.features.build_baseline_features
 
-ml.features.extended:
+ml.features.extended: ## 4b. Adds roll-10, season averages, momentum
 	python3 -m ml.pipelines.features.build_extended_features
 
-# Stage 5: Injury pipeline
-.PHONY: ml.injury
-ml.injury:
+ml.injury: ## 5. Injury features, reconstructed from git history
 	python3 -m ml.pipelines.injury.download_historical
 	python3 -m ml.pipelines.injury.merge_with_fpl
 	python3 -m ml.pipelines.injury.build_injury_features
 
-# Stage 6: Training
-.PHONY: ml.train.baseline ml.train.ablation ml.train.all
-ml.train.baseline:
-	python3 -m ml.pipelines.train.train_baseline_model
-
-ml.train.ablation:
-	python3 -m ml.pipelines.train.run_injury_ablation
-
-# Trains every model in api/main.py's MODEL_REGISTRY.
-# run_injury_ablation produces config_A/B/C/D and must run last — it needs the
-# injury and news feature tables.
-ml.train.all:
-	python3 -m ml.pipelines.train.train_baseline_model
-	python3 -m ml.pipelines.train.train_baseline_tweedie
-	python3 -m ml.pipelines.train.train_twohead_model
-	python3 -m ml.pipelines.train.train_catboost_twohead
-	python3 -m ml.pipelines.train.train_position_specific
-	python3 -m ml.pipelines.train.train_stacked_ensemble
-	python3 -m ml.pipelines.train.run_injury_ablation
-
-# Stage 5b: News pipeline (Guardian articles → per-GW features)
-.PHONY: ml.news ml.news.fetch ml.news.link ml.news.features ml.news.merge
 ml.news.fetch:
 	python3 -m ml.pipelines.news.fetch_guardian
 
@@ -103,50 +117,38 @@ ml.news.link:
 ml.news.features:
 	python3 -m ml.pipelines.news.build_news_features
 
+# merge_with_features writes the four ablation tables, so this has to finish
+# before training: config_C and config_D have nothing to read without it.
 ml.news.merge:
 	python3 -m ml.pipelines.news.merge_with_features
 
-ml.news: ml.news.fetch ml.news.link ml.news.features ml.news.merge
+ml.news: ml.news.fetch ml.news.link ml.news.features ml.news.merge ## 6. Guardian news features (needs GUARDIAN_API_KEY)
 
-# Stage 6b: Injury & news ablation study (A/B/C/D)
-.PHONY: ml.ablation.injury
-ml.ablation.injury:
+ml.train.baseline: ## 7a. Single LightGBM
+	python3 -m ml.pipelines.train.train_baseline_model
+
+ml.train.ablation: ## 7b. The A/B/C/D ablation, which produces the production model
 	python3 -m ml.pipelines.train.run_injury_ablation
 
-# Stage 7: Inference (requires live FPL API)
-.PHONY: ml.predict
-ml.predict:
-	python3 -m job.predict
+# The ablation runs last because it needs the injury and news feature tables.
+ml.train.all: ## 7c. Every model in job/models.py's MODEL_REGISTRY
+	python3 -m ml.pipelines.train.train_baseline_model
+	python3 -m ml.pipelines.train.train_baseline_tweedie
+	python3 -m ml.pipelines.train.train_twohead_model
+	python3 -m ml.pipelines.train.train_catboost_twohead
+	python3 -m ml.pipelines.train.train_position_specific
+	python3 -m ml.pipelines.train.train_stacked_ensemble
+	python3 -m ml.pipelines.train.run_injury_ablation
 
-# Build the JSON the website reads. One live fetch (~800 FPL calls, ~40s),
-# then every model predicts on top of it. Run after a gameweek deadline.
-.PHONY: snapshot
-snapshot:
-	python3 -m job.snapshot
-
-# Score the last finished gameweek against what was predicted for it.
-# Two FPL calls, a couple of seconds. Writes app/public/accuracy.json.
-.PHONY: accuracy
-accuracy:
-	python3 -m job.accuracy
-
-# Stage 8: Analysis (optional)
-.PHONY: ml.shap
-ml.shap:
+ml.shap: ## 8. SHAP importances for the Model Insights page
 	python3 -m ml.analysis.shap_analysis
 
-# --- Composite targets ---
+ml.predict: ## Predict once from the live API, without writing the snapshot
+	python3 -m job.predict
 
-# Baseline pipeline (original make baseline_v1)
-.PHONY: baseline_v1
-baseline_v1: ml.fpl ml.understat ml.target ml.features.baseline ml.train.baseline
+# --- Composite -------------------------------------------------------------
 
-# Full pipeline: data → features → all models
-# ml.news must precede training: merge_with_features builds the A/B/C/D ablation
-# tables, and config_C/config_D cannot train without them. Needs GUARDIAN_API_KEY.
-.PHONY: ml.full
-ml.full: ml.data ml.train.all
+ml.data: ml.fpl ml.understat ml.target ml.features.extended ml.injury ml.news ## Steps 1-6: everything up to training
+ml.full: ml.data ml.train.all ## Steps 1-7: data, features, and every model
 
-# Data only (no training)
-.PHONY: ml.data
-ml.data: ml.fpl ml.understat ml.target ml.features.extended ml.injury ml.news
+baseline_v1: ml.fpl ml.understat ml.target ml.features.baseline ml.train.baseline ## The original single-model pipeline

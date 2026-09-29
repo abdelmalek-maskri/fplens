@@ -2,7 +2,7 @@
 
 Predicts how many points every Fantasy Premier League player will score next gameweek, then turns those predictions into decisions: who to start, who to captain, who to transfer.
 
-**[Live dashboard](https://fplens.abdelmalekmaskri18.workers.dev)** 
+**[Live dashboard](https://fplens.abdelmalekmaskri18.workers.dev)**
 
 The dashboard loads instantly because it is static files. **My Team** and **News** call the API, which sleeps on Render's free plan, so the first of those after a quiet period takes about half a minute.
 
@@ -22,6 +22,14 @@ The dashboard loads instantly because it is static files. **My Team** and **News
 
 </details>
 
+## Scored every week, in public
+
+A holdout number is a claim. **[The accuracy page](https://fplens.abdelmalekmaskri18.workers.dev/accuracy)** is the evidence: after each gameweek it shows what the model predicted for every player next to what they actually scored, and what the team it picked would have scored against the average FPL manager.
+
+Only forecasts logged *before* the deadline are counted. The daily job writes each run to a prediction log with a timestamp, and scoring reads the last run that beat the deadline, so a prediction can never be improved after the fact.
+
+Some weeks it loses. Those weeks are shown too.
+
 ## Results
 
 Trained on 8 Premier League seasons (2016-17 → 2023-24), evaluated on a held-out 2024-25 season the model never saw. Each config adds one data source to the same stacked ensemble.
@@ -35,7 +43,7 @@ Trained on 8 Premier League seasons (2016-17 → 2023-24), evaluated on a held-o
 
 Injury and news interact: together they help more than the sum of adding each alone.
 
-**Ranking quality (ρ) is the headline metric, not MAE.** 60% of player-gameweeks score zero, so MAE rewards predicting low regardless of skill, one model got the best MAE in the project by compressing every prediction toward zero, ranking a backup goalkeeper above Haaland. Picking a squad is a ranking problem, so ρ is what matters. [The full story →](docs/ARCHITECTURE.md#why-not-mae)
+**Ranking quality (ρ) is the headline metric, not MAE.** 60% of player-gameweeks score zero, so MAE rewards predicting low regardless of skill. One model took the best MAE in the project by compressing every prediction toward zero, and ranked a backup goalkeeper above Haaland. Picking a squad is a ranking problem, so ρ is what matters. [The full story →](docs/ARCHITECTURE.md#why-not-mae)
 
 ## Run it
 
@@ -46,11 +54,11 @@ cd fplens && python3 -m pip install -r requirements.txt && (cd app && npm instal
 make dev     # API on :8000, dashboard on :5173
 ```
 
-Trained models aren't committed (they're large and reproducible), see [docs/RUNNING.md](docs/RUNNING.md) to obtain or rebuild them.
+That works from a fresh clone with no models on disk, because the predictions the site reads are committed as JSON. The `.joblib` files are only needed to rebuild those or to train; [docs/RUNNING.md](docs/RUNNING.md) covers both.
 
 ```bash
-make test              # 113 Python tests
-cd app && npm test     # 99 frontend tests
+make test              # Python: API, snapshot job, solvers
+cd app && npm test     # frontend
 ```
 
 ## Where it runs
@@ -75,7 +83,7 @@ Every rolling feature is computed with a one-gameweek lag, and injury snapshots 
 
 ## Docs
 
-- [Architecture](docs/ARCHITECTURE.md): system design, API reference, model details
+- [Architecture](docs/ARCHITECTURE.md): system design, caching, API reference, model details
 - [Running](docs/RUNNING.md): setup, models, environment variables
 - [Pipeline order](docs/PIPELINE_ORDER.md): reproducing the data and models from scratch
 - [Data sources](docs/DATA_SOURCES.md): attribution and licensing for every source
@@ -90,7 +98,7 @@ This is a non-commercial academic project. The football data belongs to its orig
 
 - Historical FPL statistics from [vaastav/Fantasy-Premier-League](https://github.com/vaastav/Fantasy-Premier-League) (MIT), included as a git submodule
 - Expected goals from [Understat](https://understat.com), via the [`understat`](https://github.com/amosbastian/understat) package
-- Live data from the [Fantasy Premier League API](https://fantasy.premierleague.com/api/)
+- Live data from the [Fantasy Premier League API](https://fantasy.premierleague.com/api/bootstrap-static/)
 - Articles from [the Guardian Open Platform](https://open-platform.theguardian.com)
 
 Full terms for each in [docs/DATA_SOURCES.md](docs/DATA_SOURCES.md). Not affiliated with or endorsed by the Premier League.

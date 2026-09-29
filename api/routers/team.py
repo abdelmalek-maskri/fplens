@@ -4,7 +4,7 @@ precomputed until someone types theirs in."""
 
 import logging
 
-from fastapi import APIRouter, HTTPException, Path, Request
+from fastapi import APIRouter, HTTPException, Path, Request, Response
 
 from api.schemas import Team
 from api.snapshot import load_predictions
@@ -35,9 +35,13 @@ _ENRICH_FIELDS = {
 @router.get("/team/{fpl_id}", response_model=Team)
 def get_team(
     request: Request,
+    response: Response,
     fpl_id: int = Path(..., ge=1, le=15_000_000),
 ):
     """Fetch user's FPL team picks and merge with predictions."""
+    # One manager's squad. Says so out loud, so no proxy between here and the
+    # browser can hand this response to a different visitor.
+    response.headers["Cache-Control"] = "private, no-store"
     cache = request.app.state.cache
 
     try:

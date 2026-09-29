@@ -121,6 +121,12 @@ class TestTeam:
         assert r.json()["picks"][0]["web_name"] == ""
         assert r.json()["transfer_suggestions"] == []
 
+    def test_a_squad_is_never_cached_by_anything_in_between(self, client, snapshot):
+        """One manager's squad must not be reusable for another visitor."""
+        with patch("api.routers.team.fetch_user_team", return_value=self._fpl_response()):
+            r = client.get("/api/team/123")
+        assert r.headers["cache-control"] == "private, no-store"
+
     def test_404_for_an_unknown_fpl_id(self, client, snapshot):
         with patch("api.routers.team.fetch_user_team", side_effect=Exception("404 Not Found")):
             r = client.get("/api/team/123")
@@ -152,3 +158,13 @@ class TestNews:
             r = client.get("/api/news")
         assert r.status_code == 200
         assert r.json() == {"articles": [], "trending": []}
+
+
+def test_news_is_cacheable_by_the_browser(client):
+    """The same articles for everyone, so the browser may hold them briefly."""
+    with (
+        patch("job.news.fetch_recent_news", return_value={"articles": [], "trending": []}),
+        patch("job.fetch_live_data.get_bootstrap_data", return_value={}),
+    ):
+        r = client.get("/api/news")
+    assert r.headers["cache-control"] == "public, max-age=3600"
