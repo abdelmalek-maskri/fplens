@@ -84,7 +84,7 @@ Every rolling feature is computed with a one-gameweek lag, and injury snapshots 
 
 ## Docs
 
-- [Architecture](docs/ARCHITECTURE.md): system design, API reference, model details
+- [Architecture](docs/ARCHITECTURE.md): system design, caching, API reference, model details
 - [Running](docs/RUNNING.md): setup, models, environment variables
 - [Pipeline order](docs/PIPELINE_ORDER.md): reproducing the data and models from scratch
 - [Data sources](docs/DATA_SOURCES.md): attribution and licensing for every source

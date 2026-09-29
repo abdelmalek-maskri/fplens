@@ -183,6 +183,19 @@ any unknown path return `index.html`, which React Router needs: the whole app is
 HTML file that reads the address and draws the right page. Without it, opening
 `/transfers` directly returns 404, even though clicking through to it works.
 
+`app/public/_headers` sets how long a browser may keep each file. Vite copies it
+into `dist/` and Cloudflare reads it at deploy time. Without it everything is served
+`max-age=0, must-revalidate`, so a repeat visit revalidates every file over the
+network before using a copy it already has. The reasoning behind each window is in
+[ARCHITECTURE.md](ARCHITECTURE.md#caching).
+
+Check it took, because a wrong path here fails silently:
+
+```bash
+curl -sI https://<your-site>/assets/index-<hash>.js | grep -i cache-control
+# expect: cache-control: public, max-age=31536000, immutable
+```
+
 **`VITE_API_URL` is a build variable, not a runtime one.** Vite writes its value
 straight into the JavaScript bundle at build time. The running site never reads an
 environment variable. So two things follow:

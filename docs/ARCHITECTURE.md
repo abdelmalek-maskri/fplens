@@ -190,6 +190,42 @@ moment it lands.
 the FPL API on demand, because there are millions of possible IDs and nothing
 can be precomputed until someone types theirs in.
 
+## Caching
+
+Four layers, cheapest first. Each one that answers saves the ones below it.
+
+| Layer | Holds | For how long |
+| ----- | ----- | ------------ |
+| Browser | Hashed bundles | Forever. The filename changes when the contents do. |
+| Browser | `data/*.json`, `accuracy.json` | 10 minutes, then served stale while refreshing |
+| Browser | `/api/news` | 60 minutes, matching the server's own window |
+| Cloudflare edge | Everything static | Managed by the platform |
+| API process | Squads, news, bootstrap | 15 or 60 minutes, per key |
+
+**Precomputing the snapshot is the cache that matters.** Sixteen files built
+once a day instead of computed per request. The layers above only decide how
+often a visitor re-fetches them.
+
+`app/public/_headers` carries the browser rules, and Cloudflare attaches them at
+deploy time. Two of those choices are load-bearing:
+
+- `index.html` deliberately has no rule, so it keeps the platform's
+  `must-revalidate` default. It is the only file whose name never changes, so it
+  has to be rechecked to discover the new hashed asset names after a deploy.
+  Caching it is what would pin visitors to an old build.
+- The JSON uses `stale-while-revalidate`, so after the fresh window a visitor
+  gets the cached copy immediately and a new one arrives in the background. They
+  are at most one page view behind, and never wait.
+
+Browser windows are deliberately not shorter than the server's. A browser
+revalidating `/api/news` after five minutes would be handed identical bytes,
+having paid a round trip that costs tens of seconds against a sleeping
+free-tier instance. `BROWSER_CACHE_SECONDS` is derived from `NEWS_CACHE_TTL` so
+the two cannot drift apart.
+
+`/api/team/{id}` is `private, no-store`. It is one manager's squad, and nothing
+between the server and that browser may keep it.
+
 ## Models
 
 Ten architectures were trained and are selectable in the dashboard. Holdout is the full 2024-25 season (26,000 player-gameweeks).
