@@ -12,7 +12,7 @@ The dashboard loads instantly because it is static files. **My Team** and **News
 
 - **Predicts** next gameweek points for all ~800 players, each with a confidence range and a SHAP breakdown explaining *why*.
 - **Builds squads**: integer linear programming picks the optimal 15 players within the £100m budget, position limits, and max-3-per-club rule, in under 200ms.
-- **Plans transfers** over a 1–3 gameweek horizon, with a separately trained model for each horizon.
+- **Plans transfers** over a 1-3 gameweek horizon, with a separately trained model for each horizon.
 
 <details>
 <summary>Screenshots</summary>
@@ -59,9 +59,9 @@ Three pieces, each free to host.
 
 | Piece | Runs on | What it does |
 | ----- | ------- | ------------ |
-| Dashboard | Cloudflare Workers | Static files on a CDN. No server. |
-| API | Render | Two endpoints. Boots in about a second, loads no model. |
-| Snapshot job | GitHub Actions | Runs daily at 06:30 UTC, rebuilds the predictions, commits them. |
+| Dashboard | Cloudflare Workers | Static files on a CDN. No server |
+| API | Render | Two endpoints. Boots in about a second, loads no model |
+| Snapshot job | GitHub Actions | Runs daily at 06:30 UTC, rebuilds the predictions, commits them |
 
 The job commits new JSON to `main`, which redeploys the dashboard. So the site updates itself once a day with nobody touching it. Setup steps are in [docs/RUNNING.md](docs/RUNNING.md#deployment).
 
