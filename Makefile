@@ -18,19 +18,36 @@ help:
 
 .PHONY: api.run web.dev dev test test.api test.job web.build web.lint
 
+API_CMD = uvicorn api.main:app --reload --port 8000
+WEB_CMD = cd app && npm run dev
+
 # Two endpoints, no models. The dashboard reads app/public/data directly, so it
 # works without this running; only My Team and News need it.
 api.run: ## Start the API on :8000
-	uvicorn api.main:app --reload --port 8000
+	$(API_CMD)
 
 web.dev: ## Start the dashboard on :5173
-	cd app && npm run dev
+	$(WEB_CMD)
 
 # trap + wait, not a bare `&`. Backgrounding the API without them left uvicorn
 # holding :8000 after Ctrl-C, so the next run failed with "address already in use".
+#
+# The trap names the two jobs rather than `kill 0`, which signals make's whole
+# process group. The recipe shell shares that group with whatever ran make, so
+# `kill 0` also killed the caller: a script invoking this target never reached
+# its next line.
+#
+# `set -m` puts each job in its own process group, so `kill -- -PID` still
+# reaches uvicorn's reload worker and vite, which is what `kill 0` was for.
+#
+# The commands are inlined rather than called through $(MAKE), because recipes
+# containing $(MAKE) run even under `make -n`. A dry run would otherwise start
+# both servers and then fire the EXIT trap.
 dev: ## Run both, and stop both on Ctrl-C
-	@trap 'kill 0' EXIT INT TERM; \
-	$(MAKE) api.run & $(MAKE) web.dev; \
+	@set -m; \
+	$(API_CMD) & api=$$!; \
+	($(WEB_CMD)) & web=$$!; \
+	trap 'kill -- -$$api -$$web 2>/dev/null' EXIT INT TERM; \
 	wait
 
 # python -m pytest (not bare pytest) so the project root lands on sys.path
