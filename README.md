@@ -101,7 +101,7 @@ This is a non-commercial academic project. The football data belongs to its orig
 - Live data from the [Fantasy Premier League API](https://fantasy.premierleague.com/api/bootstrap-static/)
 - Articles from [the Guardian Open Platform](https://open-platform.theguardian.com)
 
-Full terms for each in [docs/DATA_SOURCES.md](docs/DATA_SOURCES.md). Not affiliated with or endorsed by the Premier League.
+Full terms for each in [docs/DATA_SOURCES.md](docs/DATA_SOURCES.md), not affiliated with or endorsed by the Premier League.
 
 ## Licence
 
