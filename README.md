@@ -3,6 +3,7 @@
 Predicts how many points every Fantasy Premier League player will score next gameweek, then turns those predictions into decisions: who to start, who to captain, who to transfer.
 
 **[Live dashboard](https://fplens.abdelmalekmaskri18.workers.dev)**
+[![CI](https://github.com/abdelmalek-maskri/fplens/actions/workflows/ci.yml/badge.svg)](https://github.com/abdelmalek-maskri/fplens/actions/workflows/ci.yml)
 
 The dashboard loads instantly because it is static files. **My Team** and **News** call the API, which sleeps on Render's free plan, so the first of those after a quiet period takes about half a minute.
 
@@ -32,7 +33,11 @@ Some weeks it loses. Those weeks are shown too.
 
 ## Results
 
-Trained on 8 Premier League seasons (2016-17 → 2023-24), evaluated on a held-out 2024-25 season the model never saw. Each config adds one data source to the same stacked ensemble.
+Trained on 232,000 player-gameweeks from 8 Premier League seasons (2016-17 → 2023-24), evaluated on a held-out 2024-25 season the model never saw.
+
+**Ten models were trained and compared**: a single LightGBM, a Tweedie variant, one model per position, a two-head hurdle, a CatBoost two-head, and stacked ensembles. Most lost, and why they lost was the useful part. Splitting by position left the goalkeeper and forward subsets with 20k and 25k rows, too few for 116 features. The two-head hurdle multiplied P(plays) by expected points, which drags every uncertain player toward zero. A seventh base learner was tested and dropped: its errors were too correlated with the boosted models already in the stack. [Full table →](docs/ARCHITECTURE.md#models)
+
+The ablation below takes the winning architecture and isolates what each data source contributes.
 
 | Config | Data | Features | Spearman ρ | MAE |
 | ------ | ---- | -------- | ---------- | --- |
@@ -41,7 +46,7 @@ Trained on 8 Premier League seasons (2016-17 → 2023-24), evaluated on a held-o
 | C | + Guardian news | 123 | 0.675 | 1.037 |
 | **D** | **+ both** | **155** | **0.687** | **1.029** |
 
-Injury and news interact: together they help more than the sum of adding each alone.
+Injury and news interact: together they help more than the sum of adding each alone. Every pairwise difference is significant under a Diebold-Mariano test (p < 0.01), though that test assumes a time series and this is panel data, so the intervals are optimistic.
 
 **Ranking quality (ρ) is the headline metric, not MAE.** 60% of player-gameweeks score zero, so MAE rewards predicting low regardless of skill. One model took the best MAE in the project by compressing every prediction toward zero, and ranked a backup goalkeeper above Haaland. Picking a squad is a ranking problem, so ρ is what matters. [The full story →](docs/ARCHITECTURE.md#why-not-mae)
 
@@ -60,6 +65,8 @@ That works from a fresh clone with no models on disk, because the predictions th
 make test              # Python: API, snapshot job, solvers
 cd app && npm test     # frontend
 ```
+
+CI runs both suites plus lint and build on every push, across five jobs.
 
 ## Where it runs
 
