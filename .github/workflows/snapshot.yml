@@ -26,11 +26,11 @@ jobs:
       # No token on disk. joblib.load below is arbitrary code execution by
       # design, so nothing should be sitting in .git/config while it runs. The
       # push step authenticates on its own.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version-file: .python-version
           cache: pip
