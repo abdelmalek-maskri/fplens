@@ -108,8 +108,13 @@ export function getModelInsights() {
 
 // Not in the snapshot. The Guardian's licence forbids retaining content beyond
 // 24 hours, and the snapshot is committed, so this stays a live call.
+//
+// It needs its own timeout because it is the only call that can hit a sleeping
+// free-tier instance and an empty server cache at once: ~43s to wake the
+// container, then ~78s for the Guardian fetch. Everything else here reads a
+// static file from this origin and answers in milliseconds.
 export function getNews() {
-  return apiFetch("/api/news");
+  return apiFetch("/api/news", { timeout: 150_000 });
 }
 
 // The snapshot always covers GW+1 through GW+3, and the planner narrows it
