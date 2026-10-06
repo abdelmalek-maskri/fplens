@@ -231,6 +231,7 @@ def _link_articles_to_players(articles, lookup, nlp=None):
     for article in articles:
         title = article["title"]
         body = article["body_text"][:5000]
+        body_lower = body.lower()
         found = {}
 
         # regex on title (all variants, low FP risk)
@@ -245,10 +246,19 @@ def _link_articles_to_players(articles, lookup, nlp=None):
         # Body uses full names only, so the nesting problem above cannot occur
         # here: no single-token web_name is ever tested against the body.
         # regex on body for full names only (2+ words)
+        # Two thousand full names against every body is the whole cost of this
+        # endpoint. Variants are already lowercase and the pattern is a plain
+        # \bvariant\b, so a name absent as a substring cannot match the regex
+        # either, and Python's substring search is far cheaper than entering the
+        # regex engine. ASCII only: str.lower() and re.IGNORECASE disagree on
+        # the Turkish dotless i, so "KADIOĞLU" lowercases to a dotted i and
+        # would skip a variant the regex does match. Those 11% keep the slow path.
         for variant, element in lookup.items():
             if " " not in variant:
                 continue
             if element in found:
+                continue
+            if variant.isascii() and variant not in body_lower:
                 continue
             if compiled[variant].search(body):
                 found[element] = True
