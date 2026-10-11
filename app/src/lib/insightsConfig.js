@@ -42,13 +42,13 @@ export const modelVariants = [
   },
   {
     id: "stacked_ensemble",
-    name: "Stacked Ensemble",
+    name: "Stacked Ensemble (6 models combined)",
     mae: 1.0804,
     rmse: 2.0825,
     r2: 0.253,
     spearman: 0.669,
     features: 116,
-    description: "Same six models, blended by Ridge instead",
+    description: "Same six models and data as Stats only, combined by Ridge instead",
   },
   {
     id: "catboost_twohead",

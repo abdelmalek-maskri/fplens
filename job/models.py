@@ -51,7 +51,7 @@ MODEL_REGISTRY = {
     "config_c": ("Stats + news", "outputs/experiments/ablation/config_C/model.joblib", 1.037, 0.675),
     "config_a": ("Stats only", "outputs/experiments/ablation/config_A/model.joblib", 1.039, 0.674),
     "stacked_ensemble": (
-        "Stacked Ensemble (Ridge blend)",
+        "Stacked Ensemble (6 models combined)",
         "outputs/experiments/stacked_ensemble/model.joblib",
         1.080,
         0.669,

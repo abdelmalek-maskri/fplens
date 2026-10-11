@@ -37,7 +37,7 @@
   },
   {
     "id": "stacked_ensemble",
-    "name": "Stacked Ensemble (Ridge blend)",
+    "name": "Stacked Ensemble (6 models combined)",
     "mae": 1.08,
     "spearman": 0.669,
     "features_expected": 116,
