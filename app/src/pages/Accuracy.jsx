@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { POSITION_COLORS } from "../lib/constants";
-import { useAccuracy } from "../hooks";
+import { useAccuracy, useGameweek } from "../hooks";
 import Loading from "../components/feedback/Loading";
 import ErrorState from "../components/feedback/ErrorState";
 import EmptyState from "../components/feedback/EmptyState";
@@ -17,6 +17,7 @@ function diffClass(d) {
 export default function Accuracy() {
   const navigate = useNavigate();
   const { data, isLoading, error } = useAccuracy();
+  const { data: gw } = useGameweek();
   const [modelId, setModelId] = useState(null);
   const [positionFilter, setPositionFilter] = useState("ALL");
 
@@ -46,9 +47,17 @@ export default function Accuracy() {
 
   return (
     <div className="space-y-6 stagger">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-wrap">
         <span className="text-sm text-surface-300">Gameweek {data.gameweek}</span>
-        <span className="text-xs text-surface-500">how last week's predictions held up</span>
+        {/* Not "last week". A gameweek can only be scored once it has finished,
+            and the site predicts the next deadline, so these sit two apart while
+            a gameweek is still being played. */}
+        <span className="text-xs text-surface-500">
+          the most recent gameweek with final results
+          {gw?.current_gw != null && gw.current_gw !== data.gameweek && (
+            <> &middot; now predicting gameweek {gw.current_gw}</>
+          )}
+        </span>
         {!data.final && (
           <span
             className="badge badge-warning"
