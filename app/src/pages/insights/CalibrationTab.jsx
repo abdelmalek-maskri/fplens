@@ -86,7 +86,7 @@ export default function CalibrationTab({ calibrationDeciles, calibrationStats })
               values: calibrationDeciles.stacked,
             },
             {
-              name: "Config D (Best)",
+              name: "Stats + injuries + news",
               color: "rgb(var(--brand-500))",
               values: calibrationDeciles.config_d,
             },

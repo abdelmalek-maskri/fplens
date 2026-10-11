@@ -42,16 +42,16 @@ with contextlib.suppress(ImportError):
 
 MODEL_REGISTRY = {
     "config_d": (
-        "Config D: Stacked + Injury + News",
+        "Stats + injuries + news",
         "outputs/experiments/ablation/config_D/model.joblib",
         1.029,
         0.687,
     ),
-    "config_b": ("Config B: + Injury", "outputs/experiments/ablation/config_B/model.joblib", 1.032, 0.685),
-    "config_c": ("Config C: + News", "outputs/experiments/ablation/config_C/model.joblib", 1.037, 0.675),
-    "config_a": ("Config A: FPL + Understat", "outputs/experiments/ablation/config_A/model.joblib", 1.039, 0.674),
+    "config_b": ("Stats + injuries", "outputs/experiments/ablation/config_B/model.joblib", 1.032, 0.685),
+    "config_c": ("Stats + news", "outputs/experiments/ablation/config_C/model.joblib", 1.037, 0.675),
+    "config_a": ("Stats only", "outputs/experiments/ablation/config_A/model.joblib", 1.039, 0.674),
     "stacked_ensemble": (
-        "Stacked Ensemble (no injury/news)",
+        "Stacked Ensemble (Ridge blend)",
         "outputs/experiments/stacked_ensemble/model.joblib",
         1.080,
         0.669,

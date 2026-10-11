@@ -20,7 +20,7 @@ export default function PositionsTab({ positionPerformance }) {
       values: positionPerformance.map((p) => p.stacked),
     },
     {
-      name: "Config D",
+      name: "Stats + injuries + news",
       color: "rgb(var(--brand-500))",
       values: positionPerformance.map((p) => p.config_d),
     },
@@ -45,7 +45,7 @@ export default function PositionsTab({ positionPerformance }) {
     { key: "baseline", label: "Baseline" },
     { key: "tweedie", label: "LGB Tweedie" },
     { key: "stacked", label: "Stacked" },
-    { key: "config_d", label: "Config D" },
+    { key: "config_d", label: "All sources" },
     { key: "posSpecific", label: "Pos-Specific" },
     { key: "twohead", label: "Two-Head" },
     { key: "cbTwohead", label: "CatBoost 2-head" },

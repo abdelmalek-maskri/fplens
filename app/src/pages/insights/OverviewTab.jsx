@@ -12,15 +12,19 @@ export default function OverviewTab({
     <div className="space-y-6">
       <div className="flex items-center gap-5 flex-wrap py-3 border-b border-surface-800">
         <div>
-          <span className="text-lg font-bold text-surface-100">Stacked Ensemble</span>
-          <span className="text-xs text-surface-500 ml-1.5">MAE {bestMae}</span>
+          <span className="text-lg font-bold text-surface-100">Stats + injuries + news</span>
+          <span className="text-xs text-surface-500 ml-1.5">
+            in use &middot; avg miss {bestMae}
+          </span>
         </div>
         <div className="w-px h-5 bg-surface-700" />
         <div>
           <span className="text-lg font-bold text-success-400">
             -{((1 - bestMae / baselines[0].mae) * 100).toFixed(1)}%
           </span>
-          <span className="text-xs text-surface-500 ml-1.5">vs zero baseline</span>
+          <span className="text-xs text-surface-500 ml-1.5">
+            less error than guessing zero for everyone
+          </span>
         </div>
         <div className="w-px h-5 bg-surface-700" />
         <div>
@@ -28,7 +32,7 @@ export default function OverviewTab({
             {datasetStats.cvMae}{" "}
             <span className="text-sm text-surface-400">± {datasetStats.cvStd}</span>
           </span>
-          <span className="text-xs text-surface-500 ml-1.5">CV MAE (8-fold)</span>
+          <span className="text-xs text-surface-500 ml-1.5">avg miss across 8 training folds</span>
         </div>
         <div className="w-px h-5 bg-surface-700" />
         <div>
@@ -48,7 +52,7 @@ export default function OverviewTab({
 
       <div className="overflow-x-auto">
         <div className="py-3 border-b border-surface-700">
-          <span className="section-label">Architecture Comparison</span>
+          <span className="section-label">Every model tried</span>
           <span className="text-xs text-surface-500 ml-2">(holdout 2024-25)</span>
         </div>
         <table className="w-full">
@@ -58,19 +62,34 @@ export default function OverviewTab({
                 Model
               </th>
               <th scope="col" className="table-header text-left py-2.5 px-3">
-                Spearman ρ
+                Ranking
+                <span className="block text-2xs font-normal normal-case text-surface-600">
+                  1 = perfect order
+                </span>
               </th>
               <th scope="col" className="table-header text-left py-2.5 px-3">
-                MAE
+                Avg miss
+                <span className="block text-2xs font-normal normal-case text-surface-600">
+                  points per player
+                </span>
               </th>
               <th scope="col" className="table-header text-left py-2.5 px-3">
                 RMSE
+                <span className="block text-2xs font-normal normal-case text-surface-600">
+                  punishes big misses
+                </span>
               </th>
               <th scope="col" className="table-header text-left py-2.5 px-3">
-                R²
+                R&sup2;
+                <span className="block text-2xs font-normal normal-case text-surface-600">
+                  variance explained
+                </span>
               </th>
               <th scope="col" className="table-header text-left py-2.5 px-3">
-                vs Zero
+                vs guessing zero
+                <span className="block text-2xs font-normal normal-case text-surface-600">
+                  lower error is better
+                </span>
               </th>
             </tr>
           </thead>
@@ -121,7 +140,11 @@ export default function OverviewTab({
 
       <div>
         <div className="py-3 border-b border-surface-700 mb-3">
-          <span className="section-label">Meta-Learner Weights (Ridge)</span>
+          <span className="section-label">How the six models are blended</span>
+          <p className="text-xs text-surface-500 mt-1">
+            Each one predicts separately, then they are averaged. A model with lower error
+            out-of-fold gets a bigger share, which is why these land close together.
+          </p>
         </div>
         <div className="space-y-3">
           {ensembleWeights.map((m) => (
