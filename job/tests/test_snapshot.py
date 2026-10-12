@@ -371,3 +371,72 @@ class TestPlayersLog:
             cols = set(pd.read_csv(path).columns)
             assert "ict_index" not in cols
             assert {"season", "gameweek", "status", "chance_of_playing_next_round"} <= cols
+
+
+class TestXiLogSchemaChange:
+    """The model column was added to a log that already had rows without it."""
+
+    def _squads(self, model="config_d"):
+        return {
+            model: {
+                "best_xi": {
+                    "captain_id": 1,
+                    "vice_id": 2,
+                    "starters": [{"element": 1}, {"element": 2}, {"element": 3}],
+                }
+            }
+        }
+
+    def test_appending_to_a_log_without_the_model_column_keeps_it_readable(self, tmp_path):
+        """This is the bug: 7-field rows under a 6-field header broke the file."""
+        path = tmp_path / "xi_log.csv"
+        pd.DataFrame(
+            [
+                {
+                    "season": "2026-27",
+                    "gameweek": 5,
+                    "deadline": "d",
+                    "generated_at": "t",
+                    "element": 9,
+                    "role": "starter",
+                }
+            ]
+        ).to_csv(path, index=False)
+
+        with patch.object(snapshot, "XI_LOG", path):
+            snapshot._append_xi_log("2026-27", 6, "d", "t2", self._squads())
+
+        rows = pd.read_csv(path)  # would raise ParserError before the fix
+        assert "model" in rows.columns
+        assert len(rows) == 4
+
+    def test_rows_written_before_the_column_are_labelled_not_dropped(self, tmp_path):
+        path = tmp_path / "xi_log.csv"
+        pd.DataFrame(
+            [
+                {
+                    "season": "2026-27",
+                    "gameweek": 5,
+                    "deadline": "d",
+                    "generated_at": "t",
+                    "element": 9,
+                    "role": "starter",
+                }
+            ]
+        ).to_csv(path, index=False)
+
+        with patch.object(snapshot, "XI_LOG", path):
+            snapshot._append_xi_log("2026-27", 6, "d", "t2", self._squads())
+
+        rows = pd.read_csv(path)
+        assert rows[rows.element == 9].model.iloc[0] == snapshot.DEFAULT_MODEL_ID
+
+    def test_once_migrated_it_appends_normally(self, tmp_path):
+        path = tmp_path / "xi_log.csv"
+        with patch.object(snapshot, "XI_LOG", path):
+            snapshot._append_xi_log("2026-27", 5, "d", "t1", self._squads())
+            snapshot._append_xi_log("2026-27", 6, "d", "t2", self._squads())
+
+        rows = pd.read_csv(path)
+        assert len(rows) == 6
+        assert list(rows.columns).count("model") == 1
