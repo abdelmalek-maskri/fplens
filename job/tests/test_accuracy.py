@@ -122,10 +122,28 @@ def test_xi_missing_player_counts_zero_but_stays_null():
     assert {p["element"]: p["actual"] for p in out["players"]} == {1: 4, 2: None, 3: None}
 
 
-def test_pre_deadline_xi_is_none_without_a_timely_run():
+def test_pre_deadline_xi_is_empty_without_a_timely_run():
     late = _xi_log().assign(generated_at="2026-09-19T10:00:00Z")
-    assert accuracy.pre_deadline_xi(late, SEASON, 5, DEADLINE) is None
-    assert accuracy.pre_deadline_xi(_xi_log(), SEASON, 5, DEADLINE) is not None
+    assert accuracy.pre_deadline_xi(late, SEASON, 5, DEADLINE, "config_d") == {}
+    assert accuracy.pre_deadline_xi(_xi_log(), SEASON, 5, DEADLINE, "config_d") != {}
+
+
+def test_rows_logged_before_the_model_column_count_as_the_default():
+    """The XI log gained a model column after it had already been running."""
+    legacy = _xi_log()
+    assert "model" not in legacy.columns
+
+    out = accuracy.pre_deadline_xi(legacy, SEASON, 5, DEADLINE, "config_d")
+    assert list(out) == ["config_d"]
+
+
+def test_each_model_gets_its_own_xi():
+    mine = _xi_log().assign(model="config_d")
+    theirs = _xi_log().assign(model="baseline", element=[7, 8, 9])
+    out = accuracy.pre_deadline_xi(pd.concat([mine, theirs]), SEASON, 5, DEADLINE, "config_d")
+
+    assert sorted(out) == ["baseline", "config_d"]
+    assert sorted(out["baseline"].element) == [7, 8, 9]
 
 
 def test_build_skips_finished_weeks_without_forecasts(tmp_path):
@@ -174,4 +192,4 @@ def test_last_seasons_gameweek_five_is_not_scored_as_this_one():
     assert (forecasts["config_d"].predicted_points != 99.0).all()
 
     old_xi = _xi_log().assign(season="2025-26")
-    assert accuracy.pre_deadline_xi(old_xi, SEASON, 5, DEADLINE) is None
+    assert accuracy.pre_deadline_xi(old_xi, SEASON, 5, DEADLINE, "config_d") == {}

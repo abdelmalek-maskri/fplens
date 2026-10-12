@@ -226,28 +226,33 @@ def _append_xi_log(
     gameweek: int,
     deadline: str | None,
     generated_at: str,
-    best_squad: dict,
+    best_squads: dict[str, dict],
 ) -> None:
-    """Record the optimal XI so it can be scored against the average manager.
+    """Record each model's optimal XI so it can be scored later.
 
-    The prediction log alone is not enough to rebuild the XI later: the solver
-    also depends on prices, which move during the week. Eleven rows per run.
+    The prediction log alone is not enough to rebuild an XI: the solver also
+    depends on prices, which move during the week. Eleven rows per model per run.
+
+    Rows written before this carried no model column; they came from the default
+    model, and accuracy.py reads them that way.
     """
-    xi = best_squad["best_xi"]
-    role = {xi["captain_id"]: "captain", xi["vice_id"]: "vice"}
-    log = pd.DataFrame(
-        [
+    rows = []
+    for model_id, squad in best_squads.items():
+        xi = squad["best_xi"]
+        role = {xi["captain_id"]: "captain", xi["vice_id"]: "vice"}
+        rows += [
             {
                 "season": season,
                 "gameweek": gameweek,
                 "deadline": deadline,
                 "generated_at": generated_at,
+                "model": model_id,
                 "element": int(s["element"]),
                 "role": role.get(s["element"], "starter"),
             }
             for s in xi["starters"]
         ]
-    )
+    log = pd.DataFrame(rows)
     XI_LOG.parent.mkdir(parents=True, exist_ok=True)
     log.to_csv(XI_LOG, mode="a", header=not XI_LOG.exists(), index=False)
 
@@ -344,7 +349,9 @@ def build(
     players = _build_players(per_model[default_id], histories, fixtures, shap)
 
     print("Solving the optimal squad...")
-    best_squad = solve_best_squad(per_model[default_id], budget=SQUAD_BUDGET)
+    # One squad per model, so both the optimal XI and accuracy pages can offer
+    # the same choice of model. Each solve is well under a second.
+    best_squads = {mid: solve_best_squad(df, budget=SQUAD_BUDGET) for mid, df in per_model.items()}
 
     print("Predicting GW+2 and GW+3...")
     multi_gw = predict_multi_gw(
@@ -373,7 +380,12 @@ def build(
     _write_json(staging / "models.json", model_info)
     _write_json(staging / "players.json", players)
     _write_json(staging / "multi_gw.json", multi_gw)
-    _write_json(staging / "best_squad.json", best_squad)
+    # Every model's squad, so the page can offer the same choice the dashboard
+    # and accuracy pages do. About 8 KB each.
+    _write_json(
+        staging / "best_squad.json",
+        {"default_model": default_id, "squads": best_squads},
+    )
     _write_json(staging / "fixtures.json", fixtures)
     _write_json(staging / "model_insights.json", _build_model_insights())
     _write_json(staging / "manifest.json", manifest)
@@ -412,7 +424,7 @@ def build(
             gameweek=gameweek,
             deadline=event.get("deadline_time"),
             generated_at=manifest["generated_at"],
-            best_squad=best_squad,
+            best_squads=best_squads,
         )
 
     print(f"Wrote {len(per_model)} prediction files for GW{gameweek} to {out_dir}")
