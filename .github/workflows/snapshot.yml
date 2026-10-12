@@ -88,7 +88,7 @@ jobs:
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add app/public/data app/public/accuracy.json app/public/accuracy_history.json data/xi_log.csv
+          git add app/public/data app/public/accuracy.json app/public/accuracy_history.json data/xi_log.csv data/players_log.csv
           if git diff --cached --quiet; then
             echo "Snapshot unchanged, nothing to commit"
           else

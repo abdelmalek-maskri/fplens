@@ -136,10 +136,21 @@ Each run also appends to two logs, which is what makes scoring possible later:
 ```text
 data/predictions_log.csv   every model's prediction for every player, timestamped
 data/xi_log.csv            the eleven the solver picked, and who wore the armband
+data/players_log.csv       each player's price, status and availability, per gameweek
 ```
 
 The XI needs its own log because the solver also depends on prices, which move
 during the week, so the team cannot be reconstructed from the predictions alone.
+
+`players_log.csv` exists because the injury features are reconstructed from
+vaastav's commit history, and that repository has published only gameweek 1 of
+2026-27 and has been quiet since August. This is the same data, taken from the
+bootstrap call the job already makes, so a season can still be retrained if the
+upstream repo stops. It is written after a gameweek finishes rather than before
+its deadline, matching when vaastav commits, so the +1 gameweek anti-leakage
+shift in `ml/pipelines/injury` keeps its meaning. Once per gameweek, not once
+per run: 17 fields instead of 109 and 38 writes instead of 270 is 1.7 MB a
+season rather than 108 MB.
 
 **`predictions_log.csv` is not in git.** It gains about 6,000 rows a run, so
 committing it grew the repository every day for a file nothing but the accuracy
