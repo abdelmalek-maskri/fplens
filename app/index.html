@@ -11,6 +11,16 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <title>FPLens</title>
+
+    <!-- Cloudflare Web Analytics. No cookies and no fingerprinting, so no
+         consent banner is needed. The token is public by design: it ships to
+         every visitor and only says which site a pageview belongs to.
+         `defer` so it never blocks the page rendering. -->
+    <script
+      defer
+      src="https://static.cloudflareinsights.com/beacon.min.js"
+      data-cf-beacon='{"token": "f7367c7c1ce44cdb8aaa14c68c0c71c4"}'
+    ></script>
   </head>
   <body>
     <div id="root"></div>
