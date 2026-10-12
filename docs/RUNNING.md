@@ -74,8 +74,7 @@ make accuracy   # 2 FPL API calls, a few seconds, rewrites app/public/accuracy.j
 
 This scores the last finished gameweek against what was predicted for it, and needs
 no models at all: it reads `data/predictions_log.csv` and `data/xi_log.csv`, both of
-which the snapshot writes and both of which are committed. It prints the gameweek it
-scored, or says why it could not:
+which the snapshot writes. It prints the gameweek it scored, or says why it could not:
 
 ```text
 2026-27 GW5: scored 9 models, final=True
