@@ -193,3 +193,58 @@ def test_last_seasons_gameweek_five_is_not_scored_as_this_one():
 
     old_xi = _xi_log().assign(season="2025-26")
     assert accuracy.pre_deadline_xi(old_xi, SEASON, 5, DEADLINE, "config_d") == {}
+
+
+def _result(gw, final=True, spearman=0.7, points=40):
+    return {
+        "season": SEASON,
+        "gameweek": gw,
+        "deadline": DEADLINE,
+        "final": final,
+        "models": {"config_d": {"spearman": spearman, "mae": 1.2, "count": 600, "players": [1, 2]}},
+        "xi": {"points": points, "average_manager": 48, "highest": 126, "players": [1, 2]},
+    }
+
+
+def test_history_keeps_one_entry_per_gameweek(tmp_path):
+    """The job runs daily, so the same gameweek is scored again and again."""
+    path = tmp_path / "history.json"
+    accuracy.update_history(_result(5), path)
+    accuracy.update_history(_result(5), path)
+    out = accuracy.update_history(_result(6), path)
+
+    assert [w["gameweek"] for w in out["gameweeks"]] == [5, 6]
+
+
+def test_a_provisional_score_is_replaced_by_the_final_one(tmp_path):
+    """Bonus points move until FPL signs off, so a later run must win."""
+    path = tmp_path / "history.json"
+    accuracy.update_history(_result(5, final=False, points=40), path)
+    out = accuracy.update_history(_result(5, final=True, points=43), path)
+
+    assert len(out["gameweeks"]) == 1
+    assert out["gameweeks"][0]["final"] is True
+    assert out["gameweeks"][0]["xi"]["points"] == 43
+
+
+def test_a_new_season_starts_a_fresh_record(tmp_path):
+    """Gameweek numbers repeat every year."""
+    path = tmp_path / "history.json"
+    accuracy.update_history(_result(5), path)
+
+    next_year = _result(5) | {"season": "2027-28"}
+    out = accuracy.update_history(next_year, path)
+
+    assert out["season"] == "2027-28"
+    assert len(out["gameweeks"]) == 1
+
+
+def test_history_drops_the_per_player_detail(tmp_path):
+    """595 KB a gameweek is the full file; the record has to stay small."""
+    path = tmp_path / "history.json"
+    out = accuracy.update_history(_result(5), path)
+    week = out["gameweeks"][0]
+
+    assert "players" not in week["models"]["config_d"]
+    assert "players" not in week["xi"]
+    assert path.stat().st_size < 1024

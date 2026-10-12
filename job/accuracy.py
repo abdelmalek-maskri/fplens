@@ -24,6 +24,11 @@ XI_LOG = Path("data/xi_log.csv")
 # every run, so anything else written there is wiped the next morning.
 OUT = Path("app/public/accuracy.json")
 
+# One small entry per scored gameweek, so the season's record survives. OUT holds
+# a single gameweek in full and is overwritten weekly; without this the history
+# would be thrown away every run. Roughly 700 bytes a gameweek, 26 KB a season.
+HISTORY = Path("app/public/accuracy_history.json")
+
 POSITIONS = {1: "GK", 2: "DEF", 3: "MID", 4: "FWD"}
 
 
@@ -138,6 +143,41 @@ def score(forecast: pd.DataFrame, actuals: dict, players: dict) -> dict:
     }
 
 
+def summarise(result: dict) -> dict:
+    """The few numbers a season chart needs, without the per-player detail."""
+    return {
+        "gameweek": result["gameweek"],
+        "deadline": result["deadline"],
+        "final": result["final"],
+        "models": {m: {k: v[k] for k in ("spearman", "mae", "count")} for m, v in result["models"].items()},
+        "xi": ({k: result["xi"][k] for k in ("points", "average_manager")} if result["xi"] else None),
+    }
+
+
+def update_history(result: dict, path: Path = HISTORY) -> dict:
+    """Add this gameweek to the season's record, replacing any earlier entry.
+
+    The job runs daily, so the same gameweek is scored many times: first
+    provisionally, then again once FPL settles the bonus points. Each run
+    replaces its own entry rather than appending a duplicate.
+    """
+    try:
+        history = json.loads(path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError):
+        history = {}
+
+    # Gameweek numbers repeat every year, so a new season starts a new record.
+    weeks = history.get("gameweeks", []) if history.get("season") == result["season"] else []
+    weeks = [w for w in weeks if w["gameweek"] != result["gameweek"]]
+    weeks.append(summarise(result))
+    weeks.sort(key=lambda w: w["gameweek"])
+
+    out = {"season": result["season"], "gameweeks": weeks}
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(out, separators=(",", ":"), allow_nan=False), encoding="utf-8")
+    return out
+
+
 def build(log_path: Path = LOG, xi_log_path: Path = XI_LOG, out_path: Path = OUT) -> dict | None:
     if not log_path.exists():
         print(f"No prediction log at {log_path}; nothing to score yet")
@@ -190,7 +230,11 @@ def build(log_path: Path = LOG, xi_log_path: Path = XI_LOG, out_path: Path = OUT
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(result, separators=(",", ":"), allow_nan=False), encoding="utf-8")
-    print(f"{season} GW{event['id']}: scored {len(forecasts)} models, final={result['final']}")
+    history = update_history(result)
+    print(
+        f"{season} GW{event['id']}: scored {len(forecasts)} models, final={result['final']}, "
+        f"{len(history['gameweeks'])} gameweek(s) on record"
+    )
     return result
 
 
