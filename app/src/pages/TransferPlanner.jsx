@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { POSITION_COLORS } from "../lib/constants";
 import TeamBadge from "../components/badges/TeamBadge";
 import { useTransfers } from "../hooks";
@@ -140,7 +140,7 @@ export default function TransferPlanner() {
               </button>
             </>
           )}
-          {transfers.length === 0 && (
+          {transfers.length === 0 && !noTeam && (
             <span className="text-surface-400">
               Squad <span className="font-data text-surface-200">{teamTotal.toFixed(1)} pts</span>{" "}
               over {horizon} GW{horizon > 1 ? "s" : ""}
@@ -151,16 +151,20 @@ export default function TransferPlanner() {
       </div>
 
       {noTeam && (
-        <div className="py-12 text-center">
-          <p className="text-surface-400 text-sm">
-            Enter your FPL ID on the{" "}
-            <span
-              className="text-brand-400 cursor-pointer hover:underline"
-              onClick={() => navigate("/my-team")}
-            >
-              My Team
-            </span>{" "}
-            page to plan transfers.
+        <div className="py-12 max-w-md">
+          <h2 className="text-lg font-bold text-surface-100">Load your squad first</h2>
+          <p className="text-sm text-surface-400 mt-2">
+            This page suggests transfers by comparing the players you own against every other
+            player, over the next one to three gameweeks. It needs to know who you own.
+          </p>
+          <Link
+            to="/my-team"
+            className="inline-block mt-4 px-4 py-2 rounded bg-brand-600 text-white text-sm font-medium hover:bg-brand-500 transition-colors"
+          >
+            Enter your FPL ID
+          </Link>
+          <p className="text-xs text-surface-500 mt-3">
+            Any manager&apos;s ID works, not only your own.
           </p>
         </div>
       )}
