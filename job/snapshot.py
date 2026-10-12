@@ -32,7 +32,7 @@ from job.fetch_live_data import (
     get_current_gameweek,
     get_player_fdr,
 )
-from job.models import MODEL_REGISTRY, load_models, selected_model_ids
+from job.models import DEFAULT_MODEL_ID, MODEL_REGISTRY, load_models, selected_model_ids
 from job.multi_gw import add_future_fixture_features, load_horizon_models, predict_multi_gw
 from job.predict import compute_player_shap, get_model_features, predict, prepare_features
 from job.solvers import solve_best_squad
@@ -311,7 +311,24 @@ def _append_xi_log(
         ]
     log = pd.DataFrame(rows)
     XI_LOG.parent.mkdir(parents=True, exist_ok=True)
-    log.to_csv(XI_LOG, mode="a", header=not XI_LOG.exists(), index=False)
+
+    if not XI_LOG.exists():
+        log.to_csv(XI_LOG, index=False)
+        return
+
+    # Same guard as the prediction log. Appending rows with a column the header
+    # does not have leaves the file unreadable: pandas sees 7 fields under a
+    # 6-field header and refuses the whole file, which is exactly what happened
+    # when the model column was added. On a schema change, rewrite once.
+    existing = pd.read_csv(XI_LOG)
+    if list(existing.columns) != list(log.columns):
+        # Rows written before the model column came from the default model, so
+        # they are labelled rather than discarded.
+        if "model" not in existing.columns:
+            existing["model"] = DEFAULT_MODEL_ID
+        pd.concat([existing, log], ignore_index=True)[log.columns].to_csv(XI_LOG, index=False)
+    else:
+        log.to_csv(XI_LOG, mode="a", header=False, index=False)
 
 
 def _report_coverage(model_info: list[dict], max_zero_filled: int | None) -> None:
