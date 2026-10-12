@@ -151,7 +151,7 @@ export default function TransferPlanner() {
       </div>
 
       {noTeam && (
-        <div className="py-12 max-w-md">
+        <div className="py-20 max-w-md mx-auto text-center">
           <h2 className="text-lg font-bold text-surface-100">Load your squad first</h2>
           <p className="text-sm text-surface-400 mt-2">
             This page suggests transfers by comparing the players you own against every other
