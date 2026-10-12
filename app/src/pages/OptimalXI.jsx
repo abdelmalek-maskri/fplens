@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { PitchView } from "../components/pitch";
 import ErrorState from "../components/feedback/ErrorState";
@@ -6,7 +7,8 @@ import { useOptimalXI } from "../hooks";
 
 export default function OptimalXI() {
   const navigate = useNavigate();
-  const { data: plannerData, isLoading, error } = useOptimalXI();
+  const [modelId, setModelId] = useState(null);
+  const { data: plannerData, isLoading, error } = useOptimalXI(modelId);
 
   const recommended = plannerData?.recommended;
   const BUDGET = plannerData?.budget ?? 100;
@@ -48,6 +50,24 @@ export default function OptimalXI() {
           </span>
           <span className="text-xs text-surface-500 ml-1.5">remaining</span>
         </div>
+
+        {plannerData.models?.length > 1 && (
+          <div className="ml-auto flex items-center gap-2">
+            <span className="text-xs text-surface-500">Picked by</span>
+            <select
+              value={plannerData.selected}
+              onChange={(e) => setModelId(e.target.value)}
+              aria-label="Which model picks the squad"
+              className="bg-surface-800 border border-surface-700 rounded px-3 py-1.5 text-sm text-surface-200 focus:outline-none cursor-pointer"
+            >
+              {plannerData.models.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       <div className="flex-1 min-h-0">

@@ -15,6 +15,7 @@ import pandas as pd
 import requests
 
 from job.fetch_live_data import FPL_BASE_URL, current_season, get_bootstrap_data
+from job.models import DEFAULT_MODEL_ID
 
 LOG = Path("data/predictions_log.csv")
 XI_LOG = Path("data/xi_log.csv")
@@ -22,6 +23,11 @@ XI_LOG = Path("data/xi_log.csv")
 # Outside app/public/data on purpose: the snapshot replaces that whole directory
 # every run, so anything else written there is wiped the next morning.
 OUT = Path("app/public/accuracy.json")
+
+# One small entry per scored gameweek, so the season's record survives. OUT holds
+# a single gameweek in full and is overwritten weekly; without this the history
+# would be thrown away every run. Roughly 700 bytes a gameweek, 26 KB a season.
+HISTORY = Path("app/public/accuracy_history.json")
 
 POSITIONS = {1: "GK", 2: "DEF", 3: "MID", 4: "FWD"}
 
@@ -51,10 +57,21 @@ def pre_deadline_forecasts(log: pd.DataFrame, season: str, gw: int, deadline: st
     return {model: g[g.ts == g.ts.max()] for model, g in rows.groupby("model")}
 
 
-def pre_deadline_xi(log: pd.DataFrame, season: str, gw: int, deadline: str) -> pd.DataFrame | None:
-    """The last optimal XI logged before the deadline, or None if there wasn't one."""
+def pre_deadline_xi(
+    log: pd.DataFrame, season: str, gw: int, deadline: str, default_model: str
+) -> dict[str, pd.DataFrame]:
+    """The last XI each model logged before the deadline, keyed by model id.
+
+    Rows written before the log carried a model column came from the default
+    model, so they are read as that rather than discarded.
+    """
     rows = _before_deadline(log, season, gw, deadline)
-    return None if rows.empty else rows[rows.ts == rows.ts.max()]
+    if rows.empty:
+        return {}
+    if "model" not in rows.columns:
+        rows = rows.assign(model=default_model)
+    rows = rows.assign(model=rows["model"].fillna(default_model))
+    return {model: group[group.ts == group.ts.max()] for model, group in rows.groupby("model")}
 
 
 def score_xi(xi: pd.DataFrame, actuals: dict, players: dict, event: dict) -> dict:
@@ -126,6 +143,41 @@ def score(forecast: pd.DataFrame, actuals: dict, players: dict) -> dict:
     }
 
 
+def summarise(result: dict) -> dict:
+    """The few numbers a season chart needs, without the per-player detail."""
+    return {
+        "gameweek": result["gameweek"],
+        "deadline": result["deadline"],
+        "final": result["final"],
+        "models": {m: {k: v[k] for k in ("spearman", "mae", "count")} for m, v in result["models"].items()},
+        "xi": ({k: result["xi"][k] for k in ("points", "average_manager")} if result["xi"] else None),
+    }
+
+
+def update_history(result: dict, path: Path = HISTORY) -> dict:
+    """Add this gameweek to the season's record, replacing any earlier entry.
+
+    The job runs daily, so the same gameweek is scored many times: first
+    provisionally, then again once FPL settles the bonus points. Each run
+    replaces its own entry rather than appending a duplicate.
+    """
+    try:
+        history = json.loads(path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError):
+        history = {}
+
+    # Gameweek numbers repeat every year, so a new season starts a new record.
+    weeks = history.get("gameweeks", []) if history.get("season") == result["season"] else []
+    weeks = [w for w in weeks if w["gameweek"] != result["gameweek"]]
+    weeks.append(summarise(result))
+    weeks.sort(key=lambda w: w["gameweek"])
+
+    out = {"season": result["season"], "gameweeks": weeks}
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(out, separators=(",", ":"), allow_nan=False), encoding="utf-8")
+    return out
+
+
 def build(log_path: Path = LOG, xi_log_path: Path = XI_LOG, out_path: Path = OUT) -> dict | None:
     if not log_path.exists():
         print(f"No prediction log at {log_path}; nothing to score yet")
@@ -149,20 +201,40 @@ def build(log_path: Path = LOG, xi_log_path: Path = XI_LOG, out_path: Path = OUT
         return None
 
     actuals = fetch_actuals(event["id"])
-    xi = pre_deadline_xi(xi_log, season, event["id"], event["deadline_time"]) if xi_log is not None else None
+    xis = (
+        pre_deadline_xi(xi_log, season, event["id"], event["deadline_time"], DEFAULT_MODEL_ID)
+        if xi_log is not None
+        else {}
+    )
+    scored_xis = {m: score_xi(x, actuals, players, event) for m, x in xis.items()}
+
+    models = {}
+    for model, f in forecasts.items():
+        entry = score(f, actuals, players)
+        # None where this model has no XI logged for the gameweek, which is the
+        # case for every model but the default before per-model logging began.
+        entry["xi"] = scored_xis.get(model)
+        models[model] = entry
+
     result = {
         "season": season,
         "gameweek": event["id"],
         "deadline": event["deadline_time"],
         # data_checked is FPL's sign-off; before it, bonus points can still move
         "final": bool(event["data_checked"]),
-        "models": {model: score(f, actuals, players) for model, f in forecasts.items()},
-        "xi": score_xi(xi, actuals, players, event) if xi is not None else None,
+        "models": models,
+        # Kept alongside the per-model copies so anything reading the old shape
+        # still finds the recommended team.
+        "xi": scored_xis.get(DEFAULT_MODEL_ID),
     }
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(result, separators=(",", ":"), allow_nan=False), encoding="utf-8")
-    print(f"{season} GW{event['id']}: scored {len(forecasts)} models, final={result['final']}")
+    history = update_history(result)
+    print(
+        f"{season} GW{event['id']}: scored {len(forecasts)} models, final={result['final']}, "
+        f"{len(history['gameweeks'])} gameweek(s) on record"
+    )
     return result
 
 

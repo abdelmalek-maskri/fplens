@@ -1,7 +1,6 @@
 import { useState, useMemo, useEffect, Fragment } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { POSITION_COLORS, FDR_MAP } from "../lib/constants";
-import MiniSparkline from "../components/charts/MiniSparkline";
+import { POSITION_COLORS } from "../lib/constants";
 import StatusBadge from "../components/badges/StatusBadge";
 import FdrBadge from "../components/badges/FdrBadge";
 import SortHeader from "../components/ui/SortHeader";
@@ -11,7 +10,9 @@ import TabBar from "../components/ui/TabBar";
 import ErrorState from "../components/feedback/ErrorState";
 import EmptyState from "../components/feedback/EmptyState";
 import Loading from "../components/feedback/Loading";
-import { usePredictions } from "../hooks";
+import { usePredictions, useFixtures } from "../hooks";
+import { getPlayer } from "../lib/api";
+import { describe } from "../lib/shap";
 import DifferentialsTab from "./dashboard/DifferentialsTab";
 import XGTab from "./dashboard/XGTab";
 import PriceTab from "./dashboard/PriceTab";
@@ -47,6 +48,26 @@ export default function Dashboard() {
   const [expandedPlayer, setExpandedPlayer] = useState(null);
 
   const { data, models, isLoading, error } = usePredictions(selectedModel);
+  const { data: fixtureData } = useFixtures();
+
+  // SHAP lives in players.json, not the predictions file, so it is fetched on
+  // the first expand rather than with the table. getPlayer reads the whole file
+  // and the browser caches it, so every expand after the first is free.
+  const [shapById, setShapById] = useState({});
+  const expand = (element) => {
+    setExpandedPlayer((cur) => (cur === element ? null : element));
+    if (shapById[element] === undefined) {
+      setShapById((prev) => ({ ...prev, [element]: null }));
+      getPlayer(element)
+        .then((full) => setShapById((prev) => ({ ...prev, [element]: full.shap ?? [] })))
+        .catch(() => setShapById((prev) => ({ ...prev, [element]: [] })));
+    }
+  };
+
+  // FPL's own rating of this club's next fixture. Replaces a hardcoded map of
+  // club strengths that was a season out of date and missing four clubs.
+  const fdrFor = (teamName) =>
+    fixtureData?.fixtures[teamName]?.find((f) => f.gw === fixtureData.currentGw)?.atkFdr;
   useEffect(() => {
     if (!selectedModel && models.length > 0) setSelectedModel(models[0].id);
   }, [models, selectedModel]);
@@ -190,11 +211,14 @@ export default function Dashboard() {
               >
                 Predicted
               </SortHeader>
-              <th scope="col" className="table-header text-left py-2.5 px-3">
-                Status
+              <th scope="col" className="table-header text-left py-2.5 px-3 w-56">
+                Availability
               </th>
               <SortHeader field="form" sortBy={sortBy} sortDesc={sortDesc} onSort={handleSort}>
                 Form
+                <span className="block text-2xs font-normal normal-case text-surface-600">
+                  pts / game
+                </span>
               </SortHeader>
               <SortHeader field="value" sortBy={sortBy} sortDesc={sortDesc} onSort={handleSort}>
                 Price
@@ -205,10 +229,13 @@ export default function Dashboard() {
                 sortDesc={sortDesc}
                 onSort={handleSort}
               >
-                Own%
+                Owned by
               </SortHeader>
               <th scope="col" className="table-header text-left py-2.5 px-3">
-                EO%
+                Effective
+                <span className="block text-2xs font-normal normal-case text-surface-600">
+                  owned + captained
+                </span>
               </th>
               <th scope="col" className="table-header text-left py-2.5 px-3">
                 Fixture
@@ -219,7 +246,7 @@ export default function Dashboard() {
             {filteredPredictions.map((p, idx) => (
               <Fragment key={p.element}>
                 <tr
-                  onClick={() => setExpandedPlayer(expandedPlayer === p.element ? null : p.element)}
+                  onClick={() => expand(p.element)}
                   className={`border-t border-surface-800/60 hover:bg-surface-800/40 transition-colors cursor-pointer ${
                     expandedPlayer === p.element ? "bg-surface-800/30" : ""
                   }`}
@@ -266,15 +293,12 @@ export default function Dashboard() {
                     </span>
                   </td>
                   <td className="py-2.5 px-3">
-                    <StatusBadge status={p.status} chance={p.chance_of_playing} compact />
-                    {p.news && (
-                      <p
-                        className="text-xs text-surface-500 max-w-[160px] truncate mt-0.5"
-                        title={p.news}
-                      >
-                        {p.news}
-                      </p>
+                    {p.status === "a" ? (
+                      <span className="text-xs text-surface-500">Fit</span>
+                    ) : (
+                      <StatusBadge status={p.status} />
                     )}
+                    {p.news && <p className="text-xs text-surface-500 mt-0.5">{p.news}</p>}
                   </td>
                   <td className="py-2.5 px-3">
                     <div className="flex items-center gap-1.5">
@@ -287,16 +311,15 @@ export default function Dashboard() {
                               : "text-surface-500"
                         }`}
                       >
-                        {p.form}
+                        {p.form.toFixed(1)}
                       </span>
-                      <MiniSparkline pts={p.pts_last5} />
                     </div>
                   </td>
                   <td className="py-2.5 px-3 text-surface-300 font-data tabular-nums">
-                    £{p.value}m
+                    £{p.value.toFixed(1)}m
                   </td>
                   <td className="py-2.5 px-3 text-surface-300 font-data tabular-nums">
-                    {p.selected_by_percent}%
+                    {p.selected_by_percent.toFixed(1)}%
                   </td>
                   <td className="py-2.5 px-3">
                     <span
@@ -312,56 +335,53 @@ export default function Dashboard() {
                     </span>
                   </td>
                   <td className="py-2.5 px-3">
-                    <FdrBadge opponent={p.opponent_name} fdrMap={FDR_MAP} />
+                    <FdrBadge opponent={p.opponent_name} fdr={fdrFor(p.team_name)} />
                   </td>
                 </tr>
                 {expandedPlayer === p.element && (
                   <tr key={`${p.element}-detail`}>
-                    <td colSpan={9}>
-                      <div className="px-4 py-3 bg-surface-800/20 flex items-center gap-6 flex-wrap text-xs">
-                        <div>
-                          <span className="text-surface-500">xG</span>
-                          <span className="ml-1.5 text-surface-200 font-data">{p.xG || 0}</span>
-                        </div>
-                        <div>
-                          <span className="text-surface-500">xA</span>
-                          <span className="ml-1.5 text-surface-200 font-data">{p.xA || 0}</span>
-                        </div>
-                        <div>
-                          <span className="text-surface-500">Goals</span>
-                          <span className="ml-1.5 text-surface-200 font-data">{p.goals || 0}</span>
-                        </div>
-                        <div>
-                          <span className="text-surface-500">Assists</span>
-                          <span className="ml-1.5 text-surface-200 font-data">
-                            {p.assists || 0}
+                    <td colSpan={9} className="bg-surface-800/20">
+                      <div className="px-4 py-3">
+                        <div className="flex items-baseline gap-2 mb-2">
+                          <span className="section-label">Why {p.predicted_points.toFixed(1)}</span>
+                          <span className="text-2xs text-surface-500">
+                            the biggest factors, in points
                           </span>
                         </div>
-                        <div>
-                          <span className="text-surface-500">Bonus</span>
-                          <span className="ml-1.5 text-surface-200 font-data">{p.bonus || 0}</span>
-                        </div>
-                        <div>
-                          <span className="text-surface-500">Minutes</span>
-                          <span className="ml-1.5 text-surface-200 font-data">
-                            {p.minutes || 0}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="text-surface-500">ICT</span>
-                          <span className="ml-1.5 text-surface-200 font-data">
-                            {p.ict_index || 0}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="text-surface-500">Uncertainty</span>
-                          <span className="ml-1.5 text-surface-200 font-data">
-                            ±{p.uncertainty?.toFixed(1) || 0}
-                          </span>
-                        </div>
+                        {shapById[p.element] == null ? (
+                          <p className="text-xs text-surface-500">Loading...</p>
+                        ) : shapById[p.element].length === 0 ? (
+                          <p className="text-xs text-surface-500">
+                            No breakdown available for this player.
+                          </p>
+                        ) : (
+                          <div className="flex flex-wrap gap-x-8 gap-y-1 max-w-4xl">
+                            {shapById[p.element].map((factor) => (
+                              <div
+                                key={factor.feature}
+                                className="flex items-center gap-2 text-xs w-72"
+                              >
+                                <span className="text-surface-300 flex-1 truncate">
+                                  {describe(factor, p)}
+                                </span>
+                                <span
+                                  className={`font-data tabular-nums font-medium ${
+                                    factor.impact > 0 ? "text-success-400" : "text-danger-400"
+                                  }`}
+                                >
+                                  {factor.impact > 0 ? "+" : "\u2212"}
+                                  {Math.abs(factor.impact).toFixed(1)}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                         <button
-                          onClick={() => navigate(`/player/${p.element}`)}
-                          className="ml-auto text-brand-400 hover:text-brand-300 transition-colors text-xs"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/player/${p.element}`);
+                          }}
+                          className="mt-2 text-xs text-brand-400 hover:text-brand-300 transition-colors"
                         >
                           Full profile →
                         </button>

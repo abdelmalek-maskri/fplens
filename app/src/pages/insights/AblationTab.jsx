@@ -203,10 +203,10 @@ export default function AblationTab({ ablationConfigs, ablationSignificance, int
           <span className="badge bg-success-500/20 text-success-400 shrink-0 mt-0.5">RQ1</span>
           <div>
             <p className="text-sm text-surface-200 font-medium">
-              Yes,injury features significantly improve predictions
+              Yes, injury data measurably improves predictions
             </p>
             <p className="text-xs text-surface-500 mt-1">
-              Config B reduces MAE by 0.69% over baseline (p {"<"} 0.001). Structured injury data
+              Adding injuries cuts the average miss by 0.69% (p {"<"} 0.001). Structured injury data
               adds signal beyond playing time patterns.
             </p>
           </div>
@@ -215,10 +215,10 @@ export default function AblationTab({ ablationConfigs, ablationSignificance, int
           <span className="badge bg-warning-500/20 text-warning-400 shrink-0 mt-0.5">RQ2</span>
           <div>
             <p className="text-sm text-surface-200 font-medium">
-              Yes,news features provide a small but significant improvement
+              Yes, news adds a small but real improvement
             </p>
             <p className="text-xs text-surface-500 mt-1">
-              Config C reduces MAE by 0.15% vs baseline (p = 0.006). Guardian sentiment captures
+              Adding news cuts the average miss by 0.15% (p = 0.006). Guardian sentiment captures
               soft contextual signals the structured data misses.
             </p>
           </div>

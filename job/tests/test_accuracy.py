@@ -122,10 +122,28 @@ def test_xi_missing_player_counts_zero_but_stays_null():
     assert {p["element"]: p["actual"] for p in out["players"]} == {1: 4, 2: None, 3: None}
 
 
-def test_pre_deadline_xi_is_none_without_a_timely_run():
+def test_pre_deadline_xi_is_empty_without_a_timely_run():
     late = _xi_log().assign(generated_at="2026-09-19T10:00:00Z")
-    assert accuracy.pre_deadline_xi(late, SEASON, 5, DEADLINE) is None
-    assert accuracy.pre_deadline_xi(_xi_log(), SEASON, 5, DEADLINE) is not None
+    assert accuracy.pre_deadline_xi(late, SEASON, 5, DEADLINE, "config_d") == {}
+    assert accuracy.pre_deadline_xi(_xi_log(), SEASON, 5, DEADLINE, "config_d") != {}
+
+
+def test_rows_logged_before_the_model_column_count_as_the_default():
+    """The XI log gained a model column after it had already been running."""
+    legacy = _xi_log()
+    assert "model" not in legacy.columns
+
+    out = accuracy.pre_deadline_xi(legacy, SEASON, 5, DEADLINE, "config_d")
+    assert list(out) == ["config_d"]
+
+
+def test_each_model_gets_its_own_xi():
+    mine = _xi_log().assign(model="config_d")
+    theirs = _xi_log().assign(model="baseline", element=[7, 8, 9])
+    out = accuracy.pre_deadline_xi(pd.concat([mine, theirs]), SEASON, 5, DEADLINE, "config_d")
+
+    assert sorted(out) == ["baseline", "config_d"]
+    assert sorted(out["baseline"].element) == [7, 8, 9]
 
 
 def test_build_skips_finished_weeks_without_forecasts(tmp_path):
@@ -174,4 +192,59 @@ def test_last_seasons_gameweek_five_is_not_scored_as_this_one():
     assert (forecasts["config_d"].predicted_points != 99.0).all()
 
     old_xi = _xi_log().assign(season="2025-26")
-    assert accuracy.pre_deadline_xi(old_xi, SEASON, 5, DEADLINE) is None
+    assert accuracy.pre_deadline_xi(old_xi, SEASON, 5, DEADLINE, "config_d") == {}
+
+
+def _result(gw, final=True, spearman=0.7, points=40):
+    return {
+        "season": SEASON,
+        "gameweek": gw,
+        "deadline": DEADLINE,
+        "final": final,
+        "models": {"config_d": {"spearman": spearman, "mae": 1.2, "count": 600, "players": [1, 2]}},
+        "xi": {"points": points, "average_manager": 48, "highest": 126, "players": [1, 2]},
+    }
+
+
+def test_history_keeps_one_entry_per_gameweek(tmp_path):
+    """The job runs daily, so the same gameweek is scored again and again."""
+    path = tmp_path / "history.json"
+    accuracy.update_history(_result(5), path)
+    accuracy.update_history(_result(5), path)
+    out = accuracy.update_history(_result(6), path)
+
+    assert [w["gameweek"] for w in out["gameweeks"]] == [5, 6]
+
+
+def test_a_provisional_score_is_replaced_by_the_final_one(tmp_path):
+    """Bonus points move until FPL signs off, so a later run must win."""
+    path = tmp_path / "history.json"
+    accuracy.update_history(_result(5, final=False, points=40), path)
+    out = accuracy.update_history(_result(5, final=True, points=43), path)
+
+    assert len(out["gameweeks"]) == 1
+    assert out["gameweeks"][0]["final"] is True
+    assert out["gameweeks"][0]["xi"]["points"] == 43
+
+
+def test_a_new_season_starts_a_fresh_record(tmp_path):
+    """Gameweek numbers repeat every year."""
+    path = tmp_path / "history.json"
+    accuracy.update_history(_result(5), path)
+
+    next_year = _result(5) | {"season": "2027-28"}
+    out = accuracy.update_history(next_year, path)
+
+    assert out["season"] == "2027-28"
+    assert len(out["gameweeks"]) == 1
+
+
+def test_history_drops_the_per_player_detail(tmp_path):
+    """595 KB a gameweek is the full file; the record has to stay small."""
+    path = tmp_path / "history.json"
+    out = accuracy.update_history(_result(5), path)
+    week = out["gameweeks"][0]
+
+    assert "players" not in week["models"]["config_d"]
+    assert "players" not in week["xi"]
+    assert path.stat().st_size < 1024

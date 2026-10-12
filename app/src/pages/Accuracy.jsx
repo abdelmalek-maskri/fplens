@@ -41,89 +41,123 @@ export default function Accuracy() {
     );
   }
 
-  const xi = data.xi;
+  // Each model has its own XI from this gameweek on. Gameweeks scored before
+  // per-model logging began have only the default model's, held at the top
+  // level, so fall back to that for the model that produced it.
+  const xi = model?.xi ?? (selected === data.defaultModel ? data.xi : null);
   const margin = xi && xi.average_manager != null ? xi.points - xi.average_manager : null;
 
   return (
     <div className="space-y-6 stagger">
-      <div className="flex items-center gap-3">
-        <span className="text-sm text-surface-300">Gameweek {data.gameweek}</span>
-        <span className="text-xs text-surface-500">how last week's predictions held up</span>
-        {!data.final && (
-          <span
-            className="badge badge-warning"
-            title="Bonus points can still change until FPL signs off the gameweek"
-          >
-            provisional
-          </span>
-        )}
+      <div>
+        <div className="flex items-baseline gap-3 flex-wrap">
+          <h2 className="text-xl font-bold text-surface-100">Gameweek {data.gameweek} results</h2>
+          {!data.final && (
+            <span
+              className="badge badge-warning"
+              title="Bonus points can still change until FPL signs off the gameweek"
+            >
+              provisional
+            </span>
+          )}
+        </div>
       </div>
 
+      {!xi && (
+        <p className="text-sm text-surface-500 py-5 border-y border-surface-800">
+          No team was recorded for{" "}
+          <span className="text-surface-300">{data.names[selected] ?? selected}</span> in gameweek{" "}
+          {data.gameweek}. Only the published model's team was logged before this gameweek.
+        </p>
+      )}
+
       {xi && (
-        /* The outcome before the statistics. rho says the model ranks well;
-           this says whether fielding the team it picked would have beaten the field. */
-        <div className="py-3 border-y border-surface-800 space-y-2.5">
-          <div className="flex items-center gap-6 flex-wrap">
-            <div>
-              <span className="text-lg font-bold font-data tabular-nums text-surface-100">
-                {xi.points}
-              </span>
-              <span className="text-xs text-surface-500 ml-1.5">the model's team</span>
-            </div>
+        /* The outcome before the statistics. The ranking score says the model
+           orders players well; this says whether fielding the team it picked
+           would actually have beaten the field. */
+        <div className="py-5 border-y border-surface-800">
+          <p className="text-base text-surface-200">
+            The eleven{" "}
+            <span className="font-semibold text-surface-100">
+              {data.names[selected] ?? selected}
+            </span>{" "}
+            picked scored{" "}
+            <span className="text-2xl font-bold font-data tabular-nums text-surface-100">
+              {xi.points}
+            </span>{" "}
+            points.
+            {margin != null && (
+              <>
+                {" "}
+                That is{" "}
+                <span
+                  className={`font-semibold ${margin > 0 ? "text-success-400" : margin < 0 ? "text-danger-400" : "text-surface-200"}`}
+                >
+                  {margin > 0
+                    ? `${margin} ahead of`
+                    : margin < 0
+                      ? `${-margin} behind`
+                      : "level with"}
+                </span>{" "}
+                the average FPL manager.
+              </>
+            )}
+          </p>
+
+          <div className="flex items-center gap-8 flex-wrap mt-4">
             {xi.average_manager != null && (
               <div>
-                <span className="text-lg font-bold font-data tabular-nums text-surface-100">
+                <span className="text-lg font-bold font-data tabular-nums text-surface-200">
                   {xi.average_manager}
                 </span>
-                <span className="text-xs text-surface-500 ml-1.5">average FPL manager</span>
+                <span className="text-sm text-surface-500 ml-2">average manager</span>
               </div>
             )}
             {xi.highest != null && (
               <div>
-                <span className="text-lg font-bold font-data tabular-nums text-surface-400">
+                <span className="text-lg font-bold font-data tabular-nums text-surface-200">
                   {xi.highest}
                 </span>
-                <span className="text-xs text-surface-500 ml-1.5">best manager</span>
+                <span className="text-sm text-surface-500 ml-2">best manager in the world</span>
               </div>
             )}
-            {margin != null && (
-              <span
-                className={`badge ${margin > 0 ? "badge-success" : margin < 0 ? "badge-danger" : "badge-info"}`}
-              >
-                {margin > 0
-                  ? `beat the average by ${margin}`
-                  : margin < 0
-                    ? `${-margin} behind the average`
-                    : "level with the average"}
-              </span>
-            )}
           </div>
-          <div className="text-xs font-data tabular-nums text-surface-500">
-            <span className="text-surface-600 mr-1.5">Team it picked</span>
-            {xi.players.map((p, i) => (
-              <span key={p.element}>
-                {i > 0 && <span className="text-surface-700"> · </span>}
-                <span className="text-surface-400">{p.name}</span>
-                {p.captain && (
-                  <span className="text-brand-400" title="Captain, points doubled">
-                    {" "}
-                    C
+
+          <div className="mt-4">
+            <p className="text-xs text-surface-500 mb-2">
+              The eleven it picked, and what each one actually scored
+            </p>
+            <div className="flex flex-wrap gap-x-5 gap-y-1.5">
+              {xi.players.map((p) => (
+                <span key={p.element} className="text-sm text-surface-300">
+                  {p.name}
+                  {p.captain && (
+                    <span className="text-brand-400 ml-1" title="Captain, points doubled">
+                      (C)
+                    </span>
+                  )}
+                  <span className="ml-1.5 font-data tabular-nums font-semibold text-surface-100">
+                    {p.actual ?? "-"}
                   </span>
-                )}{" "}
-                {p.actual ?? "—"}
-              </span>
-            ))}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
       )}
 
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <span className="text-xs text-surface-500">Every player, by model</span>
-        <div className="flex items-center gap-3">
+      <div className="flex items-end justify-between flex-wrap gap-3">
+        <div>
+          <span className="section-label">Every player, by model</span>
+          <p className="text-xs text-surface-500 mt-1">
+            How close each prediction was to what the player really scored.
+          </p>
+        </div>
+        <div className="flex items-center gap-4">
           <select
             value={selected}
             onChange={(e) => setModelId(e.target.value)}
-            className="bg-surface-800 border border-surface-700 rounded px-2 py-1 text-xs text-surface-300 focus:outline-none cursor-pointer"
+            className="bg-surface-800 border border-surface-700 rounded px-3 py-1.5 text-sm text-surface-200 focus:outline-none cursor-pointer"
           >
             {modelIds.map((id) => (
               <option key={id} value={id}>
@@ -133,22 +167,22 @@ export default function Accuracy() {
           </select>
           {/* Ranking first, error second: same order as the dashboard, same reason.
               A model can win on error by predicting low for everyone. */}
-          <span className="text-2xs font-data tabular-nums text-surface-500">
+          <div className="flex items-center gap-5 text-sm">
             {model.spearman != null && (
-              <>
-                <span title="Spearman rank correlation. 1.0 means the predicted order matched the actual order exactly.">
-                  ranking <span className="text-brand-400">{model.spearman.toFixed(2)}</span>
-                  <span className="text-surface-600"> / 1</span>
+              <div title="Spearman rank correlation. 1.0 means the predicted order matched the actual order exactly.">
+                <span className="font-data tabular-nums font-semibold text-brand-400">
+                  {model.spearman.toFixed(2)}
                 </span>
-                <span className="mx-1.5 text-surface-700">·</span>
-              </>
+                <span className="text-surface-500 ml-1.5">ranking, 1 = perfect</span>
+              </div>
             )}
-            <span title="Mean absolute error: on average, how many points each prediction was off by">
-              avg miss <span className="text-surface-300">{model.mae?.toFixed(1) ?? "—"} pts</span>
-            </span>
-            <span className="mx-1.5 text-surface-700">·</span>
-            <span>{model.count} players</span>
-          </span>
+            <div title="Mean absolute error: on average, how many points each prediction was off by">
+              <span className="font-data tabular-nums font-semibold text-surface-200">
+                {model.mae?.toFixed(1) ?? "-"}
+              </span>
+              <span className="text-surface-500 ml-1.5">pts off, on average</span>
+            </div>
+          </div>
         </div>
       </div>
 

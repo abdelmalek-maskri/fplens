@@ -66,6 +66,29 @@ SQUAD_BUDGET = 100.0
 # real outcomes later. Nothing else in the project keeps it.
 PREDICTION_LOG = Path("data/predictions_log.csv")
 XI_LOG = Path("data/xi_log.csv")
+PLAYERS_LOG = Path("data/players_log.csv")
+
+# What training needs out of bootstrap-static's 109 fields per player. The rest
+# are derived, per-90 rates, or cup data the models never see.
+PLAYER_LOG_COLS = [
+    "id",
+    "web_name",
+    "team",
+    "element_type",
+    "now_cost",
+    "status",
+    "news",
+    "chance_of_playing_this_round",
+    "chance_of_playing_next_round",
+    "selected_by_percent",
+    "transfers_in_event",
+    "transfers_out_event",
+    "total_points",
+    "form",
+    "minutes",
+    "ep_this",
+    "ep_next",
+]
 
 # Player info carried into each prediction file alongside the predicted points.
 PLAYER_INFO_COLS = [
@@ -221,33 +244,72 @@ def _build_players(predictions: pd.DataFrame, histories: dict, fixtures: dict, s
     return players
 
 
+def _append_players_log(
+    season: str,
+    finished_gw: int | None,
+    elements: list[dict],
+) -> None:
+    """Record each player's availability and price once a gameweek has finished.
+
+    The injury features are currently reconstructed from vaastav's commit
+    history, which is a single point of failure: that repository has published
+    only gameweek 1 of 2026-27 and has been quiet since August. This is the same
+    data, taken from the bootstrap call the job already makes, so a season can
+    still be retrained if the upstream repo stops.
+
+    Written after a gameweek finishes rather than before its deadline, matching
+    when vaastav commits, so the +1 gameweek anti-leakage shift in
+    ml/pipelines/injury keeps its meaning. Once per gameweek, not once per run:
+    daily snapshots are seven times the size and add no training signal.
+    """
+    if finished_gw is None:
+        return
+
+    if PLAYERS_LOG.exists():
+        seen = pd.read_csv(PLAYERS_LOG, usecols=["season", "gameweek"])
+        if ((seen.season == season) & (seen.gameweek == finished_gw)).any():
+            return
+
+    rows = pd.DataFrame(elements)[PLAYER_LOG_COLS]
+    rows.insert(0, "gameweek", finished_gw)
+    rows.insert(0, "season", season)
+    PLAYERS_LOG.parent.mkdir(parents=True, exist_ok=True)
+    rows.to_csv(PLAYERS_LOG, mode="a", header=not PLAYERS_LOG.exists(), index=False)
+    print(f"Logged {len(rows)} players for GW{finished_gw}")
+
+
 def _append_xi_log(
     season: str,
     gameweek: int,
     deadline: str | None,
     generated_at: str,
-    best_squad: dict,
+    best_squads: dict[str, dict],
 ) -> None:
-    """Record the optimal XI so it can be scored against the average manager.
+    """Record each model's optimal XI so it can be scored later.
 
-    The prediction log alone is not enough to rebuild the XI later: the solver
-    also depends on prices, which move during the week. Eleven rows per run.
+    The prediction log alone is not enough to rebuild an XI: the solver also
+    depends on prices, which move during the week. Eleven rows per model per run.
+
+    Rows written before this carried no model column; they came from the default
+    model, and accuracy.py reads them that way.
     """
-    xi = best_squad["best_xi"]
-    role = {xi["captain_id"]: "captain", xi["vice_id"]: "vice"}
-    log = pd.DataFrame(
-        [
+    rows = []
+    for model_id, squad in best_squads.items():
+        xi = squad["best_xi"]
+        role = {xi["captain_id"]: "captain", xi["vice_id"]: "vice"}
+        rows += [
             {
                 "season": season,
                 "gameweek": gameweek,
                 "deadline": deadline,
                 "generated_at": generated_at,
+                "model": model_id,
                 "element": int(s["element"]),
                 "role": role.get(s["element"], "starter"),
             }
             for s in xi["starters"]
         ]
-    )
+    log = pd.DataFrame(rows)
     XI_LOG.parent.mkdir(parents=True, exist_ok=True)
     log.to_csv(XI_LOG, mode="a", header=not XI_LOG.exists(), index=False)
 
@@ -344,7 +406,9 @@ def build(
     players = _build_players(per_model[default_id], histories, fixtures, shap)
 
     print("Solving the optimal squad...")
-    best_squad = solve_best_squad(per_model[default_id], budget=SQUAD_BUDGET)
+    # One squad per model, so both the optimal XI and accuracy pages can offer
+    # the same choice of model. Each solve is well under a second.
+    best_squads = {mid: solve_best_squad(df, budget=SQUAD_BUDGET) for mid, df in per_model.items()}
 
     print("Predicting GW+2 and GW+3...")
     multi_gw = predict_multi_gw(
@@ -373,7 +437,12 @@ def build(
     _write_json(staging / "models.json", model_info)
     _write_json(staging / "players.json", players)
     _write_json(staging / "multi_gw.json", multi_gw)
-    _write_json(staging / "best_squad.json", best_squad)
+    # Every model's squad, so the page can offer the same choice the dashboard
+    # and accuracy pages do. About 8 KB each.
+    _write_json(
+        staging / "best_squad.json",
+        {"default_model": default_id, "squads": best_squads},
+    )
     _write_json(staging / "fixtures.json", fixtures)
     _write_json(staging / "model_insights.json", _build_model_insights())
     _write_json(staging / "manifest.json", manifest)
@@ -412,7 +481,13 @@ def build(
             gameweek=gameweek,
             deadline=event.get("deadline_time"),
             generated_at=manifest["generated_at"],
-            best_squad=best_squad,
+            best_squads=best_squads,
+        )
+        finished = [e["id"] for e in bootstrap["events"] if e["finished"]]
+        _append_players_log(
+            season=season,
+            finished_gw=max(finished) if finished else None,
+            elements=bootstrap["elements"],
         )
 
     print(f"Wrote {len(per_model)} prediction files for GW{gameweek} to {out_dir}")

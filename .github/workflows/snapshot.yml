@@ -50,6 +50,21 @@ jobs:
         env:
           MODELS_URL: https://github.com/abdelmalek-maskri/fplens/releases/download/models-v1/fplens-models-v1.tar.gz
 
+      - name: Fetch the prediction log
+        # Not in git: the job appends ~6,000 rows a run, which grew the repo
+        # forever for a file nothing but this job reads. The release asset is
+        # the source of truth.
+        #
+        # No `|| true` here on purpose. If the download fails the job must stop,
+        # because carrying on would append to an empty file and then overwrite
+        # the asset with it, losing every prediction ever logged.
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p data
+          gh release download data-logs --pattern predictions_log.csv --dir data --clobber
+          test -s data/predictions_log.csv
+
       - name: Build the snapshot
         # ~800 FPL calls plus Understat and the Guardian, then nine models
         # predict on the same frame. Around three minutes.
@@ -61,13 +76,19 @@ jobs:
         # Two FPL calls. Reads the log the snapshot just appended to.
         run: python -m job.accuracy
 
+      - name: Store the prediction log
+        # After scoring, so a failure above leaves the asset untouched.
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload data-logs data/predictions_log.csv --clobber
+
       - name: Commit if anything changed
         env:
           DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add app/public/data app/public/accuracy.json data/predictions_log.csv data/xi_log.csv
+          git add app/public/data app/public/accuracy.json app/public/accuracy_history.json data/xi_log.csv data/players_log.csv
           if git diff --cached --quiet; then
             echo "Snapshot unchanged, nothing to commit"
           else

@@ -40,7 +40,10 @@ def _stub(models=("config_d",), predict_side_effect=None, features=("element", "
             snapshot,
             "get_bootstrap_data",
             # GW1's deadline is what the season label is derived from.
-            return_value={"events": [{"id": 1, "deadline_time": "2026-08-14T17:30:00Z"}], "elements": []},
+            return_value={
+                "events": [{"id": 1, "deadline_time": "2026-08-14T17:30:00Z", "finished": False}],
+                "elements": [],
+            },
         ),
         patch.object(
             snapshot,
@@ -298,3 +301,73 @@ def test_prediction_log_appends_rather_than_overwrites(tmp_path, monkeypatch):
     rows = pd.read_csv(log)
     assert len(rows) == 6, "two runs of three players should append, not replace"
     assert rows["generated_at"].nunique() >= 1, "each run stamps its own rows"
+
+
+def _element(pid=1, status="a", chance=100):
+    """A bootstrap element with the fields the players log keeps."""
+    return {
+        "id": pid,
+        "web_name": f"P{pid}",
+        "team": 1,
+        "element_type": 3,
+        "now_cost": 55,
+        "status": status,
+        "news": "",
+        "chance_of_playing_this_round": chance,
+        "chance_of_playing_next_round": chance,
+        "selected_by_percent": "12.3",
+        "transfers_in_event": 10,
+        "transfers_out_event": 4,
+        "total_points": 30,
+        "form": "5.0",
+        "minutes": 450,
+        "ep_this": "4.1",
+        "ep_next": "4.4",
+        "ict_index": "99.9",
+    }
+
+
+class TestPlayersLog:
+    @contextmanager
+    def _log_at(self, tmp_path):
+        with patch.object(snapshot, "PLAYERS_LOG", tmp_path / "players_log.csv"):
+            yield tmp_path / "players_log.csv"
+
+    def test_writes_once_per_gameweek_however_often_the_job_runs(self, tmp_path):
+        """The job runs daily; a gameweek must be recorded once, not seven times."""
+        with self._log_at(tmp_path) as path:
+            for _ in range(5):
+                snapshot._append_players_log("2026-27", 5, [_element(1), _element(2)])
+
+            rows = pd.read_csv(path)
+            assert len(rows) == 2
+            assert rows.gameweek.tolist() == [5, 5]
+
+    def test_a_new_gameweek_appends(self, tmp_path):
+        with self._log_at(tmp_path) as path:
+            snapshot._append_players_log("2026-27", 5, [_element(1)])
+            snapshot._append_players_log("2026-27", 6, [_element(1)])
+
+            assert pd.read_csv(path).gameweek.tolist() == [5, 6]
+
+    def test_gameweek_five_of_a_new_season_is_not_the_same_gameweek(self, tmp_path):
+        """Gameweek numbers repeat every year."""
+        with self._log_at(tmp_path) as path:
+            snapshot._append_players_log("2026-27", 5, [_element(1)])
+            snapshot._append_players_log("2027-28", 5, [_element(1)])
+
+            assert len(pd.read_csv(path)) == 2
+
+    def test_nothing_written_before_any_gameweek_has_finished(self, tmp_path):
+        with self._log_at(tmp_path) as path:
+            snapshot._append_players_log("2026-27", None, [_element(1)])
+            assert not path.exists()
+
+    def test_keeps_only_the_fields_training_needs(self, tmp_path):
+        """109 fields a player would be 108 MB a season; 17 is 1.7 MB."""
+        with self._log_at(tmp_path) as path:
+            snapshot._append_players_log("2026-27", 5, [_element(1)])
+
+            cols = set(pd.read_csv(path).columns)
+            assert "ict_index" not in cols
+            assert {"season", "gameweek", "status", "chance_of_playing_next_round"} <= cols

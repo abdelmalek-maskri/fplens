@@ -27,7 +27,7 @@ The dashboard loads instantly because it is static files. **My Team** and **News
 
 A holdout number is a claim. **[The accuracy page](https://fplens.abdelmalekmaskri18.workers.dev/accuracy)** is the evidence: after each gameweek it shows what the model predicted for every player next to what they actually scored, and what the team it picked would have scored against the average FPL manager.
 
-Only forecasts logged *before* the deadline are counted. The daily job writes each run to a prediction log with a timestamp, and scoring reads the last run that beat the deadline, so a prediction can never be improved after the fact.
+Only forecasts logged *before* the deadline are counted. The daily job writes each run to a timestamped prediction log, kept as a [release asset](https://github.com/abdelmalek-maskri/fplens/releases/tag/data-logs) rather than in the repo, and scoring reads the last run that beat the deadline, so a prediction can never be improved after the fact.
 
 Some weeks it loses. Those weeks are shown too.
 

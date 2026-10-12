@@ -46,3 +46,7 @@ catboost_info/
 .mcp.json
 CLAUDE.md
 .ua/
+
+# Appended ~6,000 rows a run. Lives as a GitHub Release asset instead,
+# see docs/RUNNING.md. The snapshot workflow downloads and re-uploads it.
+data/predictions_log.csv
