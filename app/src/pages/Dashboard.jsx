@@ -381,7 +381,7 @@ export default function Dashboard() {
                             e.stopPropagation();
                             navigate(`/player/${p.element}`);
                           }}
-                          className="mt-2 text-xs text-brand-400 hover:text-brand-300 transition-colors"
+                          className="link-action mt-2 text-xs"
                         >
                           Full profile →
                         </button>

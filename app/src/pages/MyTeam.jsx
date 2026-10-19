@@ -546,10 +546,7 @@ export default function MyTeam() {
       <div>
         <div className="flex items-center justify-between mb-3">
           <span className="section-label">Suggested Transfers</span>
-          <button
-            onClick={() => navigate("/transfers")}
-            className="text-xs text-brand-400 hover:text-brand-300 transition-colors"
-          >
+          <button onClick={() => navigate("/transfers")} className="link-action text-xs">
             View all →
           </button>
         </div>

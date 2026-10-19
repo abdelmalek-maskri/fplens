@@ -288,6 +288,22 @@
     @apply btn-tab bg-brand-600 text-white hover:text-white;
   }
 
+  /* Inline link inside a sentence. Underlined because colour on its own is a
+     weak affordance, and invisible to a reader who cannot separate the
+     emerald from the body text. */
+  .link {
+    @apply text-brand-600 font-medium underline decoration-brand-600/40
+           underline-offset-2 hover:text-brand-700 hover:decoration-brand-700
+           transition-colors;
+  }
+
+  /* Standalone navigation cue, the "View all →" kind. The arrow carries the
+     affordance so it needs no underline, but it darkens on hover like .link:
+     this theme is light, so brightening would drop the contrast. */
+  .link-action {
+    @apply text-brand-600 font-medium hover:text-brand-700 transition-colors;
+  }
+
   /* Section label — reusable heading for content groups */
   .section-label {
     @apply text-xs font-medium text-surface-500 uppercase tracking-wide;
