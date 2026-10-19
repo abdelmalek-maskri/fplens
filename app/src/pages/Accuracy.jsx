@@ -1,7 +1,8 @@
 import { useState, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { POSITION_COLORS } from "../lib/constants";
-import { useAccuracy } from "../hooks";
+import { useAccuracy, useGameweek } from "../hooks";
+import { seasonContext } from "./accuracy/seasonContext";
 import Loading from "../components/feedback/Loading";
 import ErrorState from "../components/feedback/ErrorState";
 import EmptyState from "../components/feedback/EmptyState";
@@ -17,6 +18,7 @@ function diffClass(d) {
 export default function Accuracy() {
   const navigate = useNavigate();
   const { data, isLoading, error } = useAccuracy();
+  const { data: gwData } = useGameweek();
   const [modelId, setModelId] = useState(null);
   const [positionFilter, setPositionFilter] = useState("ALL");
 
@@ -46,6 +48,7 @@ export default function Accuracy() {
   // level, so fall back to that for the model that produced it.
   const xi = model?.xi ?? (selected === data.defaultModel ? data.xi : null);
   const margin = xi && xi.average_manager != null ? xi.points - xi.average_manager : null;
+  const context = seasonContext(data.gameweek, data.final, gwData?.current_gw);
 
   return (
     <div className="space-y-6 stagger">
@@ -61,6 +64,21 @@ export default function Accuracy() {
             </span>
           )}
         </div>
+        {(context.note || context.next != null) && (
+          <p className="text-sm text-surface-400 mt-2">
+            {context.note}
+            {context.note && context.next != null && " "}
+            {context.next != null && (
+              <>
+                Gameweek {context.next} is next.{" "}
+                <Link to="/" className="link">
+                  See its predictions
+                </Link>
+                .
+              </>
+            )}
+          </p>
+        )}
       </div>
 
       {!xi && (
