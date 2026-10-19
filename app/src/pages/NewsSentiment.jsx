@@ -327,7 +327,7 @@ export default function NewsSentiment() {
           href="https://open-platform.theguardian.com"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-surface-400 hover:text-brand-400 underline underline-offset-2"
+          className="link"
         >
           the Guardian Open Platform
         </a>

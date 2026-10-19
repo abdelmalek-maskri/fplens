@@ -220,7 +220,7 @@ export default function TransferPlanner() {
                   <button
                     onClick={() => applySuggestion(s)}
                     disabled={alreadyApplied}
-                    className="text-xs font-medium text-brand-400 hover:text-brand-300 transition-colors disabled:pointer-events-none shrink-0 px-2 py-1 border border-brand-500/30 rounded hover:bg-brand-500/5"
+                    className="link-action text-xs disabled:pointer-events-none shrink-0 px-2 py-1 border border-brand-500/30 rounded hover:bg-brand-500/5"
                   >
                     {alreadyApplied ? "Applied" : "Apply"}
                   </button>
