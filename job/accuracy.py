@@ -178,7 +178,12 @@ def update_history(result: dict, path: Path = HISTORY) -> dict:
     return out
 
 
-def build(log_path: Path = LOG, xi_log_path: Path = XI_LOG, out_path: Path = OUT) -> dict | None:
+def build(
+    log_path: Path = LOG,
+    xi_log_path: Path = XI_LOG,
+    out_path: Path = OUT,
+    history_path: Path = HISTORY,
+) -> dict | None:
     if not log_path.exists():
         print(f"No prediction log at {log_path}; nothing to score yet")
         return None
@@ -230,7 +235,7 @@ def build(log_path: Path = LOG, xi_log_path: Path = XI_LOG, out_path: Path = OUT
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(result, separators=(",", ":"), allow_nan=False), encoding="utf-8")
-    history = update_history(result)
+    history = update_history(result, history_path)
     print(
         f"{season} GW{event['id']}: scored {len(forecasts)} models, final={result['final']}, "
         f"{len(history['gameweeks'])} gameweek(s) on record"

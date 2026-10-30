@@ -164,7 +164,7 @@ def test_build_skips_finished_weeks_without_forecasts(tmp_path):
         patch("job.accuracy.get_bootstrap_data", return_value=bootstrap),
         patch("job.accuracy.fetch_actuals", return_value=live) as fetch,
     ):
-        accuracy.build(log_path, tmp_path / "no_xi.csv", out_path)
+        accuracy.build(log_path, tmp_path / "no_xi.csv", out_path, tmp_path / "history.json")
 
     fetch.assert_called_once_with(5)
     written = json.loads(out_path.read_text())
@@ -173,6 +173,11 @@ def test_build_skips_finished_weeks_without_forecasts(tmp_path):
     assert written["models"]["config_d"]["count"] == 1
     assert written["xi"] is None  # no XI log yet is a valid state
 
+    # Every path build writes to has to be redirectable. Until history was a
+    # parameter it kept its module default, so running the suite overwrote the
+    # season's real record with this fixture.
+    assert (tmp_path / "history.json").exists()
+
 
 def test_build_writes_nothing_when_no_week_is_scorable(tmp_path):
     out_path = tmp_path / "accuracy.json"
@@ -180,9 +185,11 @@ def test_build_writes_nothing_when_no_week_is_scorable(tmp_path):
     log_path = tmp_path / "log.csv"
     _log().to_csv(log_path, index=False)
 
+    history_path = tmp_path / "history.json"
     with patch("job.accuracy.get_bootstrap_data", return_value=bootstrap):
-        assert accuracy.build(log_path, tmp_path / "no_xi.csv", out_path) is None
+        assert accuracy.build(log_path, tmp_path / "no_xi.csv", out_path, history_path) is None
     assert not out_path.exists()
+    assert not history_path.exists()
 
 
 def test_last_seasons_gameweek_five_is_not_scored_as_this_one():
