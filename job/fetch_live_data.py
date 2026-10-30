@@ -1194,7 +1194,7 @@ def fetch_fixtures(bootstrap_data: dict | None = None, num_gws: int = 6) -> dict
     returns {
         teams: ["ARS", ...],
         team_full: {ARS: "Arsenal", ...},
-        fixtures: {ARS: [{gw, opponent, home, atkFdr, defFdr}, ...], ...},
+        fixtures: {ARS: [{gw, opponent, home, kickoff, atkFdr, defFdr}, ...], ...},
         current_gw: int,
     }
     """
@@ -1231,6 +1231,11 @@ def fetch_fixtures(bootstrap_data: dict | None = None, num_gws: int = 6) -> dict
         home_short = team_short[home_id]
         away_short = team_short[away_id]
 
+        # Kickoff is null until the fixture is scheduled, which is normal for
+        # gameweeks a few weeks out. The dashboard groups by day when it is
+        # present and falls back to a flat list when it is not.
+        kickoff = f.get("kickoff_time")
+
         # home team's fixture
         # NOTE: FPL API only provides one overall difficulty per team per fixture,
         # not separate attack/defence ratings. atkFdr = this team's difficulty,
@@ -1240,6 +1245,7 @@ def fetch_fixtures(bootstrap_data: dict | None = None, num_gws: int = 6) -> dict
                 "gw": gw,
                 "opponent": away_short,
                 "home": True,
+                "kickoff": kickoff,
                 "atkFdr": f["team_h_difficulty"],
                 "defFdr": f["team_a_difficulty"],
             }
@@ -1251,6 +1257,7 @@ def fetch_fixtures(bootstrap_data: dict | None = None, num_gws: int = 6) -> dict
                 "gw": gw,
                 "opponent": home_short,
                 "home": False,
+                "kickoff": kickoff,
                 "atkFdr": f["team_a_difficulty"],
                 "defFdr": f["team_h_difficulty"],
             }
