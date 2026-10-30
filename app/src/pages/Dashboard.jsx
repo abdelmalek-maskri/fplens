@@ -10,16 +10,44 @@ import TabBar from "../components/ui/TabBar";
 import ErrorState from "../components/feedback/ErrorState";
 import EmptyState from "../components/feedback/EmptyState";
 import Loading from "../components/feedback/Loading";
-import { usePredictions, useFixtures } from "../hooks";
+import Pagination from "../components/ui/Pagination";
+import { usePredictions, useFixtures, usePagination } from "../hooks";
 import { getPlayer } from "../lib/api";
 import { describe } from "../lib/shap";
 import DifferentialsTab from "./dashboard/DifferentialsTab";
 import XGTab from "./dashboard/XGTab";
 import PriceTab from "./dashboard/PriceTab";
+import GameweekFixtures from "./dashboard/GameweekFixtures";
 
 const calcEO = (p) => p.selected_by_percent + p.captain_pct;
 
+// FPL marks doubtful and injured separately, and both mean "may not play".
+// Shared so the count in the header and the filter can never disagree.
+const isFlagged = (p) => p.status === "d" || p.status === "i";
+
+// Toggle rather than link: these change what the table shows, so they need to
+// read as controls with an on and an off state, not as navigation.
+function FilterChip({ active, onClick, children, ...props }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-2 py-1 rounded border text-xs transition-colors ${
+        active
+          ? "border-brand-500/50 bg-brand-500/10 text-brand-300"
+          : "border-surface-700 text-surface-400 hover:text-surface-200 hover:border-surface-600"
+      }`}
+      {...props}
+    >
+      {children}
+    </button>
+  );
+}
+
 const POSITIONS = ["ALL", "GK", "DEF", "MID", "FWD"];
+
+// Every player used to render at once, which put ~670 rows on the page and
+// pushed anything below the table thousands of pixels out of reach.
+const PAGE_SIZE = 50;
 
 const POS_TAB_UNDERLINE = {
   ALL: "bg-brand-500",
@@ -41,6 +69,11 @@ export default function Dashboard() {
       return p;
     });
   };
+  // Flagged lives in the URL beside the position filter, because both narrow the
+  // table and both are worth keeping on a refresh. Fixtures is a disclosure, not
+  // a filter, so it stays local and out of the address bar.
+  const flaggedOnly = searchParams.get("flagged") === "1";
+  const [showFixtures, setShowFixtures] = useState(false);
   const [sortBy, setSortBy] = useState("predicted_points");
   const [sortDesc, setSortDesc] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -79,6 +112,9 @@ export default function Dashboard() {
     if (positionFilter !== "ALL") {
       result = result.filter((p) => p.position === positionFilter);
     }
+    if (flaggedOnly) {
+      result = result.filter(isFlagged);
+    }
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       result = result.filter(
@@ -91,7 +127,12 @@ export default function Dashboard() {
       return sortDesc ? bVal - aVal : aVal - bVal;
     });
     return result;
-  }, [predictions, positionFilter, sortBy, sortDesc, searchQuery]);
+  }, [predictions, positionFilter, flaggedOnly, sortBy, sortDesc, searchQuery]);
+
+  const { page, setPage, totalPages, pageStart, pageItems } = usePagination(
+    filteredPredictions,
+    PAGE_SIZE
+  );
 
   if (isLoading) return <Loading />;
   if (error) return <ErrorState message="Failed to load predictions." />;
@@ -108,43 +149,70 @@ export default function Dashboard() {
   return (
     <div className="space-y-6 stagger">
       <div className="flex items-center justify-between">
-        <span className="text-sm text-surface-500">
-          {predictions.length} players ·{" "}
-          {predictions.filter((p) => p.status === "d" || p.status === "i").length} flagged
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-surface-500 tabular-nums">
+            {filteredPredictions.length === predictions.length
+              ? `${predictions.length} players`
+              : `${filteredPredictions.length} of ${predictions.length} players`}
+          </span>
+
+          <FilterChip
+            active={flaggedOnly}
+            onClick={() => setParam("flagged", flaggedOnly ? "0" : "1")}
+            aria-pressed={flaggedOnly}
+          >
+            {predictions.filter(isFlagged).length} flagged
+          </FilterChip>
+
+          <FilterChip
+            active={showFixtures}
+            onClick={() => setShowFixtures((v) => !v)}
+            aria-expanded={showFixtures}
+          >
+            Fixtures {showFixtures ? "▴" : "▾"}
+          </FilterChip>
+        </div>
         <div className="flex items-center gap-3">
           {models.length > 0 && (
-            <select
-              value={selectedModel || models[0]?.id || ""}
-              onChange={(e) => setSelectedModel(e.target.value)}
-              className="bg-surface-800 border border-surface-700 rounded px-2 py-1 text-xs text-surface-300 focus:outline-none cursor-pointer"
-            >
-              {models.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name}
-                </option>
-              ))}
-            </select>
+            <label className="flex items-center gap-2">
+              <span className="text-xs text-surface-500">Model</span>
+              <select
+                value={selectedModel || models[0]?.id || ""}
+                onChange={(e) => setSelectedModel(e.target.value)}
+                className="bg-surface-800 border border-surface-700 rounded px-2 py-1 text-xs text-surface-300 focus:outline-none cursor-pointer"
+              >
+                {models.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name}
+                  </option>
+                ))}
+              </select>
+            </label>
           )}
           {activeModel && (
             /* Rank quality leads, error follows. Sorting these models by MAE is
                actively misleading: 60% of gameweek scores are zero, so MAE rewards
                predicting low. LightGBM Tweedie has the best MAE here and the worst
-               rankings. */
-            <span className="text-2xs font-data tabular-nums text-surface-500">
+               rankings.
+
+               Spelled out rather than hidden behind a title tooltip, which never
+               opens on a phone and is where most of this traffic is. */
+            <span className="text-xs font-data tabular-nums text-surface-500">
               {typeof activeModel.spearman === "number" && (
                 <>
-                  <span className="text-brand-400" title="Spearman rank correlation">
-                    ρ {activeModel.spearman.toFixed(3)}
-                  </span>
+                  <span className="text-brand-400">rank {activeModel.spearman.toFixed(3)}</span>
                   <span className="mx-1.5 text-surface-700">·</span>
                 </>
               )}
-              <span title="Mean absolute error">MAE {activeModel.mae}</span>
+              <span>error {activeModel.mae}</span>
             </span>
           )}
         </div>
       </div>
+
+      {/* Above the table on purpose. The table renders every player with no
+          pagination, so anything placed after it is thousands of pixels down. */}
+      {showFixtures && <GameweekFixtures fixtureData={fixtureData} />}
 
       <div className="flex items-center justify-between border-b border-surface-800">
         <div className="flex items-center gap-0">
@@ -243,7 +311,7 @@ export default function Dashboard() {
             </tr>
           </thead>
           <tbody>
-            {filteredPredictions.map((p, idx) => (
+            {pageItems.map((p, idx) => (
               <Fragment key={p.element}>
                 <tr
                   onClick={() => expand(p.element)}
@@ -252,7 +320,7 @@ export default function Dashboard() {
                   }`}
                 >
                   <td className="py-2.5 px-3 text-surface-600 text-xs font-data tabular-nums w-8">
-                    {idx + 1}
+                    {pageStart + idx + 1}
                   </td>
                   <td className="py-2.5 px-3">
                     <div className="flex items-center gap-2.5">
@@ -397,9 +465,22 @@ export default function Dashboard() {
         {filteredPredictions.length === 0 && (
           <EmptyState
             title="No players match your filters"
-            message="Try adjusting the position filter or search query."
+            message={
+              flaggedOnly
+                ? "No flagged players in this position. Turn off the flagged filter to see everyone."
+                : "Try adjusting the position filter or search query."
+            }
           />
         )}
+
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          pageStart={pageStart}
+          pageSize={PAGE_SIZE}
+          total={filteredPredictions.length}
+          onChange={setPage}
+        />
       </div>
 
       <div className="mt-10">
