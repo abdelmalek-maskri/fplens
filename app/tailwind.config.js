@@ -69,16 +69,22 @@ export default {
         ],
         mono: ["JetBrains Mono", "Menlo", "Monaco", "Fira Code", "monospace"],
       },
+      // Tailwind's own scale, except 2xs and xs, which stay a step tighter for
+      // dense table labels. The previous scale shrank every step, which put
+      // ~90% of the app's text at 12px or below: below the browser default of
+      // 16px, below Material's 14px body, and below Apple's 11pt floor at the
+      // bottom end. Sizes live here rather than in components, so tuning the
+      // whole app is a change to these nine numbers.
       fontSize: {
-        "2xs": ["0.625rem", { lineHeight: "0.875rem" }],
-        xs: ["0.6875rem", { lineHeight: "1rem" }],
-        sm: ["0.75rem", { lineHeight: "1rem" }],
-        base: ["0.8125rem", { lineHeight: "1.25rem" }],
-        lg: ["0.9375rem", { lineHeight: "1.375rem" }],
-        xl: ["1.125rem", { lineHeight: "1.5rem" }],
-        "2xl": ["1.375rem", { lineHeight: "1.75rem" }],
-        "3xl": ["1.625rem", { lineHeight: "2rem" }],
-        "4xl": ["2rem", { lineHeight: "2.5rem" }],
+        "2xs": ["0.6875rem", { lineHeight: "1rem" }],
+        xs: ["0.75rem", { lineHeight: "1.125rem" }],
+        sm: ["0.875rem", { lineHeight: "1.25rem" }],
+        base: ["1rem", { lineHeight: "1.5rem" }],
+        lg: ["1.125rem", { lineHeight: "1.75rem" }],
+        xl: ["1.25rem", { lineHeight: "1.75rem" }],
+        "2xl": ["1.5rem", { lineHeight: "2rem" }],
+        "3xl": ["1.875rem", { lineHeight: "2.25rem" }],
+        "4xl": ["2.25rem", { lineHeight: "2.5rem" }],
       },
       borderRadius: {
         "4xl": "2rem",
