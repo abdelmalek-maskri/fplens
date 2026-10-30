@@ -10,3 +10,4 @@ export { usePlayerPool } from "./usePlayerPool";
 export { useOptimalXI } from "./useOptimalXI";
 export { useGameweek } from "./useGameweek";
 export { useAccuracy } from "./useAccuracy";
+export { usePagination } from "./usePagination";

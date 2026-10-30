@@ -1,13 +1,15 @@
 import { useState, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { POSITION_COLORS } from "../lib/constants";
-import { useAccuracy, useGameweek } from "../hooks";
+import { useAccuracy, useGameweek, usePagination } from "../hooks";
 import { seasonContext } from "./accuracy/seasonContext";
 import Loading from "../components/feedback/Loading";
 import ErrorState from "../components/feedback/ErrorState";
 import EmptyState from "../components/feedback/EmptyState";
+import Pagination from "../components/ui/Pagination";
 
 const POSITIONS = ["ALL", "GK", "DEF", "MID", "FWD"];
+const PAGE_SIZE = 50;
 
 function diffClass(d) {
   if (d >= 3) return "text-success-400";
@@ -32,6 +34,10 @@ export default function Accuracy() {
     return positionFilter === "ALL" ? all : all.filter((p) => p.position === positionFilter);
   }, [model, positionFilter]);
 
+  // Before the early returns below, so the hook order stays stable across the
+  // loading, error and empty states.
+  const { page, setPage, totalPages, pageStart, pageItems } = usePagination(players, PAGE_SIZE);
+
   if (isLoading) return <Loading />;
   if (error) return <ErrorState message="Failed to load accuracy." />;
   if (!data || !model) {
@@ -55,15 +61,16 @@ export default function Accuracy() {
       <div>
         <div className="flex items-baseline gap-3 flex-wrap">
           <h2 className="text-xl font-bold text-surface-100">Gameweek {data.gameweek} results</h2>
-          {!data.final && (
-            <span
-              className="badge badge-warning"
-              title="Bonus points can still change until FPL signs off the gameweek"
-            >
-              provisional
-            </span>
-          )}
+          {!data.final && <span className="badge badge-warning">provisional</span>}
         </div>
+        {/* Said out loud rather than put in a title attribute: a reader on a
+            phone has no way to hover, and this one changes how much they should
+            trust the numbers below. */}
+        {!data.final && (
+          <p className="text-sm text-surface-400 mt-2">
+            Bonus points can still change until FPL signs off the gameweek.
+          </p>
+        )}
         {(context.note || context.next != null) && (
           <p className="text-sm text-surface-400 mt-2">
             {context.note}
@@ -150,8 +157,8 @@ export default function Accuracy() {
                 <span key={p.element} className="text-sm text-surface-300">
                   {p.name}
                   {p.captain && (
-                    <span className="text-brand-400 ml-1" title="Captain, points doubled">
-                      (C)
+                    <span className="text-brand-400 ml-1">
+                      (C)<span className="sr-only"> captain, points doubled</span>
                     </span>
                   )}
                   <span className="ml-1.5 font-data tabular-nums font-semibold text-surface-100">
@@ -172,29 +179,34 @@ export default function Accuracy() {
           </p>
         </div>
         <div className="flex items-center gap-4">
-          <select
-            value={selected}
-            onChange={(e) => setModelId(e.target.value)}
-            className="bg-surface-800 border border-surface-700 rounded px-3 py-1.5 text-sm text-surface-200 focus:outline-none cursor-pointer"
-          >
-            {modelIds.map((id) => (
-              <option key={id} value={id}>
-                {data.names[id] ?? id}
-              </option>
-            ))}
-          </select>
+          <label className="flex items-center gap-2">
+            <span className="text-sm text-surface-500">Model</span>
+            <select
+              value={selected}
+              onChange={(e) => setModelId(e.target.value)}
+              className="bg-surface-800 border border-surface-700 rounded px-3 py-1.5 text-sm text-surface-200 focus:outline-none cursor-pointer"
+            >
+              {modelIds.map((id) => (
+                <option key={id} value={id}>
+                  {data.names[id] ?? id}
+                </option>
+              ))}
+            </select>
+          </label>
           {/* Ranking first, error second: same order as the dashboard, same reason.
               A model can win on error by predicting low for everyone. */}
+          {/* No tooltips: the labels beside each number already say what it
+              means, and in plainer words than "Spearman rank correlation" would. */}
           <div className="flex items-center gap-5 text-sm">
             {model.spearman != null && (
-              <div title="Spearman rank correlation. 1.0 means the predicted order matched the actual order exactly.">
+              <div>
                 <span className="font-data tabular-nums font-semibold text-brand-400">
                   {model.spearman.toFixed(2)}
                 </span>
                 <span className="text-surface-500 ml-1.5">ranking, 1 = perfect</span>
               </div>
             )}
-            <div title="Mean absolute error: on average, how many points each prediction was off by">
+            <div>
               <span className="font-data tabular-nums font-semibold text-surface-200">
                 {model.mae?.toFixed(1) ?? "-"}
               </span>
@@ -239,11 +251,9 @@ export default function Accuracy() {
               <th scope="col" className="table-header text-right py-2.5 px-3">
                 Actual
               </th>
-              <th
-                scope="col"
-                className="table-header text-right py-2.5 px-3"
-                title="Actual minus predicted. Green: scored 3+ more than predicted. Red: 3+ fewer."
-              >
+              {/* The colours are the whole point of this column, so the key
+                  sits under the table where everyone can read it. */}
+              <th scope="col" className="table-header text-right py-2.5 px-3">
                 Diff
               </th>
               <th scope="col" className="table-header text-right py-2.5 px-3">
@@ -252,7 +262,7 @@ export default function Accuracy() {
             </tr>
           </thead>
           <tbody>
-            {players.map((p, i) => {
+            {pageItems.map((p, i) => {
               const diff = p.actual == null ? null : p.actual - p.predicted;
               return (
                 <tr
@@ -261,7 +271,7 @@ export default function Accuracy() {
                   className="border-b border-surface-800 hover:bg-surface-800/40 cursor-pointer transition-colors"
                 >
                   <td className="py-2 px-3 text-xs text-surface-600 font-data tabular-nums">
-                    {i + 1}
+                    {pageStart + i + 1}
                   </td>
                   <td className="py-2 px-3">
                     {/* A Link, not a span, so keyboard users can reach it. The row
@@ -299,6 +309,21 @@ export default function Accuracy() {
             })}
           </tbody>
         </table>
+
+        <p className="text-xs text-surface-500 mt-3">
+          Diff is actual minus predicted. <span className="text-success-400">Green</span> means the
+          player scored 3 or more above the prediction, <span className="text-danger-400">red</span>{" "}
+          3 or more below.
+        </p>
+
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          pageStart={pageStart}
+          pageSize={PAGE_SIZE}
+          total={players.length}
+          onChange={setPage}
+        />
       </div>
     </div>
   );
