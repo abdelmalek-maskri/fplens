@@ -6,7 +6,7 @@ export default function PositionsTab({ positionPerformance }) {
   const chartSeries = [
     {
       name: "Baseline",
-      color: "rgb(var(--surface-400))",
+      color: "rgb(var(--surface-600))",
       values: positionPerformance.map((p) => p.baseline),
     },
     {
@@ -21,7 +21,7 @@ export default function PositionsTab({ positionPerformance }) {
     },
     {
       name: "Stats + injuries + news",
-      color: "rgb(var(--brand-500))",
+      color: "rgb(var(--brand-600))",
       values: positionPerformance.map((p) => p.config_d),
     },
     {
@@ -54,7 +54,7 @@ export default function PositionsTab({ positionPerformance }) {
   return (
     <div className="space-y-6">
       <div>
-        <div className="py-3 border-b border-surface-700 mb-3">
+        <div className="py-3 border-b border-surface-300 mb-3">
           <span className="section-label">MAE by Position &times; Model Architecture</span>
         </div>
         <GroupedBarChart
@@ -68,7 +68,7 @@ export default function PositionsTab({ positionPerformance }) {
 
       <div className="overflow-x-auto">
         <table className="w-full">
-          <thead className="bg-surface-800/30">
+          <thead className="bg-surface-200/30">
             <tr>
               <th scope="col" className="table-header text-left py-2.5 px-3">
                 Position
@@ -91,10 +91,10 @@ export default function PositionsTab({ positionPerformance }) {
               return (
                 <tr
                   key={pos.position}
-                  className="border-t border-surface-800 hover:bg-surface-800/30"
+                  className="border-t border-surface-200 hover:bg-surface-200/30"
                 >
                   <td className="py-2.5 px-3">
-                    <span className="font-medium text-surface-100">{pos.position}</span>
+                    <span className="font-medium text-surface-900">{pos.position}</span>
                     <span className="text-xs text-surface-500 ml-2">
                       {positionLabels[pos.position]}
                     </span>
@@ -103,16 +103,16 @@ export default function PositionsTab({ positionPerformance }) {
                     <td key={vi} className="py-2.5 px-3">
                       {val != null ? (
                         <span
-                          className={`font-data tabular-nums ${val === minVal ? "text-brand-400 font-bold" : "text-surface-300"}`}
+                          className={`font-data tabular-nums ${val === minVal ? "text-brand-700 font-bold" : "text-surface-700"}`}
                         >
                           {val.toFixed(4)}
                         </span>
                       ) : (
-                        <span className="text-surface-600">—</span>
+                        <span className="text-surface-400">—</span>
                       )}
                     </td>
                   ))}
-                  <td className="py-2.5 px-3 text-surface-400 font-data tabular-nums">
+                  <td className="py-2.5 px-3 text-surface-600 font-data tabular-nums">
                     {pos.samples.toLocaleString()}
                   </td>
                 </tr>
@@ -124,13 +124,13 @@ export default function PositionsTab({ positionPerformance }) {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="p-3 rounded-md bg-success-500/5 border border-success-500/20">
-          <p className="text-sm font-medium text-surface-200">Goalkeepers are most predictable</p>
+          <p className="text-sm font-medium text-surface-800">Goalkeepers are most predictable</p>
           <p className="text-xs text-surface-500 mt-1">
             GK MAE 0.764,narrow scoring range (2-4 pts when playing) with fewer hauls or blanks.
           </p>
         </div>
         <div className="p-3 rounded-md bg-danger-500/5 border border-danger-500/20">
-          <p className="text-sm font-medium text-surface-200">Forwards are hardest to predict</p>
+          <p className="text-sm font-medium text-surface-800">Forwards are hardest to predict</p>
           <p className="text-xs text-surface-500 mt-1">
             FWD MAE 1.140,goals are high-variance events. Returns swing between blanks and
             double-digit hauls.

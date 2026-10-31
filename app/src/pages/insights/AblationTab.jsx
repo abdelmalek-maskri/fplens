@@ -2,33 +2,33 @@ export default function AblationTab({ ablationConfigs, ablationSignificance, int
   return (
     <div className="space-y-6">
       <div className="space-y-3">
-        <div className="flex items-start gap-3 p-3 rounded-md bg-surface-800/50">
-          <span className="badge bg-brand-500/20 text-brand-400 shrink-0">RQ1</span>
-          <p className="text-sm text-surface-300">
+        <div className="flex items-start gap-3 p-3 rounded-md bg-surface-200/50">
+          <span className="badge bg-brand-600/20 text-brand-700 shrink-0">RQ1</span>
+          <p className="text-sm text-surface-700">
             Do injury features from the FPL API improve predictions?
           </p>
         </div>
-        <div className="flex items-start gap-3 p-3 rounded-md bg-surface-800/50">
-          <span className="badge bg-brand-500/20 text-brand-400 shrink-0">RQ2</span>
-          <p className="text-sm text-surface-300">
+        <div className="flex items-start gap-3 p-3 rounded-md bg-surface-200/50">
+          <span className="badge bg-brand-600/20 text-brand-700 shrink-0">RQ2</span>
+          <p className="text-sm text-surface-700">
             Does Guardian news sentiment add predictive signal?
           </p>
         </div>
-        <div className="flex items-start gap-3 p-3 rounded-md bg-surface-800/50">
-          <span className="badge bg-brand-500/20 text-brand-400 shrink-0">RQ3</span>
-          <p className="text-sm text-surface-300">
+        <div className="flex items-start gap-3 p-3 rounded-md bg-surface-200/50">
+          <span className="badge bg-brand-600/20 text-brand-700 shrink-0">RQ3</span>
+          <p className="text-sm text-surface-700">
             Do injury and news features interact or is one redundant?
           </p>
         </div>
       </div>
 
       <div className="overflow-x-auto">
-        <div className="py-3 border-b border-surface-700">
+        <div className="py-3 border-b border-surface-300">
           <span className="section-label">Ablation Configurations</span>
           <span className="text-xs text-surface-500 ml-2">(Stacked Ensemble architecture)</span>
         </div>
         <table className="w-full">
-          <thead className="bg-surface-800/30">
+          <thead className="bg-surface-200/30">
             <tr>
               <th scope="col" className="table-header text-left py-2.5 px-3">
                 Config
@@ -60,11 +60,11 @@ export default function AblationTab({ ablationConfigs, ablationSignificance, int
               return (
                 <tr
                   key={config.config}
-                  className={`border-t border-surface-800 transition-colors ${config.best ? "bg-info-500/5" : "hover:bg-surface-800/30"}`}
+                  className={`border-t border-surface-200 transition-colors ${config.best ? "bg-info-500/5" : "hover:bg-surface-200/30"}`}
                 >
                   <td className="py-2.5 px-3">
                     <div className="flex items-center gap-2">
-                      <span className="font-medium text-surface-100">
+                      <span className="font-medium text-surface-900">
                         {config.config}: {config.name}
                       </span>
                       {config.best && (
@@ -73,21 +73,21 @@ export default function AblationTab({ ablationConfigs, ablationSignificance, int
                     </div>
                     <p className="text-xs text-surface-500 mt-0.5">{config.description}</p>
                   </td>
-                  <td className="py-2.5 px-3 text-xs text-surface-400">{config.features}</td>
+                  <td className="py-2.5 px-3 text-xs text-surface-600">{config.features}</td>
                   <td className="py-2.5 px-3 font-data tabular-nums">
                     <span
-                      className={`font-bold ${config.best ? "text-info-400" : "text-surface-100"}`}
+                      className={`font-bold ${config.best ? "text-info-400" : "text-surface-900"}`}
                     >
                       {config.mae.toFixed(4)}
                     </span>
                   </td>
-                  <td className="py-2.5 px-3 text-surface-300 font-data tabular-nums">
+                  <td className="py-2.5 px-3 text-surface-700 font-data tabular-nums">
                     {config.r2.toFixed(3)}
                   </td>
-                  <td className="py-2.5 px-3 text-surface-300 font-data tabular-nums">
+                  <td className="py-2.5 px-3 text-surface-700 font-data tabular-nums">
                     {config.rho.toFixed(3)}
                   </td>
-                  <td className="py-2.5 px-3 text-surface-300 font-data tabular-nums">
+                  <td className="py-2.5 px-3 text-surface-700 font-data tabular-nums">
                     {config.features}
                   </td>
                   <td className="py-2.5 px-3 font-data tabular-nums">
@@ -105,11 +105,11 @@ export default function AblationTab({ ablationConfigs, ablationSignificance, int
       </div>
 
       <div className="overflow-x-auto">
-        <div className="py-3 border-b border-surface-700">
+        <div className="py-3 border-b border-surface-300">
           <span className="section-label">Statistical Significance (Diebold-Mariano Test)</span>
         </div>
         <table className="w-full">
-          <thead className="bg-surface-800/30">
+          <thead className="bg-surface-200/30">
             <tr>
               <th scope="col" className="table-header text-left py-2 px-3">
                 Comparison
@@ -127,19 +127,19 @@ export default function AblationTab({ ablationConfigs, ablationSignificance, int
           </thead>
           <tbody>
             {ablationSignificance.map((s) => (
-              <tr key={s.pair} className="border-t border-surface-800 hover:bg-surface-800/30">
-                <td className="py-2 px-3 font-medium text-surface-200 font-data">{s.pair}</td>
-                <td className="py-2 px-3 font-data tabular-nums text-surface-300">
+              <tr key={s.pair} className="border-t border-surface-200 hover:bg-surface-200/30">
+                <td className="py-2 px-3 font-medium text-surface-800 font-data">{s.pair}</td>
+                <td className="py-2 px-3 font-data tabular-nums text-surface-700">
                   {s.pValue < 0.001 ? "<0.001" : s.pValue.toFixed(3)}
                 </td>
                 <td className="py-2 px-3">
                   <span
-                    className={`font-bold font-data ${s.stars === "n.s." ? "text-surface-500" : "text-brand-400"}`}
+                    className={`font-bold font-data ${s.stars === "n.s." ? "text-surface-500" : "text-brand-700"}`}
                   >
                     {s.stars}
                   </span>
                 </td>
-                <td className="py-2 px-3 text-sm text-surface-400">{s.label}</td>
+                <td className="py-2 px-3 text-sm text-surface-600">{s.label}</td>
               </tr>
             ))}
           </tbody>
@@ -147,7 +147,7 @@ export default function AblationTab({ ablationConfigs, ablationSignificance, int
       </div>
 
       <div>
-        <div className="py-3 border-b border-surface-700 mb-3">
+        <div className="py-3 border-b border-surface-300 mb-3">
           <span className="section-label">Feature Interaction</span>
         </div>
         <div className="space-y-3">
@@ -155,7 +155,7 @@ export default function AblationTab({ ablationConfigs, ablationSignificance, int
             {
               label: "Injury alone",
               value: interactionEffect.injuryAlone,
-              color: "bg-brand-500/60",
+              color: "bg-brand-600/60",
             },
             { label: "News alone", value: interactionEffect.newsAlone, color: "bg-warning-500/60" },
             {
@@ -166,17 +166,17 @@ export default function AblationTab({ ablationConfigs, ablationSignificance, int
             {
               label: "Expected (if additive)",
               value: interactionEffect.expected,
-              color: "bg-surface-600",
+              color: "bg-surface-400",
             },
           ].map((item) => (
             <div key={item.label} className="flex items-center gap-3">
-              <span className="text-sm text-surface-300 w-40 shrink-0">{item.label}</span>
-              <div className="flex-1 h-6 bg-surface-800 rounded-md overflow-hidden">
+              <span className="text-sm text-surface-700 w-40 shrink-0">{item.label}</span>
+              <div className="flex-1 h-6 bg-surface-200 rounded-md overflow-hidden">
                 <div
                   className={`h-full ${item.color} rounded-md flex items-center pl-2`}
                   style={{ width: `${(item.value / interactionEffect.expected) * 100}%` }}
                 >
-                  <span className="text-xs font-semibold text-surface-50 font-data">
+                  <span className="text-xs font-semibold text-surface-950 font-data">
                     {item.value.toFixed(2)}
                   </span>
                 </div>
@@ -187,9 +187,9 @@ export default function AblationTab({ ablationConfigs, ablationSignificance, int
             </div>
           ))}
         </div>
-        <div className="mt-3 p-3 rounded-md bg-surface-800/50 border border-surface-700">
-          <p className="text-sm text-surface-300">
-            <span className="font-semibold text-surface-100">
+        <div className="mt-3 p-3 rounded-md bg-surface-200/50 border border-surface-300">
+          <p className="text-sm text-surface-700">
+            <span className="font-semibold text-surface-900">
               Synergy: +{interactionEffect.synergy.toFixed(2)}%
             </span>{" "}
             ,the combined effect exceeds the sum of individual gains. Injury and news features
@@ -202,7 +202,7 @@ export default function AblationTab({ ablationConfigs, ablationSignificance, int
         <div className="flex items-start gap-3">
           <span className="badge bg-success-500/20 text-success-400 shrink-0 mt-0.5">RQ1</span>
           <div>
-            <p className="text-sm text-surface-200 font-medium">
+            <p className="text-sm text-surface-800 font-medium">
               Yes, injury data measurably improves predictions
             </p>
             <p className="text-xs text-surface-500 mt-1">
@@ -214,7 +214,7 @@ export default function AblationTab({ ablationConfigs, ablationSignificance, int
         <div className="flex items-start gap-3">
           <span className="badge bg-warning-500/20 text-warning-400 shrink-0 mt-0.5">RQ2</span>
           <div>
-            <p className="text-sm text-surface-200 font-medium">
+            <p className="text-sm text-surface-800 font-medium">
               Yes, news adds a small but real improvement
             </p>
             <p className="text-xs text-surface-500 mt-1">
@@ -224,9 +224,9 @@ export default function AblationTab({ ablationConfigs, ablationSignificance, int
           </div>
         </div>
         <div className="flex items-start gap-3">
-          <span className="badge bg-brand-500/20 text-brand-400 shrink-0 mt-0.5">RQ3</span>
+          <span className="badge bg-brand-600/20 text-brand-700 shrink-0 mt-0.5">RQ3</span>
           <div>
-            <p className="text-sm text-surface-200 font-medium">
+            <p className="text-sm text-surface-800 font-medium">
               Synergistic,combining both exceeds the sum of individual gains
             </p>
             <p className="text-xs text-surface-500 mt-1">

@@ -7,7 +7,7 @@ import Loading from "../components/feedback/Loading";
 import { usePlayer } from "../hooks";
 import { describe, num } from "../lib/shap";
 
-const Stat = ({ value, label, tone = "text-surface-100" }) => (
+const Stat = ({ value, label, tone = "text-surface-900" }) => (
   <div>
     <span className={`text-lg font-bold font-data tabular-nums ${tone}`}>{value}</span>
     <span className="text-xs text-surface-500 ml-1">{label}</span>
@@ -32,7 +32,7 @@ export default function PlayerDetail() {
     <div className="space-y-8 stagger">
       <button
         onClick={() => navigate(-1)}
-        className="flex items-center gap-1 text-xs text-surface-500 hover:text-surface-300 transition-colors"
+        className="flex items-center gap-1 text-xs text-surface-500 hover:text-surface-700 transition-colors"
       >
         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -53,7 +53,7 @@ export default function PlayerDetail() {
               <StatusBadge status={player.status} chance={player.chance_of_playing} compact />
             )}
           </div>
-          <h2 className="text-xl font-bold text-surface-100">{displayName}</h2>
+          <h2 className="text-xl font-bold text-surface-900">{displayName}</h2>
           <p className="text-sm text-surface-500">
             {player.team_name} · £{player.value.toFixed(1)}m · {player.selected_by_percent}% owned
           </p>
@@ -61,7 +61,7 @@ export default function PlayerDetail() {
         </div>
 
         <div className="text-right shrink-0">
-          <span className="text-4xl font-bold text-brand-400 font-data tabular-nums leading-none">
+          <span className="text-4xl font-bold text-brand-700 font-data tabular-nums leading-none">
             {player.predicted_points.toFixed(1)}
           </span>
           <p className="text-xs text-surface-500 mt-1">predicted points</p>
@@ -77,7 +77,7 @@ export default function PlayerDetail() {
           <div className="mt-3 max-w-md space-y-1.5">
             {player.shap.map((s) => (
               <div key={s.feature} className="flex items-center justify-between gap-4 text-sm">
-                <span className="text-surface-300">{describe(s, player)}</span>
+                <span className="text-surface-700">{describe(s, player)}</span>
                 <span
                   className={`font-data tabular-nums font-medium ${s.impact > 0 ? "text-success-400" : "text-danger-400"}`}
                 >
@@ -93,13 +93,13 @@ export default function PlayerDetail() {
         </div>
       )}
 
-      <div className="flex items-center gap-5 flex-wrap py-3 border-y border-surface-800">
+      <div className="flex items-center gap-5 flex-wrap py-3 border-y border-surface-200">
         <Stat value={player.total_points} label="pts this season" />
-        <div className="w-px h-4 bg-surface-700" />
+        <div className="w-px h-4 bg-surface-300" />
         <Stat value={player.form} label="form" />
-        <div className="w-px h-4 bg-surface-700" />
+        <div className="w-px h-4 bg-surface-300" />
         <Stat value={player.minutes.toLocaleString()} label="mins" />
-        <div className="w-px h-4 bg-surface-700" />
+        <div className="w-px h-4 bg-surface-300" />
         <Stat
           value={`${netTransfers > 0 ? "+" : ""}${(netTransfers / 1000).toFixed(1)}k`}
           label="transfers this GW"
@@ -108,7 +108,7 @@ export default function PlayerDetail() {
               ? "text-success-400"
               : netTransfers < 0
                 ? "text-danger-400"
-                : "text-surface-100"
+                : "text-surface-900"
           }
         />
       </div>
@@ -129,20 +129,20 @@ export default function PlayerDetail() {
               <div key={i} className="flex items-center gap-3 py-1 text-sm font-data tabular-nums">
                 <span className="w-10 text-xs text-surface-500">{player.gw_labels[i]}</span>
                 <span
-                  className={`w-10 text-right font-bold ${p >= 8 ? "text-brand-400" : p >= 3 ? "text-surface-100" : "text-surface-500"}`}
+                  className={`w-10 text-right font-bold ${p >= 8 ? "text-brand-700" : p >= 3 ? "text-surface-900" : "text-surface-500"}`}
                 >
                   {p}
                 </span>
-                <span className="w-10 text-right text-surface-300">
+                <span className="w-10 text-right text-surface-700">
                   {player.minutes_history[i]}
                 </span>
-                <span className="w-10 text-right text-surface-300">
+                <span className="w-10 text-right text-surface-700">
                   {num(player.xg_history[i], 2)}
                 </span>
-                <span className="w-10 text-right text-surface-300">
+                <span className="w-10 text-right text-surface-700">
                   {num(player.xa_history[i], 2)}
                 </span>
-                <span className="w-10 text-right text-surface-300">{player.bonus_history[i]}</span>
+                <span className="w-10 text-right text-surface-700">{player.bonus_history[i]}</span>
               </div>
             ))}
           </div>
@@ -156,7 +156,7 @@ export default function PlayerDetail() {
                 <span className="text-xs text-surface-500 w-10 font-data tabular-nums">
                   GW{f.gw}
                 </span>
-                <span className="text-surface-100 w-10">{f.opponent}</span>
+                <span className="text-surface-900 w-10">{f.opponent}</span>
                 <span className="text-xs text-surface-500 w-4">{f.home ? "H" : "A"}</span>
                 <span
                   className={`inline-flex items-center justify-center w-5 h-5 rounded text-2xs font-bold ${FDR_COLORS[f.fdr].bg} ${FDR_COLORS[f.fdr].text}`}
@@ -180,7 +180,7 @@ export default function PlayerDetail() {
             { label: "Bonus", value: player.bonus },
           ].map((stat) => (
             <div key={stat.label}>
-              <span className="text-lg font-bold text-surface-100 font-data tabular-nums">
+              <span className="text-lg font-bold text-surface-900 font-data tabular-nums">
                 {stat.value}
               </span>
               {stat.sub && <span className="text-xs text-surface-500 ml-1.5">{stat.sub}</span>}

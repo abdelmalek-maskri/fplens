@@ -44,7 +44,7 @@ export default function PitchView({
         </div>
       </PitchLayout>
 
-      <div className="bg-surface-800/60 px-4 py-3 border-t border-surface-700 shrink-0">
+      <div className="bg-surface-200/60 px-4 py-3 border-t border-surface-300 shrink-0">
         <p className="section-label mb-3">{benchLabel}</p>
         <div className="flex justify-around">
           {bench.map((p, idx) => {
@@ -65,7 +65,7 @@ export default function PitchView({
                   isVice={false}
                   status={p.status}
                 />
-                <div className="bg-surface-700/80 px-2 py-0.5 rounded-sm text-[11px] font-semibold text-surface-300 text-center min-w-[72px] max-w-[100px] truncate group-hover:text-brand-400 transition-colors">
+                <div className="bg-surface-300/80 px-2 py-0.5 rounded-sm text-[11px] font-semibold text-surface-700 text-center min-w-[72px] max-w-[100px] truncate group-hover:text-brand-700 transition-colors">
                   {p.web_name}
                 </div>
                 <div className="text-2xs text-surface-500 whitespace-nowrap">

@@ -3,7 +3,7 @@ function PageButton({ onClick, disabled, children }) {
     <button
       onClick={onClick}
       disabled={disabled}
-      className="px-2 py-1 text-xs rounded border border-surface-700 text-surface-400 hover:text-surface-200 hover:border-surface-600 disabled:opacity-40 disabled:pointer-events-none transition-colors"
+      className="px-2 py-1 text-xs rounded border border-surface-300 text-surface-600 hover:text-surface-800 hover:border-surface-400 disabled:opacity-40 disabled:pointer-events-none transition-colors"
     >
       {children}
     </button>
@@ -22,7 +22,7 @@ export default function Pagination({ page, totalPages, pageStart, pageSize, tota
   if (totalPages <= 1) return null;
 
   return (
-    <div className="relative flex items-center justify-center pt-4 mt-4 border-t border-surface-800">
+    <div className="relative flex items-center justify-center pt-4 mt-4 border-t border-surface-200">
       <span className="absolute left-0 hidden sm:block text-xs text-surface-500 tabular-nums">
         {pageStart + 1} to {Math.min(pageStart + pageSize, total)} of {total}
       </span>
@@ -34,7 +34,7 @@ export default function Pagination({ page, totalPages, pageStart, pageSize, tota
         <PageButton onClick={() => onChange(page - 1)} disabled={page === 1}>
           Previous
         </PageButton>
-        <span className="px-2 text-xs text-surface-400 tabular-nums">
+        <span className="px-2 text-xs text-surface-600 tabular-nums">
           {page} / {totalPages}
         </span>
         <PageButton onClick={() => onChange(page + 1)} disabled={page === totalPages}>

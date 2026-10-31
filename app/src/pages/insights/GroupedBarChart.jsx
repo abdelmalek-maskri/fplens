@@ -41,13 +41,13 @@ export default function GroupedBarChart({ labels, series, yMin = 0, yMax, yStep 
               y1={toY(t)}
               x2={padL + chartW}
               y2={toY(t)}
-              style={{ stroke: "rgb(var(--surface-700))", strokeWidth: 0.5 }}
+              style={{ stroke: "rgb(var(--surface-300))", strokeWidth: 0.5 }}
             />
             <text
               x={padL - 5}
               y={toY(t) + 3.5}
               textAnchor="end"
-              style={{ fill: "rgb(var(--surface-400))", fontSize: 9 }}
+              style={{ fill: "rgb(var(--surface-600))", fontSize: 9 }}
             >
               {yStep < 0.5 ? t.toFixed(2) : t.toFixed(1)}
             </text>
@@ -86,7 +86,7 @@ export default function GroupedBarChart({ labels, series, yMin = 0, yMax, yStep 
                 x={groupX + groupW / 2}
                 y={toY(yMin) + 15}
                 textAnchor="middle"
-                style={{ fill: "rgb(var(--surface-400))", fontSize: 9 }}
+                style={{ fill: "rgb(var(--surface-600))", fontSize: 9 }}
               >
                 {label}
               </text>
@@ -99,7 +99,7 @@ export default function GroupedBarChart({ labels, series, yMin = 0, yMax, yStep 
         {series.map((s) => (
           <div key={s.name} className="flex items-center gap-1.5">
             <div className="w-3 h-3 rounded" style={{ backgroundColor: s.color, opacity: 0.7 }} />
-            <span className="text-xs text-surface-400">{s.name}</span>
+            <span className="text-xs text-surface-600">{s.name}</span>
           </div>
         ))}
       </div>

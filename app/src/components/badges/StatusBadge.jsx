@@ -13,7 +13,7 @@ export default function StatusBadge({ status, chance, compact = false }) {
       cls: "bg-warning-500/20 text-warning-700",
     },
     i: { label: "Injured", cls: "bg-danger-500/20 text-danger-700" },
-    u: { label: compact ? "Out" : "Unavailable", cls: "bg-surface-700 text-surface-200" },
+    u: { label: compact ? "Out" : "Unavailable", cls: "bg-surface-300 text-surface-800" },
     s: { label: "Suspended", cls: "bg-danger-500/20 text-danger-700" },
   };
   const c = config[status] || config.u;

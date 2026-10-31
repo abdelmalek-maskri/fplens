@@ -15,7 +15,7 @@ export default function PlayerLink({ element, className = "", stopPropagation = 
     <Link
       to={`/player/${element}`}
       onClick={stopPropagation ? (e) => e.stopPropagation() : undefined}
-      className={`hover:text-brand-400 transition-colors ${className}`}
+      className={`hover:text-brand-700 transition-colors ${className}`}
     >
       {children}
     </Link>

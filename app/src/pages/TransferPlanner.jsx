@@ -87,7 +87,7 @@ export default function TransferPlanner() {
         <div className="flex items-center gap-5">
           <div className="flex items-center gap-2">
             <span className="text-xs text-surface-500">Plan ahead</span>
-            <div className="flex items-center border border-surface-700/50 rounded overflow-hidden">
+            <div className="flex items-center border border-surface-300/50 rounded overflow-hidden">
               {[
                 { value: 1, label: "1 week" },
                 { value: 2, label: "2 weeks" },
@@ -98,8 +98,8 @@ export default function TransferPlanner() {
                   onClick={() => setHorizon(value)}
                   className={`px-3 py-1.5 text-xs font-medium transition-colors ${
                     horizon === value
-                      ? "bg-surface-200 text-surface-800"
-                      : "text-surface-400 hover:text-surface-200"
+                      ? "bg-surface-800 text-surface-200"
+                      : "text-surface-600 hover:text-surface-800"
                   }`}
                 >
                   {label}
@@ -113,7 +113,7 @@ export default function TransferPlanner() {
             <select
               value={freeTransfers}
               onChange={(e) => setFreeTransfers(Number(e.target.value))}
-              className="bg-transparent border border-surface-700/50 rounded px-2 py-1.5 text-xs font-data text-surface-200 focus:border-brand-500 focus:outline-none cursor-pointer"
+              className="bg-transparent border border-surface-300/50 rounded px-2 py-1.5 text-xs font-data text-surface-800 focus:border-brand-600 focus:outline-none cursor-pointer"
             >
               <option value={1}>1</option>
               <option value={2}>2</option>
@@ -125,12 +125,12 @@ export default function TransferPlanner() {
         <div className="flex items-center gap-4 text-xs">
           {transfers.length > 0 && (
             <>
-              <span className="text-surface-400">{transfers.length} made</span>
+              <span className="text-surface-600">{transfers.length} made</span>
               {hitCost > 0 && <span className="text-danger-400 font-medium">-{hitCost} hit</span>}
               {budget !== null && (
-                <span className="text-surface-400">£{budget.toFixed(1)}m in the bank</span>
+                <span className="text-surface-600">£{budget.toFixed(1)}m in the bank</span>
               )}
-              <span className="font-data font-bold text-brand-400">
+              <span className="font-data font-bold text-brand-700">
                 {(teamTotal - hitCost).toFixed(1)} pts
               </span>
               <button
@@ -142,8 +142,8 @@ export default function TransferPlanner() {
             </>
           )}
           {transfers.length === 0 && !noTeam && (
-            <span className="text-surface-400">
-              Squad <span className="font-data text-surface-200">{teamTotal.toFixed(1)} pts</span>{" "}
+            <span className="text-surface-600">
+              Squad <span className="font-data text-surface-800">{teamTotal.toFixed(1)} pts</span>{" "}
               over {horizon} GW{horizon > 1 ? "s" : ""}
               {bank !== null && ` · £${bank.toFixed(1)}m in the bank`}
             </span>
@@ -153,14 +153,14 @@ export default function TransferPlanner() {
 
       {noTeam && (
         <div className="py-20 max-w-md mx-auto text-center">
-          <h2 className="text-lg font-bold text-surface-100">Load your squad first</h2>
-          <p className="text-sm text-surface-400 mt-2">
+          <h2 className="text-lg font-bold text-surface-900">Load your squad first</h2>
+          <p className="text-sm text-surface-600 mt-2">
             This page suggests transfers by comparing the players you own against every other
             player, over the next one to three gameweeks. It needs to know who you own.
           </p>
           <Link
             to="/my-team"
-            className="inline-block mt-4 px-4 py-2 rounded bg-brand-600 text-white text-sm font-medium hover:bg-brand-500 transition-colors"
+            className="inline-block mt-4 px-4 py-2 rounded bg-brand-700 text-white text-sm font-medium hover:bg-brand-600 transition-colors"
           >
             Enter your FPL ID
           </Link>
@@ -171,13 +171,13 @@ export default function TransferPlanner() {
       )}
 
       {suggestions.length > 0 && !noTeam && (
-        <div className="border border-surface-700/50 rounded-md overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-2.5 bg-surface-800/50">
-            <span className="text-xs font-medium text-surface-300">
+        <div className="border border-surface-300/50 rounded-md overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-2.5 bg-surface-200/50">
+            <span className="text-xs font-medium text-surface-700">
               Suggested, judged over the next {horizon} gameweek{horizon > 1 ? "s" : ""}
             </span>
           </div>
-          <div className="divide-y divide-surface-800/40">
+          <div className="divide-y divide-surface-200/40">
             {suggestions.map((s) => {
               const alreadyApplied = transfers.some((t) => t.out === s.out.element);
               return (
@@ -191,17 +191,17 @@ export default function TransferPlanner() {
                       <TeamBadge team={s.out.team} size="sm" />
                       <PlayerLink
                         element={s.out.element}
-                        className="text-sm text-surface-100 truncate"
+                        className="text-sm text-surface-900 truncate"
                       >
                         {s.out.web_name}
                       </PlayerLink>
                       <span className="text-xs text-surface-500">{s.out.sum.toFixed(1)} pts</span>
                     </div>
-                    <span className="text-[10px] text-surface-600 mt-0.5">{s.reason}</span>
+                    <span className="text-[10px] text-surface-400 mt-0.5">{s.reason}</span>
                   </div>
 
                   <div className="text-center shrink-0">
-                    <span className="text-xs text-surface-600">→</span>
+                    <span className="text-xs text-surface-400">→</span>
                     <div className="text-xs font-semibold text-success-400 font-data">
                       +{s.points_gain.toFixed(1)}
                     </div>
@@ -211,7 +211,7 @@ export default function TransferPlanner() {
                     <span className="text-[10px] uppercase text-success-400 font-medium">Buy</span>
                     <div className="flex items-center gap-2 mt-0.5">
                       <TeamBadge team={s.in.team} size="sm" />
-                      <span className="text-sm text-surface-100 truncate">{s.in.web_name}</span>
+                      <span className="text-sm text-surface-900 truncate">{s.in.web_name}</span>
                       <span className="text-xs text-surface-500">
                         {s.in.sum.toFixed(1)} pts · £{s.in.value.toFixed(1)}m
                       </span>
@@ -221,7 +221,7 @@ export default function TransferPlanner() {
                   <button
                     onClick={() => applySuggestion(s)}
                     disabled={alreadyApplied}
-                    className="link-action text-xs disabled:pointer-events-none shrink-0 px-2 py-1 border border-brand-500/30 rounded hover:bg-brand-500/5"
+                    className="link-action text-xs disabled:pointer-events-none shrink-0 px-2 py-1 border border-brand-600/30 rounded hover:bg-brand-600/5"
                   >
                     {alreadyApplied ? "Applied" : "Apply"}
                   </button>
@@ -254,11 +254,11 @@ export default function TransferPlanner() {
             return (
               <div
                 key={t.out}
-                className="flex items-center gap-3 px-3 py-2 border border-surface-700/50 rounded"
+                className="flex items-center gap-3 px-3 py-2 border border-surface-300/50 rounded"
               >
                 <TeamBadge team={out.team} size="sm" />
                 <span className="text-sm text-danger-400 line-through">{out.web_name}</span>
-                <span className="text-surface-600">→</span>
+                <span className="text-surface-400">→</span>
                 <TeamBadge team={inP.team} size="sm" />
                 <span className="text-sm text-success-400 font-medium">{inP.web_name}</span>
                 <span
@@ -271,7 +271,7 @@ export default function TransferPlanner() {
                 </span>
                 <button
                   onClick={() => removeTransfer(t.out)}
-                  className="text-xs text-surface-600 hover:text-danger-400 transition-colors"
+                  className="text-xs text-surface-400 hover:text-danger-400 transition-colors"
                 >
                   Undo
                 </button>
@@ -322,15 +322,15 @@ export default function TransferPlanner() {
                 return (
                   <div
                     key={p.element}
-                    className={`grid grid-cols-[1fr_4rem_5rem_6rem] gap-3 items-center py-1.5 text-sm border-t border-surface-800/60 ${
-                      p.isTransferIn ? "bg-brand-500/5" : ""
+                    className={`grid grid-cols-[1fr_4rem_5rem_6rem] gap-3 items-center py-1.5 text-sm border-t border-surface-200/60 ${
+                      p.isTransferIn ? "bg-brand-600/5" : ""
                     }`}
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       <TeamBadge team={p.team} size="sm" />
                       <button
                         onClick={() => navigate(`/player/${p.element}`)}
-                        className="text-surface-100 hover:text-brand-400 transition-colors truncate"
+                        className="text-surface-900 hover:text-brand-700 transition-colors truncate"
                       >
                         {p.web_name}
                       </button>
@@ -343,15 +343,15 @@ export default function TransferPlanner() {
                       {p.status === "d" && (
                         <span className="text-2xs text-warning-400">doubtful</span>
                       )}
-                      {p.isTransferIn && <span className="text-2xs text-brand-400">in</span>}
+                      {p.isTransferIn && <span className="text-2xs text-brand-700">in</span>}
                     </div>
-                    <span className="text-right text-surface-400 font-data tabular-nums">
+                    <span className="text-right text-surface-600 font-data tabular-nums">
                       £{p.value.toFixed(1)}m
                     </span>
-                    <span className="text-right text-surface-300 font-data tabular-nums">
+                    <span className="text-right text-surface-700 font-data tabular-nums">
                       {(p.predicted[0] ?? 0).toFixed(1)}
                     </span>
-                    <span className="text-right font-data tabular-nums font-medium text-surface-100">
+                    <span className="text-right font-data tabular-nums font-medium text-surface-900">
                       {sum.toFixed(1)}
                     </span>
                   </div>

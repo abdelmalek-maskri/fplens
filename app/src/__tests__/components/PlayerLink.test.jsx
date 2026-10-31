@@ -27,6 +27,6 @@ describe("PlayerLink", () => {
     renderLink({ className: "font-medium" });
     const link = screen.getByRole("link");
     expect(link).toHaveClass("font-medium");
-    expect(link).toHaveClass("hover:text-brand-400");
+    expect(link).toHaveClass("hover:text-brand-700");
   });
 });

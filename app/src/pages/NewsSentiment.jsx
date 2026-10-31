@@ -17,7 +17,7 @@ function sentiment(v) {
   if (v >= 0.3)
     return { label: "Positive", text: "text-success-400", border: "border-l-success-400" };
   if (v < 0) return { label: "Negative", text: "text-danger-400", border: "border-l-danger-400" };
-  return { label: "Neutral", text: "text-surface-500", border: "border-l-surface-600" };
+  return { label: "Neutral", text: "text-surface-500", border: "border-l-surface-400" };
 }
 
 function PlayerTags({ players, navigate }) {
@@ -35,7 +35,7 @@ function PlayerTags({ players, navigate }) {
             e.stopPropagation();
             navigate(`/player/${p.element}`);
           }}
-          className="inline-flex items-center gap-1 text-2xs text-surface-400 hover:text-brand-400 transition-colors"
+          className="inline-flex items-center gap-1 text-2xs text-surface-600 hover:text-brand-700 transition-colors"
         >
           <TeamBadge team={p.team_name} size="xs" />
           <span>{p.web_name}</span>
@@ -48,7 +48,7 @@ function PlayerTags({ players, navigate }) {
             e.stopPropagation();
             setExpanded(true);
           }}
-          className="text-2xs text-surface-500 hover:text-surface-300 transition-colors"
+          className="text-2xs text-surface-500 hover:text-surface-700 transition-colors"
         >
           +{overflow} more
         </button>
@@ -139,28 +139,28 @@ export default function NewsSentiment() {
 
   return (
     <div className="space-y-6 stagger">
-      <div className="flex items-center gap-5 flex-wrap py-3 border-b border-surface-800">
+      <div className="flex items-center gap-5 flex-wrap py-3 border-b border-surface-200">
         <div>
-          <span className="text-lg font-bold text-surface-100 font-data tabular-nums">
+          <span className="text-lg font-bold text-surface-900 font-data tabular-nums">
             {stats.total}
           </span>
           <span className="text-xs text-surface-500 ml-1">articles</span>
         </div>
-        <div className="w-px h-4 bg-surface-700" />
+        <div className="w-px h-4 bg-surface-300" />
         <div>
           <span className="text-lg font-bold text-success-400 font-data tabular-nums">
             {stats.positive}
           </span>
           <span className="text-xs text-surface-500 ml-1">positive</span>
         </div>
-        <div className="w-px h-4 bg-surface-700" />
+        <div className="w-px h-4 bg-surface-300" />
         <div>
           <span className="text-lg font-bold text-danger-400 font-data tabular-nums">
             {stats.negative}
           </span>
           <span className="text-xs text-surface-500 ml-1">negative</span>
         </div>
-        <div className="w-px h-4 bg-surface-700" />
+        <div className="w-px h-4 bg-surface-300" />
         <div>
           <span className="text-lg font-bold text-warning-400 font-data tabular-nums">
             {stats.injuries}
@@ -176,13 +176,13 @@ export default function NewsSentiment() {
           placeholder="Search players or headlines..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="bg-surface-800 border border-surface-700 rounded px-3 py-1.5 text-sm text-surface-200 placeholder:text-surface-600 focus:outline-none focus:border-brand-500/50 w-56"
+          className="bg-surface-200 border border-surface-300 rounded px-3 py-1.5 text-sm text-surface-800 placeholder:text-surface-400 focus:outline-none focus:border-brand-600/50 w-56"
         />
 
         <select
           value={teamFilter}
           onChange={(e) => setTeamFilter(e.target.value)}
-          className="bg-surface-800 border border-surface-700 rounded px-2 py-1.5 text-sm text-surface-200 focus:outline-none focus:border-brand-500/50"
+          className="bg-surface-200 border border-surface-300 rounded px-2 py-1.5 text-sm text-surface-800 focus:outline-none focus:border-brand-600/50"
         >
           <option value="ALL">All teams</option>
           {TEAMS.map((t) => (
@@ -215,15 +215,15 @@ export default function NewsSentiment() {
               <Link
                 key={p.element}
                 to={`/player/${p.element}`}
-                className="flex items-center gap-2.5 py-2 border-b border-surface-800/60 last:border-0 group"
+                className="flex items-center gap-2.5 py-2 border-b border-surface-200/60 last:border-0 group"
                 style={{ borderLeftColor: TEAM_COLORS[p.team_name], borderLeftWidth: 2 }}
               >
-                <span className="text-xs text-surface-600 w-4 text-right font-data tabular-nums">
+                <span className="text-xs text-surface-400 w-4 text-right font-data tabular-nums">
                   {i + 1}
                 </span>
                 <TeamBadge team={p.team_name} size="sm" />
                 <div className="flex-1 min-w-0">
-                  <span className="text-sm text-surface-200 group-hover:text-brand-400 transition-colors">
+                  <span className="text-sm text-surface-800 group-hover:text-brand-700 transition-colors">
                     {p.web_name}
                   </span>
                   <span className="text-2xs text-surface-500 ml-1.5">{p.mentions} mentions</span>
@@ -249,21 +249,21 @@ export default function NewsSentiment() {
               {filteredArticles.map((a) => (
                 <div
                   key={a.id}
-                  className={`border-l-2 ${sentiment(a.sentiment).border} rounded-r bg-surface-850/50 hover:bg-surface-800/70 transition-colors`}
+                  className={`border-l-2 ${sentiment(a.sentiment).border} rounded-r bg-surface-850/50 hover:bg-surface-200/70 transition-colors`}
                 >
                   <div className="px-4 py-3">
                     <div className="flex items-start justify-between gap-3">
-                      <p className="text-sm text-surface-200 leading-snug flex-1">
+                      <p className="text-sm text-surface-800 leading-snug flex-1">
                         {a.url ? (
                           <a
                             href={a.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="hover:text-surface-100 transition-colors"
+                            className="hover:text-surface-900 transition-colors"
                           >
                             {a.headline}
                             <svg
-                              className="inline-block w-3 h-3 ml-1.5 text-surface-600 hover:text-brand-400 transition-colors -translate-y-px"
+                              className="inline-block w-3 h-3 ml-1.5 text-surface-400 hover:text-brand-700 transition-colors -translate-y-px"
                               viewBox="0 0 12 12"
                               fill="none"
                               stroke="currentColor"
@@ -308,8 +308,8 @@ export default function NewsSentiment() {
                       {a.snippet}
                     </p>
                     <div className="flex items-center gap-3 mt-2.5 flex-wrap">
-                      <span className="text-2xs text-surface-600">{a.date}</span>
-                      <span className="text-2xs text-surface-600">{a.source}</span>
+                      <span className="text-2xs text-surface-400">{a.date}</span>
+                      <span className="text-2xs text-surface-400">{a.source}</span>
                       <div className="flex-1" />
                       <PlayerTags players={a.players} navigate={navigate} />
                     </div>
@@ -321,7 +321,7 @@ export default function NewsSentiment() {
         </div>
       </div>
 
-      <p className="text-2xs text-surface-500 pt-2 border-t border-surface-800">
+      <p className="text-2xs text-surface-500 pt-2 border-t border-surface-200">
         Content powered by{" "}
         <a
           href="https://open-platform.theguardian.com"

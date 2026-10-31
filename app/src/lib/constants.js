@@ -1,7 +1,7 @@
 export const FDR_COLORS = {
   1: { bg: "bg-success-700", text: "text-white", label: "Very Easy" },
   2: { bg: "bg-success-200", text: "text-success-700", label: "Easy" },
-  3: { bg: "bg-surface-700", text: "text-surface-200", label: "Medium" },
+  3: { bg: "bg-surface-300", text: "text-surface-800", label: "Medium" },
   4: { bg: "bg-danger-200", text: "text-danger-700", label: "Hard" },
   5: { bg: "bg-danger-700", text: "text-white", label: "Very Hard" },
 };
@@ -58,14 +58,14 @@ export const TEAM_COLORS = {
 export const POSITION_COLORS = {
   GK: "text-warning-400",
   DEF: "text-success-400",
-  MID: "text-brand-400",
+  MID: "text-brand-700",
   FWD: "text-danger-400",
 };
 
 export const POSITION_BG = {
   GK: "bg-warning-500/20",
   DEF: "bg-success-500/20",
-  MID: "bg-brand-500/20",
+  MID: "bg-brand-600/20",
   FWD: "bg-danger-500/20",
 };
 
@@ -73,7 +73,7 @@ export const STATUS_CONFIG = {
   a: { label: "Available", cls: "text-success-400" },
   d: { label: "Doubtful", cls: "text-warning-400" },
   i: { label: "Injured", cls: "text-danger-400" },
-  u: { label: "Unavailable", cls: "text-surface-400" },
+  u: { label: "Unavailable", cls: "text-surface-600" },
 };
 
 export const FPL_BUDGET = 100;

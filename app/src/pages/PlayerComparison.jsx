@@ -55,7 +55,7 @@ function PlayerCard({ p, onOpen }) {
         <div>
           <button
             onClick={onOpen}
-            className="text-lg font-bold text-surface-100 hover:text-brand-400 transition-colors"
+            className="text-lg font-bold text-surface-900 hover:text-brand-700 transition-colors"
           >
             {p.web_name}
           </button>
@@ -65,12 +65,12 @@ function PlayerCard({ p, onOpen }) {
         </div>
       </div>
       <div className="mt-4 flex items-baseline gap-2">
-        <span className="text-3xl font-bold text-brand-400 font-data tabular-nums leading-none">
+        <span className="text-3xl font-bold text-brand-700 font-data tabular-nums leading-none">
           {p.predicted_points.toFixed(1)}
         </span>
         <span className="text-xs text-surface-500">predicted</span>
       </div>
-      <p className="mt-2 text-sm text-surface-400">
+      <p className="mt-2 text-sm text-surface-600">
         {price(p.value)} · vs {p.opponent_name}
       </p>
       <p className="mt-1 text-xs">
@@ -84,7 +84,7 @@ function PlayerCard({ p, onOpen }) {
 function Verdict({ a, b }) {
   if (a.predicted_points === b.predicted_points) {
     return (
-      <p className="text-sm text-surface-300">
+      <p className="text-sm text-surface-700">
         Too close to call. Both are predicted {a.predicted_points.toFixed(1)}.
       </p>
     );
@@ -106,7 +106,7 @@ function Verdict({ a, b }) {
 
   return (
     <div className="space-y-1.5">
-      <p className="text-sm text-surface-100">
+      <p className="text-sm text-surface-900">
         <span className="font-semibold">{w.web_name}</span> is the stronger pick,{" "}
         <span className="font-data tabular-nums">
           {w.predicted_points.toFixed(1)} vs {l.predicted_points.toFixed(1)}
@@ -114,7 +114,7 @@ function Verdict({ a, b }) {
         predicted.
       </p>
       {support.length > 0 && (
-        <p className="text-xs text-surface-400">Also {support.slice(0, 2).join(", and ")}.</p>
+        <p className="text-xs text-surface-600">Also {support.slice(0, 2).join(", and ")}.</p>
       )}
       {edge.length > 0 && (
         <p className="text-xs text-surface-500">
@@ -161,12 +161,12 @@ export default function PlayerComparison() {
         />
         <button
           onClick={swap}
-          className="mb-1 p-2 rounded-md bg-surface-800 border border-surface-700 hover:border-brand-500 transition-colors"
+          className="mb-1 p-2 rounded-md bg-surface-200 border border-surface-300 hover:border-brand-600 transition-colors"
           title="Swap players"
           aria-label="Swap players"
         >
           <svg
-            className="w-5 h-5 text-surface-400"
+            className="w-5 h-5 text-surface-600"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -195,32 +195,32 @@ export default function PlayerComparison() {
             <PlayerCard p={b} onOpen={() => navigate(`/player/${b.id}`)} />
           </div>
 
-          <div className="border-y border-surface-800 py-4">
+          <div className="border-y border-surface-200 py-4">
             <Verdict a={a} b={b} />
           </div>
 
           <div className="max-w-xl">
             <div className="grid grid-cols-[1fr_6rem_6rem] items-center py-1 text-xs text-surface-500">
               <span />
-              <span className="text-right font-semibold text-surface-300">{a.web_name}</span>
-              <span className="text-right font-semibold text-surface-300">{b.web_name}</span>
+              <span className="text-right font-semibold text-surface-700">{a.web_name}</span>
+              <span className="text-right font-semibold text-surface-700">{b.web_name}</span>
             </div>
             {ROWS.map((row) => {
               const w = winner(row, a, b);
               const cell = (p, side) =>
                 `text-right font-data tabular-nums ${
                   w === side
-                    ? "text-brand-400 font-bold"
+                    ? "text-brand-700 font-bold"
                     : w
                       ? "text-surface-500"
-                      : "text-surface-200"
+                      : "text-surface-800"
                 }`;
               return (
                 <div
                   key={row.label}
-                  className="grid grid-cols-[1fr_6rem_6rem] items-center py-1.5 text-sm border-t border-surface-800/60"
+                  className="grid grid-cols-[1fr_6rem_6rem] items-center py-1.5 text-sm border-t border-surface-200/60"
                 >
-                  <span className="text-surface-400">{row.label}</span>
+                  <span className="text-surface-600">{row.label}</span>
                   <span className={cell(a, "a")}>{row.fmt(row.get(a))}</span>
                   <span className={cell(b, "b")}>{row.fmt(row.get(b))}</span>
                 </div>
