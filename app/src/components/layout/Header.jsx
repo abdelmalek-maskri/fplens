@@ -14,13 +14,15 @@ const PAGE_TITLES = {
   "/insights": "Model Insights",
 };
 
+// The weekday alone is ambiguous once a gameweek spans more than seven days,
+// which blank and double gameweeks regularly do.
 function formatDeadlineShort(iso) {
   if (!iso) return null;
   const d = new Date(iso);
   return (
     "Deadline " +
-    d.toLocaleDateString("en-GB", { weekday: "short" }) +
-    " " +
+    d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }) +
+    " · " +
     d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
   );
 }
