@@ -27,7 +27,7 @@ function formatDeadlineShort(iso) {
   );
 }
 
-export default function Header({ onMenuToggle, gwData }) {
+export default function Header({ onMenuToggle, gwData, menuButtonRef }) {
   const { pathname } = useLocation();
   const [lastUpdated, setLastUpdated] = useState("Just now");
   const [spinning, setSpinning] = useState(false);
@@ -57,6 +57,7 @@ export default function Header({ onMenuToggle, gwData }) {
     <header className="fixed top-0 left-0 lg:left-[200px] right-0 h-11 bg-surface-100/95 backdrop-blur-sm border-b border-surface-300 z-30 flex items-center justify-between px-4">
       <div className="flex items-center gap-2.5">
         <button
+          ref={menuButtonRef}
           onClick={onMenuToggle}
           aria-label="Toggle menu"
           className="lg:hidden text-surface-600 hover:text-surface-800 -ml-1 mr-0.5"
