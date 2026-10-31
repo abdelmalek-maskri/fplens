@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, Fragment } from "react";
+import { useState, useMemo, useEffect, useRef, Fragment } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { POSITION_COLORS } from "../lib/constants";
 import StatusBadge from "../components/badges/StatusBadge";
@@ -79,9 +79,10 @@ export default function Dashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedModel, setSelectedModel] = useState(null);
   const [expandedPlayer, setExpandedPlayer] = useState(null);
+  const tableHeadingRef = useRef(null);
 
   const { data, models, isLoading, error } = usePredictions(selectedModel);
-  const { data: fixtureData } = useFixtures();
+  const { data: fixtureData, error: fixtureError } = useFixtures();
 
   // SHAP lives in players.json, not the predictions file, so it is fetched on
   // the first expand rather than with the table. getPlayer reads the whole file
@@ -210,10 +211,18 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Above the table on purpose. The table renders every player with no
-          pagination, so anything placed after it is thousands of pixels down. */}
-      {showFixtures && <GameweekFixtures fixtureData={fixtureData} />}
+      {showFixtures &&
+        (fixtureError ? (
+          <section className="border-y border-surface-800 py-3 text-sm text-surface-400">
+            Fixtures are currently unavailable.
+          </section>
+        ) : (
+          <GameweekFixtures fixtureData={fixtureData} />
+        ))}
 
+      <h2 ref={tableHeadingRef} tabIndex={-1} className="sr-only">
+        Player predictions
+      </h2>
       <div className="flex items-center justify-between border-b border-surface-800">
         <div className="flex items-center gap-0">
           {POSITIONS.map((pos) => (
@@ -466,9 +475,11 @@ export default function Dashboard() {
           <EmptyState
             title="No players match your filters"
             message={
-              flaggedOnly
-                ? "No flagged players in this position. Turn off the flagged filter to see everyone."
-                : "Try adjusting the position filter or search query."
+              searchQuery
+                ? "Try a different search or adjust your filters."
+                : flaggedOnly
+                  ? "No flagged players in this position. Turn off the flagged filter to see everyone."
+                  : "Try adjusting the position filter or search query."
             }
           />
         )}
@@ -479,7 +490,11 @@ export default function Dashboard() {
           pageStart={pageStart}
           pageSize={PAGE_SIZE}
           total={filteredPredictions.length}
-          onChange={setPage}
+          onChange={(nextPage) => {
+            setPage(nextPage);
+            tableHeadingRef.current?.scrollIntoView();
+            tableHeadingRef.current?.focus({ preventScroll: true });
+          }}
         />
       </div>
 

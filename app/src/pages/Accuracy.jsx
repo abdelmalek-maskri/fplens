@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { POSITION_COLORS } from "../lib/constants";
 import { useAccuracy, useGameweek, usePagination } from "../hooks";
@@ -23,6 +23,7 @@ export default function Accuracy() {
   const { data: gwData } = useGameweek();
   const [modelId, setModelId] = useState(null);
   const [positionFilter, setPositionFilter] = useState("ALL");
+  const tableHeadingRef = useRef(null);
 
   const modelIds = useMemo(() => Object.keys(data?.models ?? {}), [data]);
   // Default to config_d, the production model, when it was scored
@@ -173,7 +174,9 @@ export default function Accuracy() {
 
       <div className="flex items-end justify-between flex-wrap gap-3">
         <div>
-          <span className="section-label">Every player, by model</span>
+          <h2 ref={tableHeadingRef} tabIndex={-1} className="section-label">
+            Every player, by model
+          </h2>
           <p className="text-xs text-surface-500 mt-1">
             How close each prediction was to what the player really scored.
           </p>
@@ -322,7 +325,11 @@ export default function Accuracy() {
           pageStart={pageStart}
           pageSize={PAGE_SIZE}
           total={players.length}
-          onChange={setPage}
+          onChange={(nextPage) => {
+            setPage(nextPage);
+            tableHeadingRef.current?.scrollIntoView();
+            tableHeadingRef.current?.focus({ preventScroll: true });
+          }}
         />
       </div>
     </div>
