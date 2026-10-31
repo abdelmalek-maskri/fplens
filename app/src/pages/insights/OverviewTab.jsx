@@ -231,7 +231,7 @@ export default function OverviewTab({
               >
                 <span className="text-2xs font-semibold text-surface-50">Train: 185K</span>
               </div>
-              <div className="bg-surface-600 flex items-center justify-center flex-1">
+              <div className="bg-surface-700 flex items-center justify-center flex-1">
                 <span className="text-2xs font-semibold text-surface-300">Test: 26K</span>
               </div>
             </div>
@@ -248,7 +248,7 @@ export default function OverviewTab({
                   Played {datasetStats.playedPct}%
                 </span>
               </div>
-              <div className="bg-surface-600 flex items-center justify-center flex-1">
+              <div className="bg-surface-700 flex items-center justify-center flex-1">
                 <span className="text-2xs font-semibold text-surface-300">
                   Not played {datasetStats.notPlayedPct}%
                 </span>

@@ -129,9 +129,7 @@ export default function FixtureTicker() {
                           title={`${fix.opponent} ${fix.home ? "at home" : "away"}, ${LABELS[fdr].toLowerCase()}`}
                         >
                           <p className={`text-xs font-bold ${FDR_TEXT[fdr]}`}>{fix.opponent}</p>
-                          <p className={`text-2xs ${FDR_TEXT[fdr]} opacity-70`}>
-                            {fix.home ? "(H)" : "(A)"}
-                          </p>
+                          <p className={`text-2xs ${FDR_TEXT[fdr]}`}>{fix.home ? "(H)" : "(A)"}</p>
                         </div>
                       </td>
                     );

@@ -1,5 +1,5 @@
 /* =========================================
-   FANTASY FORESIGHT — DESIGN SYSTEM
+   FPLENS — DESIGN SYSTEM
    ========================================= */
 
 @import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap");
@@ -13,14 +13,17 @@
    ========================================= */
 
 :root {
-  /* Surface — warm light editorial, no blue tint */
+  /* Surface — warm light editorial, no blue tint.
+     400/500/600 carry text in ~210 places, so each one has a contrast floor
+     against --surface-900: 6.95:1, 5.61:1 and 4.63:1. 700 and above are
+     backgrounds and borders only and are too light to put text on. */
   --surface-50: 15 15 17;
   --surface-100: 30 29 27;
   --surface-200: 52 51 48;
   --surface-300: 82 81 77;
-  --surface-400: 115 113 109;
-  --surface-500: 145 143 139;
-  --surface-600: 178 176 172;
+  --surface-400: 88 86 82;
+  --surface-500: 102 100 96;
+  --surface-600: 115 113 109;
   --surface-700: 212 210 206;
   --surface-800: 235 234 231;
   --surface-900: 250 249 246;
@@ -39,18 +42,22 @@
   --brand-900: 6 78 59;
   --brand-950: 2 44 34;
 
-  /* Success — darkened for contrast */
+  /* Success — 700 is the only step that clears 4.5:1 on a 500/15 tint */
+  --success-200: 187 247 208;
   --success-400: 21 128 61;
   --success-500: 22 163 74;
   --success-600: 22 163 74;
+  --success-700: 22 101 52;
 
   /* Warning — darkened for contrast */
   --warning-300: 202 138 4;
   --warning-400: 180 83 9;
   --warning-500: 180 83 9;
   --warning-600: 146 64 14;
+  --warning-700: 120 53 15;
 
   /* Danger — darkened for contrast */
+  --danger-200: 254 202 202;
   --danger-400: 185 28 28;
   --danger-500: 220 38 38;
   --danger-600: 185 28 28;
@@ -60,6 +67,7 @@
   --info-400: 3 105 161;
   --info-500: 14 165 233;
   --info-600: 2 132 199;
+  --info-700: 7 89 133;
 
   /* Layout */
   --header-height: 44px;
@@ -104,8 +112,11 @@
     @apply bg-brand-500/20 text-surface-100;
   }
 
+  /* WCAG 2.2 wants 2px at 3:1 against what surrounds it. The 1px brand-400/30
+     ring this replaces measured 1.54:1 on the page background, so keyboard
+     focus was effectively invisible everywhere. brand-600 solid is 5.21:1. */
   *:focus-visible {
-    @apply outline-none ring-1 ring-brand-400/30 ring-offset-0;
+    @apply outline-none ring-2 ring-brand-600 ring-offset-2 ring-offset-surface-900;
   }
 }
 
@@ -133,28 +144,34 @@
   }
 
   .badge-success {
-    @apply bg-success-500/15 text-success-400;
+    @apply bg-success-500/15 text-success-700;
   }
   .badge-warning {
-    @apply bg-warning-500/15 text-warning-400;
+    @apply bg-warning-500/15 text-warning-700;
   }
   .badge-danger {
-    @apply bg-danger-500/15 text-danger-400;
+    @apply bg-danger-500/15 text-danger-700;
   }
   .badge-info {
-    @apply bg-info-500/15 text-info-400;
+    @apply bg-info-500/15 text-info-700;
   }
   .badge-brand {
-    @apply bg-brand-500/15 text-brand-400;
+    @apply bg-brand-500/15 text-brand-700;
   }
 
-  /* Status dots */
+  /* Status dots. No glow: the design is flat, and the three states have to be
+     told apart by hue alone, so one of them cannot carry an extra cue. */
   .status-dot {
     @apply w-1.5 h-1.5 rounded-full;
   }
   .status-live {
     @apply status-dot bg-success-500;
-    box-shadow: 0 0 6px rgba(34, 197, 94, 0.5);
+  }
+  .status-stale {
+    @apply status-dot bg-warning-500;
+  }
+  .status-unknown {
+    @apply status-dot bg-surface-600;
   }
 
   /* Navigation */
@@ -195,27 +212,6 @@
     @apply h-full bg-brand-500 rounded-full transition-all duration-500;
   }
 
-  /* FDR badges */
-  .fdr-1 {
-    @apply bg-success-500/80 text-white;
-  }
-  .fdr-2 {
-    @apply bg-success-500/50 text-success-400;
-  }
-  .fdr-3 {
-    @apply bg-surface-600 text-surface-200;
-  }
-  .fdr-4 {
-    @apply bg-danger-500/50 text-danger-400;
-  }
-  .fdr-5 {
-    @apply bg-danger-600 text-white;
-  }
-
-  .fdr-badge {
-    @apply inline-flex items-center justify-center rounded text-2xs font-bold w-5 h-5;
-  }
-
   /* Team badge */
   .team-badge {
     @apply inline-flex items-center justify-center w-10 h-6 rounded text-xs font-semibold;
@@ -234,16 +230,16 @@
 
   /* Position badges */
   .pos-gk {
-    @apply bg-warning-500/15 text-warning-400;
+    @apply bg-warning-500/15 text-warning-700;
   }
   .pos-def {
-    @apply bg-success-500/15 text-success-400;
+    @apply bg-success-500/15 text-success-700;
   }
   .pos-mid {
-    @apply bg-brand-500/15 text-brand-400;
+    @apply bg-brand-500/15 text-brand-700;
   }
   .pos-fwd {
-    @apply bg-danger-500/15 text-danger-400;
+    @apply bg-danger-500/15 text-danger-700;
   }
 
   /* Search input */
@@ -386,4 +382,19 @@
 }
 .stagger > *:nth-child(8) {
   animation-delay: 175ms;
+}
+
+/* The skeleton shimmer and the loader's bouncing ball both run forever, which
+   for a vestibular disorder is a physical problem rather than a preference.
+   Kept at 0.01ms rather than `none` so animationend still fires and nothing
+   waits on a callback that never arrives. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
