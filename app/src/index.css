@@ -46,6 +46,7 @@
   --success-400: 21 128 61;
   --success-500: 22 163 74;
   --success-600: 22 163 74;
+  --success-200: 187 247 208;
   --success-700: 22 101 52;
 
   /* Warning — darkened for contrast */
@@ -56,6 +57,7 @@
   --warning-700: 120 53 15;
 
   /* Danger — darkened for contrast */
+  --danger-200: 254 202 202;
   --danger-400: 185 28 28;
   --danger-500: 220 38 38;
   --danger-600: 185 28 28;
@@ -202,27 +204,6 @@
 
   .confidence-bar-fill {
     @apply h-full bg-brand-500 rounded-full transition-all duration-500;
-  }
-
-  /* FDR badges */
-  .fdr-1 {
-    @apply bg-success-500/80 text-white;
-  }
-  .fdr-2 {
-    @apply bg-success-500/50 text-success-400;
-  }
-  .fdr-3 {
-    @apply bg-surface-600 text-surface-200;
-  }
-  .fdr-4 {
-    @apply bg-danger-500/50 text-danger-400;
-  }
-  .fdr-5 {
-    @apply bg-danger-600 text-white;
-  }
-
-  .fdr-badge {
-    @apply inline-flex items-center justify-center rounded text-2xs font-bold w-5 h-5;
   }
 
   /* Team badge */

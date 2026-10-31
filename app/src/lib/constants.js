@@ -1,8 +1,8 @@
 export const FDR_COLORS = {
-  1: { bg: "bg-success-600", text: "text-white", label: "Very Easy" },
-  2: { bg: "bg-success-500/70", text: "text-white", label: "Easy" },
-  3: { bg: "bg-surface-600", text: "text-surface-200", label: "Medium" },
-  4: { bg: "bg-danger-500/70", text: "text-white", label: "Hard" },
+  1: { bg: "bg-success-700", text: "text-white", label: "Very Easy" },
+  2: { bg: "bg-success-200", text: "text-success-700", label: "Easy" },
+  3: { bg: "bg-surface-700", text: "text-surface-200", label: "Medium" },
+  4: { bg: "bg-danger-200", text: "text-danger-700", label: "Hard" },
   5: { bg: "bg-danger-700", text: "text-white", label: "Very Hard" },
 };
 

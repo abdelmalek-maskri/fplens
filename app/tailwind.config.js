@@ -31,6 +31,7 @@ export default {
           950: "rgb(var(--surface-950) / <alpha-value>)",
         },
         success: {
+          200: "rgb(var(--success-200) / <alpha-value>)",
           400: "rgb(var(--success-400) / <alpha-value>)",
           500: "rgb(var(--success-500) / <alpha-value>)",
           600: "rgb(var(--success-600) / <alpha-value>)",
@@ -44,6 +45,7 @@ export default {
           700: "rgb(var(--warning-700) / <alpha-value>)",
         },
         danger: {
+          200: "rgb(var(--danger-200) / <alpha-value>)",
           400: "rgb(var(--danger-400) / <alpha-value>)",
           500: "rgb(var(--danger-500) / <alpha-value>)",
           600: "rgb(var(--danger-600) / <alpha-value>)",
