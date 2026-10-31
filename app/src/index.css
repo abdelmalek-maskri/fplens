@@ -43,10 +43,10 @@
   --brand-950: 2 44 34;
 
   /* Success — 700 is the only step that clears 4.5:1 on a 500/15 tint */
+  --success-200: 187 247 208;
   --success-400: 21 128 61;
   --success-500: 22 163 74;
   --success-600: 22 163 74;
-  --success-200: 187 247 208;
   --success-700: 22 101 52;
 
   /* Warning — darkened for contrast */
