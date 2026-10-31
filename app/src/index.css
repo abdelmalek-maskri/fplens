@@ -104,8 +104,11 @@
     @apply bg-brand-500/20 text-surface-100;
   }
 
+  /* WCAG 2.2 wants 2px at 3:1 against what surrounds it. The 1px brand-400/30
+     ring this replaces measured 1.54:1 on the page background, so keyboard
+     focus was effectively invisible everywhere. brand-600 solid is 5.21:1. */
   *:focus-visible {
-    @apply outline-none ring-1 ring-brand-400/30 ring-offset-0;
+    @apply outline-none ring-2 ring-brand-600 ring-offset-2 ring-offset-surface-900;
   }
 }
 
