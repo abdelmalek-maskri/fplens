@@ -27,10 +27,13 @@ describe("TeamBadge", () => {
     expect(span.className).toContain("text-white");
   });
 
-  it("uses dark text for light backgrounds", () => {
-    // WOL is #FDB913 - bright gold, luminance > 0.55
-    render(<TeamBadge team="WOL" />);
-    const span = screen.getByText("WOL");
-    expect(span.className).toContain("text-surface-100");
+  it.each([
+    ["WOL", "#FDB913"],
+    ["MCI", "#6CABDD"],
+  ])("uses dark text on %s, whose colour is too bright for white", (team) => {
+    render(<TeamBadge team={team} />);
+    const span = screen.getByText(team);
+    expect(span.className).toContain("text-surface-900");
+    expect(span.className).not.toContain("text-white");
   });
 });
