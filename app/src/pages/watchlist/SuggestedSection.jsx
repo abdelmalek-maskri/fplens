@@ -50,16 +50,16 @@ function SuggestedSection({ allPlayers, watchedIds, onAdd }) {
                   <div key={p.element} className="flex items-center gap-2 py-1">
                     <TeamBadge team={p.team_name} size="sm" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-surface-100 truncate">{p.web_name}</p>
+                      <p className="text-sm text-surface-900 truncate">{p.web_name}</p>
                       <p className="text-2xs text-surface-500">{cat.tag(p)}</p>
                     </div>
-                    <span className="text-sm font-bold text-brand-400 font-data tabular-nums">
+                    <span className="text-sm font-bold text-brand-700 font-data tabular-nums">
                       {p.predicted_points.toFixed(1)}
                     </span>
                     <button
                       onClick={() => onAdd(p.element)}
                       aria-label={`Watch ${p.web_name}`}
-                      className="ml-1 text-xs text-surface-500 hover:text-brand-400 transition-colors"
+                      className="ml-1 text-xs text-surface-500 hover:text-brand-700 transition-colors"
                     >
                       + Watch
                     </button>
