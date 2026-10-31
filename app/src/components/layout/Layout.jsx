@@ -7,6 +7,7 @@ export default function Layout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { data: gwData } = useGameweek();
   const sidebarRef = useRef(null);
+  const triggerRef = useRef(null);
 
   useEffect(() => {
     if (!sidebarOpen) return;
@@ -26,6 +27,18 @@ export default function Layout({ children }) {
     return () => {
       document.body.style.overflow = "";
     };
+  }, [sidebarOpen]);
+
+  // Without this a reader who closes the drawer is dropped at the top of the
+  // document, with no way back to the control they were just using.
+  useEffect(() => {
+    if (sidebarOpen) {
+      triggerRef.current = document.activeElement;
+      sidebarRef.current?.querySelector("a[href], button:not([disabled])")?.focus();
+    } else if (triggerRef.current instanceof HTMLElement) {
+      triggerRef.current.focus();
+      triggerRef.current = null;
+    }
   }, [sidebarOpen]);
 
   const handleTrapFocus = useCallback((e) => {
