@@ -141,6 +141,6 @@ export function health() {
 }
 
 export async function getStatus() {
-  const { gameweek, deadline } = await getManifest();
-  return { current_gw: gameweek, deadline };
+  const { gameweek, deadline, generated_at } = await getManifest();
+  return { current_gw: gameweek, deadline, generated_at };
 }

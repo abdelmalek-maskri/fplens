@@ -1,5 +1,6 @@
 import { NavLink } from "react-router-dom";
 import { forwardRef } from "react";
+import { snapshotFreshness } from "../../lib/freshness";
 
 const navItems = [
   {
@@ -45,6 +46,7 @@ function formatDeadline(iso) {
 const Sidebar = forwardRef(function Sidebar({ open, onClose, gwData }, ref) {
   const currentGw = gwData?.current_gw;
   const deadline = formatDeadline(gwData?.deadline);
+  const freshness = snapshotFreshness(gwData?.generated_at);
   return (
     <aside
       ref={ref}
@@ -107,9 +109,9 @@ const Sidebar = forwardRef(function Sidebar({ open, onClose, gwData }, ref) {
       </nav>
 
       <div className="px-3 pb-2.5 pt-2 border-t border-surface-700">
-        <div className="flex items-center gap-1.5 px-0.5">
-          <span className="status-live" />
-          <span className="text-2xs text-surface-400">Live</span>
+        <div className="flex items-center gap-1.5 px-0.5" title={freshness.detail ?? undefined}>
+          <span className={`status-${freshness.level}`} />
+          <span className="text-2xs text-surface-400">{freshness.label}</span>
           {deadline && <span className="text-2xs text-surface-500 ml-auto">Deadline</span>}
         </div>
         {deadline && (
