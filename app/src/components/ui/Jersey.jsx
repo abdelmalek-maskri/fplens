@@ -218,7 +218,7 @@ export default function Jersey({ teamName, position, isCaptain, isVice, status }
         </div>
       )}
       {isVice && (
-        <div className="absolute -bottom-0.5 -right-1 w-[18px] h-[18px] rounded-full bg-surface-600 border-[1.5px] border-surface-400 text-surface-100 text-2xs font-bold flex items-center justify-center shadow-lg">
+        <div className="absolute -bottom-0.5 -right-1 w-[18px] h-[18px] rounded-full bg-surface-700 border-[1.5px] border-surface-500 text-surface-100 text-2xs font-bold flex items-center justify-center shadow-lg">
           V
         </div>
       )}

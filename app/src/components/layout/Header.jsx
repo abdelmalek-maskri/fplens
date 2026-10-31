@@ -1,6 +1,7 @@
 import { useLocation } from "react-router-dom";
 import { useState, useCallback } from "react";
 import { refresh } from "../../lib/api";
+import { snapshotFreshness } from "../../lib/freshness";
 
 const PAGE_TITLES = {
   "/optimal-xi": "Optimal XI",
@@ -29,10 +30,11 @@ function formatDeadlineShort(iso) {
 
 export default function Header({ onMenuToggle, gwData }) {
   const { pathname } = useLocation();
-  const [lastUpdated, setLastUpdated] = useState("Just now");
+  const [syncedAt, setSyncedAt] = useState(null);
   const [spinning, setSpinning] = useState(false);
 
   const currentGw = gwData?.current_gw;
+  const lastUpdated = syncedAt ?? snapshotFreshness(gwData?.generated_at).detail;
   const pageTitle =
     pathname === "/"
       ? currentGw
@@ -45,10 +47,12 @@ export default function Header({ onMenuToggle, gwData }) {
     setSpinning(true);
     refresh()
       .then(() => {
-        setLastUpdated(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
+        setSyncedAt(
+          "Synced " + new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+        );
       })
       .catch(() => {
-        setLastUpdated("Sync failed");
+        setSyncedAt("Sync failed");
       })
       .finally(() => setSpinning(false));
   }, []);
@@ -77,7 +81,9 @@ export default function Header({ onMenuToggle, gwData }) {
       </div>
 
       <div className="flex items-center gap-2">
-        <span className="text-2xs text-surface-600 hidden sm:inline">{lastUpdated}</span>
+        {lastUpdated && (
+          <span className="text-2xs text-surface-600 hidden sm:inline">{lastUpdated}</span>
+        )}
         <button
           onClick={handleRefresh}
           aria-label="Sync data"
