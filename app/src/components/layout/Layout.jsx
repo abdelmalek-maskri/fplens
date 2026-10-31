@@ -91,9 +91,15 @@ export default function Layout({ children }) {
   return (
     <div className="min-h-screen bg-surface-100 text-surface-800">
       {sidebarOpen && (
+        // A click-catcher, not a control. Escape and the drawer's own close
+        // button already cover keyboard and screen reader, so announcing this
+        // only duplicates their name and puts a viewport-sized button in the
+        // tab order. tabIndex is required alongside aria-hidden, which may not
+        // sit on anything focusable.
         <button
           type="button"
-          aria-label="Close menu"
+          aria-hidden="true"
+          tabIndex={-1}
           className="fixed inset-0 bg-black/60 z-40 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
