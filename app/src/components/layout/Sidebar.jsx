@@ -50,6 +50,9 @@ const Sidebar = forwardRef(function Sidebar({ open, onClose, gwData }, ref) {
   return (
     <aside
       ref={ref}
+      aria-label="Site navigation"
+      role={open ? "dialog" : undefined}
+      aria-modal={open ? true : undefined}
       className={`fixed left-0 top-0 h-screen w-[200px] bg-surface-900 border-r border-surface-700 flex flex-col z-50 transition-transform duration-150 ${open ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0`}
     >
       <div className="px-3 py-3 border-b border-surface-700">
