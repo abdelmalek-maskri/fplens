@@ -249,7 +249,7 @@ export default function NewsSentiment() {
               {filteredArticles.map((a) => (
                 <div
                   key={a.id}
-                  className={`border-l-2 ${sentiment(a.sentiment).border} rounded-r bg-surface-850/50 hover:bg-surface-200/70 transition-colors`}
+                  className={`border-l-2 ${sentiment(a.sentiment).border} rounded-r bg-surface-200/50 hover:bg-surface-200/70 transition-colors`}
                 >
                   <div className="px-4 py-3">
                     <div className="flex items-start justify-between gap-3">
