@@ -13,29 +13,35 @@
    ========================================= */
 
 :root {
-  /* Surface — warm light editorial, no blue tint */
-  --surface-50: 15 15 17;
-  --surface-100: 30 29 27;
-  --surface-200: 52 51 48;
-  --surface-300: 82 81 77;
-  --surface-400: 115 113 109;
+  /* Surface — warm light editorial, no blue tint.
+     50 is the lightest and 950 the darkest, as in every Tailwind-shaped
+     scale. These were the other way round, so bg-surface-800 named a
+     near-white and no one could read a class name and predict the colour. */
+  --surface-50: 255 255 255;
+  --surface-100: 250 249 246;
+  --surface-200: 235 234 231;
+  --surface-300: 212 210 206;
+  --surface-400: 178 176 172;
   --surface-500: 145 143 139;
-  --surface-600: 178 176 172;
-  --surface-700: 212 210 206;
-  --surface-800: 235 234 231;
-  --surface-900: 250 249 246;
-  --surface-950: 255 255 255;
+  --surface-600: 115 113 109;
+  --surface-700: 82 81 77;
+  --surface-800: 52 51 48;
+  --surface-900: 30 29 27;
+  --surface-950: 15 15 17;
 
-  /* Brand — emerald, darkened for light backgrounds */
+  /* Brand — Tailwind emerald, unmodified. Four steps used to be relabelled
+     to darken the accent for a light background, which left 500 lighter than
+     400 and 400 identical to 600, so "one step darker" was not expressible.
+     The darkening now lives at the point of use: brand-700 is the accent. */
   --brand-50: 236 253 245;
   --brand-100: 209 250 229;
   --brand-200: 167 243 208;
-  --brand-300: 16 185 129;
-  --brand-400: 4 120 87;
-  --brand-500: 5 150 105;
-  --brand-600: 4 120 87;
-  --brand-700: 6 95 70;
-  --brand-800: 6 78 59;
+  --brand-300: 110 231 183;
+  --brand-400: 52 211 153;
+  --brand-500: 16 185 129;
+  --brand-600: 5 150 105;
+  --brand-700: 4 120 87;
+  --brand-800: 6 95 70;
   --brand-900: 6 78 59;
   --brand-950: 2 44 34;
 
@@ -77,7 +83,7 @@
   }
 
   body {
-    @apply bg-surface-900 text-surface-200 font-sans text-sm;
+    @apply bg-surface-100 text-surface-800 font-sans text-sm;
     min-height: 100vh;
   }
 
@@ -89,23 +95,23 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    @apply bg-surface-700 rounded-full;
+    @apply bg-surface-300 rounded-full;
   }
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-surface-600;
+    @apply bg-surface-400;
   }
 
   * {
     scrollbar-width: thin;
-    scrollbar-color: rgb(var(--surface-700)) transparent;
+    scrollbar-color: rgb(var(--surface-300)) transparent;
   }
 
   ::selection {
-    @apply bg-brand-500/20 text-surface-100;
+    @apply bg-brand-600/20 text-surface-900;
   }
 
   *:focus-visible {
-    @apply outline-none ring-1 ring-brand-400/30 ring-offset-0;
+    @apply outline-none ring-1 ring-brand-700/30 ring-offset-0;
   }
 }
 
@@ -116,11 +122,11 @@
 @layer components {
   /* Cards */
   .card {
-    @apply bg-surface-800/80 border border-surface-700/50 rounded-md;
+    @apply bg-surface-200/80 border border-surface-300/50 rounded-md;
   }
 
   .card-flush {
-    @apply bg-surface-800/30 rounded-md;
+    @apply bg-surface-200/30 rounded-md;
   }
 
   .card-stats {
@@ -145,7 +151,7 @@
     @apply bg-info-500/15 text-info-400;
   }
   .badge-brand {
-    @apply bg-brand-500/15 text-brand-400;
+    @apply bg-brand-600/15 text-brand-700;
   }
 
   /* Status dots */
@@ -159,18 +165,18 @@
 
   /* Navigation */
   .nav-item {
-    @apply flex items-center gap-2.5 px-2.5 py-1.5 rounded text-sm text-surface-400
-           hover:text-surface-100 hover:bg-surface-800/50 transition-colors cursor-pointer;
+    @apply flex items-center gap-2.5 px-2.5 py-1.5 rounded text-sm text-surface-600
+           hover:text-surface-900 hover:bg-surface-200/50 transition-colors cursor-pointer;
   }
 
   .nav-item-active {
     @apply flex items-center gap-2.5 px-2.5 py-1.5 rounded text-sm
-           text-surface-100 bg-surface-800/70 font-medium relative cursor-pointer;
+           text-surface-900 bg-surface-200/70 font-medium relative cursor-pointer;
   }
 
   .nav-item-active::before {
     content: "";
-    @apply absolute left-0 top-2 bottom-2 w-[2px] bg-brand-400 rounded-r;
+    @apply absolute left-0 top-2 bottom-2 w-[2px] bg-brand-700 rounded-r;
   }
 
   /* Tables */
@@ -179,7 +185,7 @@
   }
 
   .table-row {
-    @apply border-b border-surface-800/50 hover:bg-surface-800/40 transition-colors;
+    @apply border-b border-surface-200/50 hover:bg-surface-200/40 transition-colors;
   }
 
   .table-cell {
@@ -188,11 +194,11 @@
 
   /* Confidence bar */
   .confidence-bar {
-    @apply h-1 bg-surface-700 rounded-full overflow-hidden;
+    @apply h-1 bg-surface-300 rounded-full overflow-hidden;
   }
 
   .confidence-bar-fill {
-    @apply h-full bg-brand-500 rounded-full transition-all duration-500;
+    @apply h-full bg-brand-600 rounded-full transition-all duration-500;
   }
 
   /* FDR badges */
@@ -203,7 +209,7 @@
     @apply bg-success-500/50 text-success-400;
   }
   .fdr-3 {
-    @apply bg-surface-600 text-surface-200;
+    @apply bg-surface-400 text-surface-800;
   }
   .fdr-4 {
     @apply bg-danger-500/50 text-danger-400;
@@ -240,7 +246,7 @@
     @apply bg-success-500/15 text-success-400;
   }
   .pos-mid {
-    @apply bg-brand-500/15 text-brand-400;
+    @apply bg-brand-600/15 text-brand-700;
   }
   .pos-fwd {
     @apply bg-danger-500/15 text-danger-400;
@@ -248,9 +254,9 @@
 
   /* Search input */
   .search-input {
-    @apply bg-surface-800/40 border border-surface-700 rounded px-3 py-1.5 pl-8
-           text-surface-200 placeholder:text-surface-600 w-full text-sm
-           focus:border-surface-600 focus:bg-surface-800 transition-colors;
+    @apply bg-surface-200/40 border border-surface-300 rounded px-3 py-1.5 pl-8
+           text-surface-800 placeholder:text-surface-400 w-full text-sm
+           focus:border-surface-400 focus:bg-surface-200 transition-colors;
   }
 
   /* Buttons */
@@ -261,39 +267,39 @@
   }
 
   .btn-primary {
-    @apply btn bg-brand-600 text-white hover:bg-brand-500 active:bg-brand-700;
+    @apply btn bg-brand-700 text-white hover:bg-brand-600 active:bg-brand-800;
   }
 
   .btn-secondary {
-    @apply btn bg-surface-800 text-surface-300 border border-surface-700
-           hover:bg-surface-700 hover:text-surface-100 hover:border-surface-600;
+    @apply btn bg-surface-200 text-surface-700 border border-surface-300
+           hover:bg-surface-300 hover:text-surface-900 hover:border-surface-400;
   }
 
   .btn-ghost {
-    @apply btn text-surface-400 hover:text-surface-200 hover:bg-surface-800/50;
+    @apply btn text-surface-600 hover:text-surface-800 hover:bg-surface-200/50;
   }
 
   /* Light card variant */
   .card-light {
-    @apply rounded-md border border-surface-700/50 bg-surface-800/30;
+    @apply rounded-md border border-surface-300/50 bg-surface-200/30;
   }
 
   /* Tab button */
   .btn-tab {
     @apply px-2.5 py-1 rounded text-sm font-medium transition-colors
-           bg-surface-800 text-surface-400 hover:text-surface-200;
+           bg-surface-200 text-surface-600 hover:text-surface-800;
   }
 
   .btn-tab-active {
-    @apply btn-tab bg-brand-600 text-white hover:text-white;
+    @apply btn-tab bg-brand-700 text-white hover:text-white;
   }
 
   /* Inline link inside a sentence. Underlined because colour on its own is a
      weak affordance, and invisible to a reader who cannot separate the
      emerald from the body text. */
   .link {
-    @apply text-brand-600 font-medium underline decoration-brand-600/40
-           underline-offset-2 hover:text-brand-700 hover:decoration-brand-700
+    @apply text-brand-700 font-medium underline decoration-brand-700/40
+           underline-offset-2 hover:text-brand-800 hover:decoration-brand-800
            transition-colors;
   }
 
@@ -301,7 +307,7 @@
      affordance so it needs no underline, but it darkens on hover like .link:
      this theme is light, so brightening would drop the contrast. */
   .link-action {
-    @apply text-brand-600 font-medium hover:text-brand-700 transition-colors;
+    @apply text-brand-700 font-medium hover:text-brand-800 transition-colors;
   }
 
   /* Section label — reusable heading for content groups */
@@ -311,7 +317,7 @@
 
   /* Skeleton — shimmer gradient, no pulse */
   .skeleton {
-    @apply bg-surface-700/40 rounded relative overflow-hidden;
+    @apply bg-surface-300/40 rounded relative overflow-hidden;
   }
 
   .skeleton::after {
@@ -320,9 +326,9 @@
     background: linear-gradient(
       90deg,
       transparent 0%,
-      rgb(var(--surface-600) / 0.08) 40%,
-      rgb(var(--surface-600) / 0.15) 50%,
-      rgb(var(--surface-600) / 0.08) 60%,
+      rgb(var(--surface-400) / 0.08) 40%,
+      rgb(var(--surface-400) / 0.15) 50%,
+      rgb(var(--surface-400) / 0.08) 60%,
       transparent 100%
     );
     animation: shimmer 1.5s ease-in-out infinite;

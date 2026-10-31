@@ -65,7 +65,7 @@ export default function Layout({ children }) {
   }, [sidebarOpen, handleTrapFocus]);
 
   return (
-    <div className="min-h-screen bg-surface-900 text-surface-200">
+    <div className="min-h-screen bg-surface-100 text-surface-800">
       {sidebarOpen && (
         <button
           type="button"

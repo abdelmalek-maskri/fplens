@@ -63,7 +63,7 @@ export default function FixtureTicker() {
               <span>{LABELS[fdr]}</span>
             </div>
           ))}
-          <span className="ml-2 text-surface-600">FPL's rating of each fixture</span>
+          <span className="ml-2 text-surface-400">FPL's rating of each fixture</span>
         </div>
 
         <TabBar
@@ -80,7 +80,7 @@ export default function FixtureTicker() {
 
       <div className="overflow-x-auto">
         <table className="w-full">
-          <thead className="bg-surface-800/30">
+          <thead className="bg-surface-200/30">
             <tr>
               <th scope="col" className="table-header text-left py-2.5 px-3 w-36">
                 Team
@@ -101,13 +101,13 @@ export default function FixtureTicker() {
               return (
                 <tr
                   key={row.team}
-                  className="border-t border-surface-800 hover:bg-surface-800/40 transition-colors"
+                  className="border-t border-surface-200 hover:bg-surface-200/40 transition-colors"
                   style={{
-                    borderLeft: `3px solid ${TEAM_COLORS[row.team] || "rgb(var(--surface-700))"}`,
+                    borderLeft: `3px solid ${TEAM_COLORS[row.team] || "rgb(var(--surface-300))"}`,
                   }}
                 >
                   <td className="py-2 px-4">
-                    <span className="font-semibold text-surface-100 text-sm">{row.team}</span>
+                    <span className="font-semibold text-surface-900 text-sm">{row.team}</span>
                     <span className="text-xs text-surface-500 ml-2">{TEAM_FULL[row.team]}</span>
                   </td>
                   {gameweeks.map((gw) => {
@@ -115,8 +115,8 @@ export default function FixtureTicker() {
                     if (!fix) {
                       return (
                         <td key={gw} className="py-2 px-1 text-center">
-                          <div className="mx-auto rounded-md px-1 py-2 bg-surface-800/30">
-                            <p className="text-xs text-surface-600">blank</p>
+                          <div className="mx-auto rounded-md px-1 py-2 bg-surface-200/30">
+                            <p className="text-xs text-surface-400">blank</p>
                           </div>
                         </td>
                       );

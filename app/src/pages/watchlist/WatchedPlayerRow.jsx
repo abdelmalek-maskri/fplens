@@ -5,13 +5,13 @@ export const ROW_COLS = "grid grid-cols-[1fr_5rem_4rem_4rem_5rem_2rem] items-cen
 
 function WatchedPlayerRow({ p, onNavigate, onRemove }) {
   return (
-    <div className={`${ROW_COLS} py-3 border-t border-surface-800/60`}>
+    <div className={`${ROW_COLS} py-3 border-t border-surface-200/60`}>
       <div className="flex items-center gap-3 min-w-0">
         <TeamBadge team={p.team_name} />
         <div className="min-w-0">
           <button
             onClick={() => onNavigate(`/player/${p.element}`)}
-            className="text-sm font-semibold text-surface-100 hover:text-brand-400 transition-colors"
+            className="text-sm font-semibold text-surface-900 hover:text-brand-700 transition-colors"
           >
             {p.web_name}
           </button>
@@ -24,7 +24,7 @@ function WatchedPlayerRow({ p, onNavigate, onRemove }) {
       </div>
 
       <div className="text-right">
-        <p className="text-sm font-bold text-brand-400 font-data tabular-nums">
+        <p className="text-sm font-bold text-brand-700 font-data tabular-nums">
           {p.predicted_points.toFixed(1)}
         </p>
         <p className="text-2xs text-surface-500 font-data tabular-nums">
@@ -32,20 +32,20 @@ function WatchedPlayerRow({ p, onNavigate, onRemove }) {
         </p>
       </div>
 
-      <p className="text-right text-sm text-surface-200 font-data tabular-nums">
+      <p className="text-right text-sm text-surface-800 font-data tabular-nums">
         {p.form.toFixed(1)}
       </p>
 
-      <p className="text-right text-sm text-surface-200">{p.opponent_name}</p>
+      <p className="text-right text-sm text-surface-800">{p.opponent_name}</p>
 
-      <p className="text-right text-sm text-surface-400 font-data tabular-nums">
+      <p className="text-right text-sm text-surface-600 font-data tabular-nums">
         {p.selected_by_percent.toFixed(1)}%
       </p>
 
       <button
         onClick={onRemove}
         aria-label={`Remove ${p.web_name} from watchlist`}
-        className="justify-self-end text-surface-600 hover:text-danger-400 transition-colors p-1"
+        className="justify-self-end text-surface-400 hover:text-danger-400 transition-colors p-1"
       >
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path

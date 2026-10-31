@@ -54,12 +54,12 @@ export default function Header({ onMenuToggle, gwData }) {
   }, []);
 
   return (
-    <header className="fixed top-0 left-0 lg:left-[200px] right-0 h-11 bg-surface-900/95 backdrop-blur-sm border-b border-surface-700 z-30 flex items-center justify-between px-4">
+    <header className="fixed top-0 left-0 lg:left-[200px] right-0 h-11 bg-surface-100/95 backdrop-blur-sm border-b border-surface-300 z-30 flex items-center justify-between px-4">
       <div className="flex items-center gap-2.5">
         <button
           onClick={onMenuToggle}
           aria-label="Toggle menu"
-          className="lg:hidden text-surface-400 hover:text-surface-200 -ml-1 mr-0.5"
+          className="lg:hidden text-surface-600 hover:text-surface-800 -ml-1 mr-0.5"
         >
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path
@@ -70,18 +70,18 @@ export default function Header({ onMenuToggle, gwData }) {
             />
           </svg>
         </button>
-        <h2 className="text-sm font-semibold text-surface-100 leading-none">{pageTitle}</h2>
+        <h2 className="text-sm font-semibold text-surface-900 leading-none">{pageTitle}</h2>
         {deadlineLabel && (
-          <span className="text-2xs text-surface-600 hidden sm:inline">{deadlineLabel}</span>
+          <span className="text-2xs text-surface-400 hidden sm:inline">{deadlineLabel}</span>
         )}
       </div>
 
       <div className="flex items-center gap-2">
-        <span className="text-2xs text-surface-600 hidden sm:inline">{lastUpdated}</span>
+        <span className="text-2xs text-surface-400 hidden sm:inline">{lastUpdated}</span>
         <button
           onClick={handleRefresh}
           aria-label="Sync data"
-          className="flex items-center gap-1 text-2xs font-medium text-surface-500 hover:text-brand-400 px-2 py-1 rounded hover:bg-surface-800/50 transition-colors"
+          className="flex items-center gap-1 text-2xs font-medium text-surface-500 hover:text-brand-700 px-2 py-1 rounded hover:bg-surface-200/50 transition-colors"
         >
           <svg
             className={`w-3 h-3 transition-transform duration-500 ${spinning ? "animate-spin" : ""}`}

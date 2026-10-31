@@ -61,19 +61,19 @@ export default function Accuracy() {
     <div className="space-y-6 stagger">
       <div>
         <div className="flex items-baseline gap-3 flex-wrap">
-          <h2 className="text-xl font-bold text-surface-100">Gameweek {data.gameweek} results</h2>
+          <h2 className="text-xl font-bold text-surface-900">Gameweek {data.gameweek} results</h2>
           {!data.final && <span className="badge badge-warning">provisional</span>}
         </div>
         {/* Said out loud rather than put in a title attribute: a reader on a
             phone has no way to hover, and this one changes how much they should
             trust the numbers below. */}
         {!data.final && (
-          <p className="text-sm text-surface-400 mt-2">
+          <p className="text-sm text-surface-600 mt-2">
             Bonus points can still change until FPL signs off the gameweek.
           </p>
         )}
         {(context.note || context.next != null) && (
-          <p className="text-sm text-surface-400 mt-2">
+          <p className="text-sm text-surface-600 mt-2">
             {context.note}
             {context.note && context.next != null && " "}
             {context.next != null && (
@@ -90,9 +90,9 @@ export default function Accuracy() {
       </div>
 
       {!xi && (
-        <p className="text-sm text-surface-500 py-5 border-y border-surface-800">
+        <p className="text-sm text-surface-500 py-5 border-y border-surface-200">
           No team was recorded for{" "}
-          <span className="text-surface-300">{data.names[selected] ?? selected}</span> in gameweek{" "}
+          <span className="text-surface-700">{data.names[selected] ?? selected}</span> in gameweek{" "}
           {data.gameweek}. Only the published model's team was logged before this gameweek.
         </p>
       )}
@@ -101,14 +101,14 @@ export default function Accuracy() {
         /* The outcome before the statistics. The ranking score says the model
            orders players well; this says whether fielding the team it picked
            would actually have beaten the field. */
-        <div className="py-5 border-y border-surface-800">
-          <p className="text-base text-surface-200">
+        <div className="py-5 border-y border-surface-200">
+          <p className="text-base text-surface-800">
             The eleven{" "}
-            <span className="font-semibold text-surface-100">
+            <span className="font-semibold text-surface-900">
               {data.names[selected] ?? selected}
             </span>{" "}
             picked scored{" "}
-            <span className="text-2xl font-bold font-data tabular-nums text-surface-100">
+            <span className="text-2xl font-bold font-data tabular-nums text-surface-900">
               {xi.points}
             </span>{" "}
             points.
@@ -117,7 +117,7 @@ export default function Accuracy() {
                 {" "}
                 That is{" "}
                 <span
-                  className={`font-semibold ${margin > 0 ? "text-success-400" : margin < 0 ? "text-danger-400" : "text-surface-200"}`}
+                  className={`font-semibold ${margin > 0 ? "text-success-400" : margin < 0 ? "text-danger-400" : "text-surface-800"}`}
                 >
                   {margin > 0
                     ? `${margin} ahead of`
@@ -133,7 +133,7 @@ export default function Accuracy() {
           <div className="flex items-center gap-8 flex-wrap mt-4">
             {xi.average_manager != null && (
               <div>
-                <span className="text-lg font-bold font-data tabular-nums text-surface-200">
+                <span className="text-lg font-bold font-data tabular-nums text-surface-800">
                   {xi.average_manager}
                 </span>
                 <span className="text-sm text-surface-500 ml-2">average manager</span>
@@ -141,7 +141,7 @@ export default function Accuracy() {
             )}
             {xi.highest != null && (
               <div>
-                <span className="text-lg font-bold font-data tabular-nums text-surface-200">
+                <span className="text-lg font-bold font-data tabular-nums text-surface-800">
                   {xi.highest}
                 </span>
                 <span className="text-sm text-surface-500 ml-2">best manager in the world</span>
@@ -155,14 +155,14 @@ export default function Accuracy() {
             </p>
             <div className="flex flex-wrap gap-x-5 gap-y-1.5">
               {xi.players.map((p) => (
-                <span key={p.element} className="text-sm text-surface-300">
+                <span key={p.element} className="text-sm text-surface-700">
                   {p.name}
                   {p.captain && (
-                    <span className="text-brand-400 ml-1">
+                    <span className="text-brand-700 ml-1">
                       (C)<span className="sr-only"> captain, points doubled</span>
                     </span>
                   )}
-                  <span className="ml-1.5 font-data tabular-nums font-semibold text-surface-100">
+                  <span className="ml-1.5 font-data tabular-nums font-semibold text-surface-900">
                     {p.actual ?? "-"}
                   </span>
                 </span>
@@ -187,7 +187,7 @@ export default function Accuracy() {
             <select
               value={selected}
               onChange={(e) => setModelId(e.target.value)}
-              className="bg-surface-800 border border-surface-700 rounded px-3 py-1.5 text-sm text-surface-200 focus:outline-none cursor-pointer"
+              className="bg-surface-200 border border-surface-300 rounded px-3 py-1.5 text-sm text-surface-800 focus:outline-none cursor-pointer"
             >
               {modelIds.map((id) => (
                 <option key={id} value={id}>
@@ -203,14 +203,14 @@ export default function Accuracy() {
           <div className="flex items-center gap-5 text-sm">
             {model.spearman != null && (
               <div>
-                <span className="font-data tabular-nums font-semibold text-brand-400">
+                <span className="font-data tabular-nums font-semibold text-brand-700">
                   {model.spearman.toFixed(2)}
                 </span>
                 <span className="text-surface-500 ml-1.5">ranking, 1 = perfect</span>
               </div>
             )}
             <div>
-              <span className="font-data tabular-nums font-semibold text-surface-200">
+              <span className="font-data tabular-nums font-semibold text-surface-800">
                 {model.mae?.toFixed(1) ?? "-"}
               </span>
               <span className="text-surface-500 ml-1.5">pts off, on average</span>
@@ -219,20 +219,20 @@ export default function Accuracy() {
         </div>
       </div>
 
-      <div className="flex items-center gap-0 border-b border-surface-800">
+      <div className="flex items-center gap-0 border-b border-surface-200">
         {POSITIONS.map((pos) => (
           <button
             key={pos}
             onClick={() => setPositionFilter(pos)}
             className={`relative px-3 py-2 text-xs font-medium transition-colors ${
               positionFilter === pos
-                ? "text-surface-100"
-                : "text-surface-500 hover:text-surface-300"
+                ? "text-surface-900"
+                : "text-surface-500 hover:text-surface-700"
             }`}
           >
             {pos}
             {positionFilter === pos && (
-              <span className="absolute bottom-0 left-3 right-3 h-[2px] rounded-full bg-brand-500" />
+              <span className="absolute bottom-0 left-3 right-3 h-[2px] rounded-full bg-brand-600" />
             )}
           </button>
         ))}
@@ -241,7 +241,7 @@ export default function Accuracy() {
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-surface-700">
+            <tr className="border-b border-surface-300">
               <th scope="col" className="table-header text-left py-2.5 px-3">
                 #
               </th>
@@ -271,9 +271,9 @@ export default function Accuracy() {
                 <tr
                   key={p.element}
                   onClick={() => navigate(`/player/${p.element}`)}
-                  className="border-b border-surface-800 hover:bg-surface-800/40 cursor-pointer transition-colors"
+                  className="border-b border-surface-200 hover:bg-surface-200/40 cursor-pointer transition-colors"
                 >
-                  <td className="py-2 px-3 text-xs text-surface-600 font-data tabular-nums">
+                  <td className="py-2 px-3 text-xs text-surface-400 font-data tabular-nums">
                     {pageStart + i + 1}
                   </td>
                   <td className="py-2 px-3">
@@ -283,7 +283,7 @@ export default function Accuracy() {
                     <Link
                       to={`/player/${p.element}`}
                       onClick={(e) => e.stopPropagation()}
-                      className="text-sm text-surface-100 hover:text-brand-400 transition-colors"
+                      className="text-sm text-surface-900 hover:text-brand-700 transition-colors"
                     >
                       {p.name}
                     </Link>
@@ -293,14 +293,14 @@ export default function Accuracy() {
                       </span>
                     )}
                   </td>
-                  <td className="py-2 px-3 text-right font-data tabular-nums text-sm text-surface-300">
+                  <td className="py-2 px-3 text-right font-data tabular-nums text-sm text-surface-700">
                     {p.predicted.toFixed(1)}
                   </td>
-                  <td className="py-2 px-3 text-right font-data tabular-nums text-sm text-surface-100">
+                  <td className="py-2 px-3 text-right font-data tabular-nums text-sm text-surface-900">
                     {p.actual ?? "—"}
                   </td>
                   <td
-                    className={`py-2 px-3 text-right font-data tabular-nums text-sm ${diff == null ? "text-surface-600" : diffClass(diff)}`}
+                    className={`py-2 px-3 text-right font-data tabular-nums text-sm ${diff == null ? "text-surface-400" : diffClass(diff)}`}
                   >
                     {diff == null ? "—" : `${diff > 0 ? "+" : ""}${diff.toFixed(1)}`}
                   </td>

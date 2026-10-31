@@ -10,7 +10,7 @@ export default function FdrBadge({ opponent, fdr, fdrMap }) {
       >
         {rating}
       </span>
-      <span className="text-sm text-surface-300">{opponent}</span>
+      <span className="text-sm text-surface-700">{opponent}</span>
     </div>
   );
 }

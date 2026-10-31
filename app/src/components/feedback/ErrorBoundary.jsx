@@ -30,8 +30,8 @@ export default class ErrorBoundary extends Component {
                 />
               </svg>
             </div>
-            <h2 className="text-lg font-bold text-surface-100">Something went wrong</h2>
-            <p className="text-sm text-surface-400">
+            <h2 className="text-lg font-bold text-surface-900">Something went wrong</h2>
+            <p className="text-sm text-surface-600">
               {this.state.error?.message || "An unexpected error occurred."}
             </p>
             <button onClick={() => window.location.reload()} className="btn-primary">

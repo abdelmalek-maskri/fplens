@@ -74,7 +74,7 @@ export default function GameweekFixtures({ fixtureData }) {
   if (!days.length) return null;
 
   return (
-    <section className="border-y border-surface-800 py-3">
+    <section className="border-y border-surface-200 py-3">
       <div className="flex flex-wrap gap-x-6 gap-y-3">
         {days.map(([day, matches]) => (
           <div key={day} className="min-w-0">
@@ -83,14 +83,14 @@ export default function GameweekFixtures({ fixtureData }) {
               {matches.map((m) => (
                 <div
                   key={`${m.home}-${m.away}`}
-                  className="flex items-center gap-1.5 text-xs text-surface-300 tabular-nums"
+                  className="flex items-center gap-1.5 text-xs text-surface-700 tabular-nums"
                 >
                   <Fdr rating={m.homeFdr} />
-                  <span className="text-surface-200 w-8">{m.home}</span>
+                  <span className="text-surface-800 w-8">{m.home}</span>
                   <span className="text-surface-500 w-10 text-center">
                     {kickoffTime(m.kickoff) || "v"}
                   </span>
-                  <span className="text-surface-200 w-8">{m.away}</span>
+                  <span className="text-surface-800 w-8">{m.away}</span>
                   <Fdr rating={m.awayFdr} />
                 </div>
               ))}

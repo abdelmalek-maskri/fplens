@@ -22,26 +22,26 @@ export default function OptimalXI() {
   // one screen whatever we do, so they keep scrolling.
   return (
     <div className="flex flex-col gap-4 stagger lg:h-[calc(100vh-5.25rem)]">
-      <div className="flex items-center gap-5 flex-wrap py-3 border-b border-surface-800 shrink-0">
+      <div className="flex items-center gap-5 flex-wrap py-3 border-b border-surface-200 shrink-0">
         <div>
-          <span className="text-lg font-bold text-brand-400 font-data tabular-nums">
+          <span className="text-lg font-bold text-brand-700 font-data tabular-nums">
             {recommended.totalPoints.toFixed(1)}
           </span>
           <span className="text-xs text-surface-500 ml-1.5">predicted pts</span>
         </div>
-        <div className="w-px h-5 bg-surface-700" />
+        <div className="w-px h-5 bg-surface-300" />
         <div>
-          <span className="text-lg font-bold text-surface-100 font-data tabular-nums">
+          <span className="text-lg font-bold text-surface-900 font-data tabular-nums">
             £{recommended.totalValue.toFixed(1)}m
           </span>
           <span className="text-xs text-surface-500 ml-1.5">/ £{BUDGET}m</span>
         </div>
-        <div className="w-px h-5 bg-surface-700" />
+        <div className="w-px h-5 bg-surface-300" />
         <div>
-          <span className="text-sm font-semibold text-surface-100">{recommended.formation}</span>
+          <span className="text-sm font-semibold text-surface-900">{recommended.formation}</span>
           <span className="text-xs text-surface-500 ml-1.5">formation</span>
         </div>
-        <div className="w-px h-5 bg-surface-700" />
+        <div className="w-px h-5 bg-surface-300" />
         <div>
           <span
             className={`text-sm font-semibold ${recommended.budgetRemaining >= 0 ? "text-success-400" : "text-danger-400"}`}
@@ -58,7 +58,7 @@ export default function OptimalXI() {
               value={plannerData.selected}
               onChange={(e) => setModelId(e.target.value)}
               aria-label="Which model picks the squad"
-              className="bg-surface-800 border border-surface-700 rounded px-3 py-1.5 text-sm text-surface-200 focus:outline-none cursor-pointer"
+              className="bg-surface-200 border border-surface-300 rounded px-3 py-1.5 text-sm text-surface-800 focus:outline-none cursor-pointer"
             >
               {plannerData.models.map((m) => (
                 <option key={m.id} value={m.id}>

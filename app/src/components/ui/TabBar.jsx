@@ -36,7 +36,7 @@ export default function TabBar({
     <div
       ref={listRef}
       role="tablist"
-      className={`flex items-center gap-0 ${isBorder ? "border-b border-surface-700" : "border-b border-surface-800"} ${className}`}
+      className={`flex items-center gap-0 ${isBorder ? "border-b border-surface-300" : "border-b border-surface-200"} ${className}`}
     >
       {tabs.map((tab) => {
         const isActive = active === tab.id;
@@ -55,18 +55,18 @@ export default function TabBar({
               isBorder
                 ? `px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
                     isActive
-                      ? `${tab.borderColor || "border-brand-400"} ${tab.activeColor || "text-brand-400"}`
-                      : "border-transparent text-surface-500 hover:text-surface-300"
+                      ? `${tab.borderColor || "border-brand-700"} ${tab.activeColor || "text-brand-700"}`
+                      : "border-transparent text-surface-500 hover:text-surface-700"
                   }`
                 : `px-3 py-2 text-sm font-medium transition-colors relative ${
-                    isActive ? "text-surface-100" : "text-surface-500 hover:text-surface-300"
+                    isActive ? "text-surface-900" : "text-surface-500 hover:text-surface-700"
                   }`
             }
           >
             {tab.label}
             {!isBorder && isActive && (
               <span
-                className={`absolute bottom-0 left-3 right-3 h-[2px] rounded-full ${tab.color || "bg-brand-500"}`}
+                className={`absolute bottom-0 left-3 right-3 h-[2px] rounded-full ${tab.color || "bg-brand-600"}`}
               />
             )}
           </button>

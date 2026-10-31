@@ -130,12 +130,12 @@ export default function MyTeam() {
             onChange={(e) => setFplId(e.target.value.replace(/\D/g, ""))}
             aria-label="FPL Team ID"
             placeholder="Enter your FPL Team ID"
-            className="w-full bg-surface-800 border border-surface-700 rounded pl-9 pr-20 py-2.5 text-surface-100 font-data tabular-nums placeholder:text-surface-600 focus:border-brand-500 focus:outline-none transition-colors"
+            className="w-full bg-surface-200 border border-surface-300 rounded pl-9 pr-20 py-2.5 text-surface-900 font-data tabular-nums placeholder:text-surface-400 focus:border-brand-600 focus:outline-none transition-colors"
           />
           <button
             type="submit"
             disabled={!fplId || isLoading}
-            className="absolute right-1.5 top-1/2 -translate-y-1/2 px-4 py-1.5 rounded bg-brand-600 text-white text-sm font-medium transition-colors hover:bg-brand-500 disabled:opacity-40 disabled:pointer-events-none"
+            className="absolute right-1.5 top-1/2 -translate-y-1/2 px-4 py-1.5 rounded bg-brand-700 text-white text-sm font-medium transition-colors hover:bg-brand-600 disabled:opacity-40 disabled:pointer-events-none"
           >
             {isLoading ? "Loading…" : "Load"}
           </button>
@@ -161,15 +161,15 @@ export default function MyTeam() {
                     setFplId(h.id);
                     setSubmittedId(h.id);
                   }}
-                  className="flex-1 text-left px-3 py-1.5 rounded border border-surface-700/50 text-sm hover:border-brand-500/30 hover:bg-brand-500/5 transition-colors"
+                  className="flex-1 text-left px-3 py-1.5 rounded border border-surface-300/50 text-sm hover:border-brand-600/30 hover:bg-brand-600/5 transition-colors"
                 >
-                  <span className="text-surface-200 font-data">{h.id}</span>
-                  {h.teamName && <span className="text-surface-300 ml-2">{h.teamName}</span>}
+                  <span className="text-surface-800 font-data">{h.id}</span>
+                  {h.teamName && <span className="text-surface-700 ml-2">{h.teamName}</span>}
                   {h.manager && <span className="text-surface-500 ml-2">| {h.manager}</span>}
                 </button>
                 <button
                   onClick={() => removeFromHistory(h.id)}
-                  className="text-surface-700 hover:text-danger-400 transition-colors opacity-0 group-hover:opacity-100 p-1"
+                  className="text-surface-300 hover:text-danger-400 transition-colors opacity-0 group-hover:opacity-100 p-1"
                 >
                   <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path
@@ -244,20 +244,20 @@ export default function MyTeam() {
         </button>
       </div>
 
-      <div className="flex items-start gap-4 py-4 border-b border-surface-800">
+      <div className="flex items-start gap-4 py-4 border-b border-surface-200">
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-medium text-brand-400 uppercase tracking-wide">
+            <span className="text-xs font-medium text-brand-700 uppercase tracking-wide">
               Recommended Captain
             </span>
             {captainMismatch && (
-              <span className="badge bg-brand-500/20 text-brand-400">Change suggested</span>
+              <span className="badge bg-brand-600/20 text-brand-700">Change suggested</span>
             )}
           </div>
           <div className="flex items-center gap-3">
             <PlayerLink
               element={recommendedCaptain.element}
-              className="block font-semibold text-surface-100"
+              className="block font-semibold text-surface-900"
             >
               {recommendedCaptain.web_name}
             </PlayerLink>
@@ -265,7 +265,7 @@ export default function MyTeam() {
               {recommendedCaptain.position} · {recommendedCaptain.team_name} vs{" "}
               {recommendedCaptain.opponent_name}
             </span>
-            <span className="text-sm font-bold text-surface-100 font-data tabular-nums ml-auto">
+            <span className="text-sm font-bold text-surface-900 font-data tabular-nums ml-auto">
               {recommendedCaptain.predicted_points.toFixed(1)} pts
               <span className="text-xs text-surface-500 font-normal ml-1">
                 ×2 = {(recommendedCaptain.predicted_points * 2).toFixed(1)}
@@ -273,13 +273,13 @@ export default function MyTeam() {
             </span>
           </div>
         </div>
-        <div className="w-px h-10 bg-surface-700 hidden sm:block" />
+        <div className="w-px h-10 bg-surface-300 hidden sm:block" />
         <div className="flex-1 hidden sm:block">
           <span className="section-label">Vice Captain</span>
           <div className="flex items-center gap-3 mt-1">
             <PlayerLink
               element={recommendedVice.element}
-              className="block font-semibold text-surface-100"
+              className="block font-semibold text-surface-900"
             >
               {recommendedVice.web_name}
             </PlayerLink>
@@ -287,50 +287,50 @@ export default function MyTeam() {
               {recommendedVice.position} · {recommendedVice.team_name} vs{" "}
               {recommendedVice.opponent_name}
             </span>
-            <span className="text-sm font-bold text-surface-100 font-data tabular-nums ml-auto">
+            <span className="text-sm font-bold text-surface-900 font-data tabular-nums ml-auto">
               {recommendedVice.predicted_points.toFixed(1)} pts
             </span>
           </div>
         </div>
       </div>
 
-      <div className="flex items-center gap-5 flex-wrap py-3 border-b border-surface-800">
+      <div className="flex items-center gap-5 flex-wrap py-3 border-b border-surface-200">
         <div>
-          <span className="text-lg font-bold text-surface-100 font-data tabular-nums">
+          <span className="text-lg font-bold text-surface-900 font-data tabular-nums">
             {team.overallRank.toLocaleString()}
           </span>
           <span className="text-xs text-surface-500 ml-1.5">rank</span>
         </div>
-        <div className="w-px h-5 bg-surface-700" />
+        <div className="w-px h-5 bg-surface-300" />
         <div>
-          <span className="text-lg font-bold text-brand-400 font-data tabular-nums">
+          <span className="text-lg font-bold text-brand-700 font-data tabular-nums">
             {totalPredicted.toFixed(1)}
           </span>
           <span className="text-xs text-surface-500 ml-1.5">predicted pts</span>
         </div>
-        <div className="w-px h-5 bg-surface-700" />
+        <div className="w-px h-5 bg-surface-300" />
         <div>
-          <span className="text-sm font-semibold text-surface-100">{formation}</span>
+          <span className="text-sm font-semibold text-surface-900">{formation}</span>
           <span className="text-xs text-surface-500 ml-1.5">formation</span>
         </div>
-        <div className="w-px h-5 bg-surface-700" />
+        <div className="w-px h-5 bg-surface-300" />
         <div>
-          <span className="text-lg font-bold text-surface-100 font-data tabular-nums">
+          <span className="text-lg font-bold text-surface-900 font-data tabular-nums">
             £{team.budget.toFixed(1)}m
           </span>
           <span className="text-xs text-surface-500 ml-1.5">in the bank</span>
         </div>
 
-        <div className="ml-auto flex items-center border border-surface-700 rounded overflow-hidden">
+        <div className="ml-auto flex items-center border border-surface-300 rounded overflow-hidden">
           <button
             onClick={() => setViewMode("pitch")}
-            className={`px-3 py-1.5 text-xs font-medium transition-colors ${viewMode === "pitch" ? "bg-surface-700 text-surface-100" : "text-surface-500 hover:text-surface-300"}`}
+            className={`px-3 py-1.5 text-xs font-medium transition-colors ${viewMode === "pitch" ? "bg-surface-300 text-surface-900" : "text-surface-500 hover:text-surface-700"}`}
           >
             Pitch
           </button>
           <button
             onClick={() => setViewMode("table")}
-            className={`px-3 py-1.5 text-xs font-medium transition-colors ${viewMode === "table" ? "bg-surface-700 text-surface-100" : "text-surface-500 hover:text-surface-300"}`}
+            className={`px-3 py-1.5 text-xs font-medium transition-colors ${viewMode === "table" ? "bg-surface-300 text-surface-900" : "text-surface-500 hover:text-surface-700"}`}
           >
             Table
           </button>
@@ -365,24 +365,24 @@ export default function MyTeam() {
           />
           <AlertRow
             players={toughFixtureStarters}
-            borderColor="border-surface-600"
+            borderColor="border-surface-400"
             renderDetail={(p) => (
               <>
                 {" — tough fixture vs "}
-                <span className="text-surface-200">{p.opponent_name}</span>
+                <span className="text-surface-800">{p.opponent_name}</span>
                 {` (difficulty ${fdrFor(p.team_name)})`}
               </>
             )}
           />
           <AlertRow
             players={benchOutscoring}
-            borderColor="border-brand-500"
+            borderColor="border-brand-600"
             renderDetail={(p) => (
               <>
                 {" "}
                 <span className="text-surface-500">(bench)</span>
                 {" — predicted "}
-                <span className="text-brand-400 font-data">{p.predicted_points.toFixed(1)}</span>
+                <span className="text-brand-700 font-data">{p.predicted_points.toFixed(1)}</span>
                 {" pts, outscoring a starter"}
               </>
             )}
@@ -401,7 +401,7 @@ export default function MyTeam() {
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-surface-700">
+              <tr className="border-b border-surface-300">
                 <th scope="col" className="table-header text-left py-2.5 px-3 w-8"></th>
                 <th scope="col" className="table-header text-left py-2.5 px-3">
                   Player
@@ -435,11 +435,11 @@ export default function MyTeam() {
                 .map((p) => (
                   <tr
                     key={p.element}
-                    className="border-t border-surface-800/60 hover:bg-surface-800/40 transition-colors"
+                    className="border-t border-surface-200/60 hover:bg-surface-200/40 transition-colors"
                   >
                     <td className="py-2.5 px-3">
                       <div
-                        className={`w-1 h-8 rounded-full ${p.is_captain ? "bg-warning-400" : p.is_vice ? "bg-surface-400" : "bg-brand-500/40"}`}
+                        className={`w-1 h-8 rounded-full ${p.is_captain ? "bg-warning-400" : p.is_vice ? "bg-surface-600" : "bg-brand-600/40"}`}
                       />
                     </td>
                     <td className="py-2.5 px-3">
@@ -448,7 +448,7 @@ export default function MyTeam() {
                         <div>
                           <PlayerLink
                             element={p.element}
-                            className="block font-medium text-surface-100"
+                            className="block font-medium text-surface-900"
                           >
                             {p.web_name}
                           </PlayerLink>
@@ -462,26 +462,26 @@ export default function MyTeam() {
                     </td>
                     <td className="py-2.5 px-3">
                       <span
-                        className={`text-base font-semibold font-data tabular-nums ${p.predicted_points >= 6 ? "text-brand-400" : "text-surface-100"}`}
+                        className={`text-base font-semibold font-data tabular-nums ${p.predicted_points >= 6 ? "text-brand-700" : "text-surface-900"}`}
                       >
                         {p.predicted_points.toFixed(1)}
                       </span>
                       {p.is_captain && <span className="text-xs text-warning-400 ml-1">×2</span>}
                     </td>
-                    <td className="py-2.5 px-3 text-surface-300 font-data tabular-nums">
+                    <td className="py-2.5 px-3 text-surface-700 font-data tabular-nums">
                       {p.form.toFixed(1)}
                     </td>
                     <td className="py-2.5 px-3">
                       <FdrBadge opponent={p.opponent_name} fdr={fdrFor(p.team_name)} />
                     </td>
-                    <td className="py-2.5 px-3 text-surface-300 font-data tabular-nums">
+                    <td className="py-2.5 px-3 text-surface-700 font-data tabular-nums">
                       £{p.value.toFixed(1)}m
                     </td>
                     <td className="py-2.5 px-3">
                       {p.status !== "a" ? (
                         <StatusBadge status={p.status} chance={p.chance_of_playing} compact />
                       ) : (
-                        <span className="text-xs text-surface-600">OK</span>
+                        <span className="text-xs text-surface-400">OK</span>
                       )}
                     </td>
                   </tr>
@@ -489,28 +489,28 @@ export default function MyTeam() {
               <tr>
                 <td colSpan={7} className="py-2 px-3">
                   <div className="flex items-center gap-2">
-                    <div className="h-px flex-1 bg-surface-700" />
+                    <div className="h-px flex-1 bg-surface-300" />
                     <span className="text-2xs text-surface-500 uppercase tracking-wider">
                       Bench
                     </span>
-                    <div className="h-px flex-1 bg-surface-700" />
+                    <div className="h-px flex-1 bg-surface-300" />
                   </div>
                 </td>
               </tr>
               {bench.map((p, idx) => (
-                <tr key={p.element} className="border-t border-surface-800/60 opacity-60">
-                  <td className="py-2.5 px-3 text-xs text-surface-600 font-data">{idx + 1}</td>
+                <tr key={p.element} className="border-t border-surface-200/60 opacity-60">
+                  <td className="py-2.5 px-3 text-xs text-surface-400 font-data">{idx + 1}</td>
                   <td className="py-2.5 px-3">
                     <div className="flex items-center gap-2.5">
                       <TeamBadge team={p.team_name} />
                       <div>
                         <PlayerLink
                           element={p.element}
-                          className="block font-medium text-surface-300"
+                          className="block font-medium text-surface-700"
                         >
                           {p.web_name}
                         </PlayerLink>
-                        <p className="text-xs text-surface-600">
+                        <p className="text-xs text-surface-400">
                           <span className={POSITION_COLORS[p.position]}>{p.position}</span>
                           {" · "}
                           {p.team_name}
@@ -531,7 +531,7 @@ export default function MyTeam() {
                     £{p.value.toFixed(1)}m
                   </td>
                   <td className="py-2.5 px-3">
-                    <span className="text-xs text-surface-600">Bench {idx + 1}</span>
+                    <span className="text-xs text-surface-400">Bench {idx + 1}</span>
                   </td>
                 </tr>
               ))}
@@ -551,11 +551,11 @@ export default function MyTeam() {
           {transferSuggestions.map((t, idx) => (
             <div
               key={idx}
-              className="flex items-center gap-4 p-3 rounded-md bg-surface-800/50 border border-surface-700"
+              className="flex items-center gap-4 p-3 rounded-md bg-surface-200/50 border border-surface-300"
             >
               <div className="flex-1">
                 <p className="text-xs text-danger-400 font-medium uppercase mb-1">Sell</p>
-                <PlayerLink element={t.out.element} className="block font-medium text-surface-100">
+                <PlayerLink element={t.out.element} className="block font-medium text-surface-900">
                   {t.out.web_name}
                 </PlayerLink>
                 <p className="text-xs text-surface-500">
@@ -566,7 +566,7 @@ export default function MyTeam() {
 
               <div className="flex flex-col items-center gap-1">
                 <svg
-                  className="w-5 h-5 text-brand-400"
+                  className="w-5 h-5 text-brand-700"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -585,7 +585,7 @@ export default function MyTeam() {
 
               <div className="flex-1">
                 <p className="text-xs text-success-400 font-medium uppercase mb-1">Buy</p>
-                <p className="font-medium text-surface-100">{t.in.web_name}</p>
+                <p className="font-medium text-surface-900">{t.in.web_name}</p>
                 <p className="text-xs text-surface-500">
                   {t.in.position} · {t.in.team_name} · {t.in.predicted_points.toFixed(1)} pts
                 </p>
