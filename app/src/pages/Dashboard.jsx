@@ -34,8 +34,8 @@ function FilterChip({ active, onClick, children, ...props }) {
       onClick={onClick}
       className={`px-2 py-1 rounded border text-xs transition-colors ${
         active
-          ? "border-brand-500/50 bg-brand-500/10 text-brand-300"
-          : "border-surface-700 text-surface-400 hover:text-surface-200 hover:border-surface-600"
+          ? "border-brand-600/50 bg-brand-600/10 text-brand-500"
+          : "border-surface-300 text-surface-600 hover:text-surface-800 hover:border-surface-400"
       }`}
       {...props}
     >
@@ -51,10 +51,10 @@ const POSITIONS = ["ALL", "GK", "DEF", "MID", "FWD"];
 const PAGE_SIZE = 50;
 
 const POS_TAB_UNDERLINE = {
-  ALL: "bg-brand-500",
+  ALL: "bg-brand-600",
   GK: "bg-warning-400",
   DEF: "bg-success-400",
-  MID: "bg-brand-400",
+  MID: "bg-brand-700",
   FWD: "bg-danger-400",
 };
 
@@ -109,13 +109,13 @@ export default function Dashboard() {
   const predictions = useMemo(() => data?.predictions ?? [], [data]);
   const activeModel = models.find((m) => m.id === selectedModel) || models[0];
 
-  const filteredPredictions = useMemo(() => {
+  // Everything the other filters allow, before the flagged toggle narrows it.
+  // The toggle's own count is read off this, so it answers "how many of what I
+  // am looking at" rather than "how many in the whole league".
+  const scopedPredictions = useMemo(() => {
     let result = [...predictions];
     if (positionFilter !== "ALL") {
       result = result.filter((p) => p.position === positionFilter);
-    }
-    if (flaggedOnly) {
-      result = result.filter(isFlagged);
     }
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
@@ -123,13 +123,23 @@ export default function Dashboard() {
         (p) => p.web_name.toLowerCase().includes(query) || p.team_name.toLowerCase().includes(query)
       );
     }
+    return result;
+  }, [predictions, positionFilter, searchQuery]);
+
+  const flaggedCount = useMemo(
+    () => scopedPredictions.filter(isFlagged).length,
+    [scopedPredictions]
+  );
+
+  const filteredPredictions = useMemo(() => {
+    const result = flaggedOnly ? scopedPredictions.filter(isFlagged) : [...scopedPredictions];
     result.sort((a, b) => {
       const aVal = a[sortBy];
       const bVal = b[sortBy];
       return sortDesc ? bVal - aVal : aVal - bVal;
     });
     return result;
-  }, [predictions, positionFilter, flaggedOnly, sortBy, sortDesc, searchQuery]);
+  }, [scopedPredictions, flaggedOnly, sortBy, sortDesc]);
 
   const { page, setPage, totalPages, pageStart, pageItems } = usePagination(
     filteredPredictions,
@@ -163,7 +173,7 @@ export default function Dashboard() {
             onClick={() => setParam("flagged", flaggedOnly ? "0" : "1")}
             aria-pressed={flaggedOnly}
           >
-            {predictions.filter(isFlagged).length} flagged
+            {flaggedCount} flagged
           </FilterChip>
 
           <FilterChip
@@ -181,7 +191,7 @@ export default function Dashboard() {
               <select
                 value={selectedModel || models[0]?.id || ""}
                 onChange={(e) => setSelectedModel(e.target.value)}
-                className="bg-surface-800 border border-surface-700 rounded px-2 py-1 text-xs text-surface-300 focus:outline-none cursor-pointer"
+                className="bg-surface-200 border border-surface-300 rounded px-2 py-1 text-xs text-surface-700 focus:outline-none cursor-pointer"
               >
                 {models.map((m) => (
                   <option key={m.id} value={m.id}>
@@ -202,8 +212,8 @@ export default function Dashboard() {
             <span className="text-xs font-data tabular-nums text-surface-500">
               {typeof activeModel.spearman === "number" && (
                 <>
-                  <span className="text-brand-400">rank {activeModel.spearman.toFixed(3)}</span>
-                  <span className="mx-1.5 text-surface-700">·</span>
+                  <span className="text-brand-700">rank {activeModel.spearman.toFixed(3)}</span>
+                  <span className="mx-1.5 text-surface-300">·</span>
                 </>
               )}
               <span>error {activeModel.mae}</span>
@@ -214,7 +224,7 @@ export default function Dashboard() {
 
       {showFixtures &&
         (fixtureError ? (
-          <section className="border-y border-surface-800 py-3 text-sm text-surface-400">
+          <section className="border-y border-surface-200 py-3 text-sm text-surface-600">
             Fixtures are currently unavailable.
           </section>
         ) : (
@@ -224,7 +234,7 @@ export default function Dashboard() {
       <h2 ref={tableHeadingRef} tabIndex={-1} className="sr-only">
         Player predictions
       </h2>
-      <div className="flex items-center justify-between border-b border-surface-800">
+      <div className="flex items-center justify-between border-b border-surface-200">
         <div className="flex items-center gap-0">
           {POSITIONS.map((pos) => (
             <button
@@ -232,8 +242,8 @@ export default function Dashboard() {
               onClick={() => setParam("pos", pos)}
               className={`px-3 py-2 text-sm font-medium transition-colors relative ${
                 positionFilter === pos
-                  ? "text-surface-100"
-                  : "text-surface-500 hover:text-surface-300"
+                  ? "text-surface-900"
+                  : "text-surface-500 hover:text-surface-700"
               }`}
             >
               {pos}
@@ -248,7 +258,7 @@ export default function Dashboard() {
 
         <div className="relative">
           <svg
-            className="absolute left-0 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-surface-600"
+            className="absolute left-0 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-surface-400"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -266,7 +276,7 @@ export default function Dashboard() {
             placeholder="Search..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="bg-transparent border-b border-surface-700 pl-5 pr-2 py-2 text-sm text-surface-100 placeholder:text-surface-600 w-44 focus:border-surface-500 focus:outline-none transition-colors"
+            className="bg-transparent border-b border-surface-300 pl-5 pr-2 py-2 text-sm text-surface-900 placeholder:text-surface-400 w-44 focus:border-surface-500 focus:outline-none transition-colors"
           />
         </div>
       </div>
@@ -274,7 +284,7 @@ export default function Dashboard() {
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-surface-700">
+            <tr className="border-b border-surface-300">
               <th scope="col" className="table-header text-left py-2.5 px-3">
                 #
               </th>
@@ -294,7 +304,7 @@ export default function Dashboard() {
               </th>
               <SortHeader field="form" sortBy={sortBy} sortDesc={sortDesc} onSort={handleSort}>
                 Form
-                <span className="block text-2xs font-normal normal-case text-surface-600">
+                <span className="block text-2xs font-normal normal-case text-surface-400">
                   pts / game
                 </span>
               </SortHeader>
@@ -311,7 +321,7 @@ export default function Dashboard() {
               </SortHeader>
               <th scope="col" className="table-header text-left py-2.5 px-3">
                 Effective
-                <span className="block text-2xs font-normal normal-case text-surface-600">
+                <span className="block text-2xs font-normal normal-case text-surface-400">
                   owned + captained
                 </span>
               </th>
@@ -325,12 +335,23 @@ export default function Dashboard() {
               <Fragment key={p.element}>
                 <tr
                   onClick={() => expand(p.element)}
-                  className={`border-t border-surface-800/60 hover:bg-surface-800/40 transition-colors cursor-pointer ${
-                    expandedPlayer === p.element ? "bg-surface-800/30" : ""
+                  className={`border-t border-surface-200/60 hover:bg-surface-200/40 transition-colors cursor-pointer ${
+                    expandedPlayer === p.element ? "bg-surface-200/30" : ""
                   }`}
                 >
-                  <td className="py-2.5 px-3 text-surface-600 text-xs font-data tabular-nums w-8">
-                    {pageStart + idx + 1}
+                  <td className="py-2.5 px-3 w-8">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        expand(p.element);
+                      }}
+                      aria-expanded={expandedPlayer === p.element}
+                      aria-label={`${pageStart + idx + 1}. Why ${p.web_name} is predicted ${p.predicted_points.toFixed(1)}`}
+                      className="text-surface-400 text-xs font-data tabular-nums hover:text-surface-700 transition-colors"
+                    >
+                      {pageStart + idx + 1}
+                    </button>
                   </td>
                   <td className="py-2.5 px-3">
                     <div className="flex items-center gap-2.5">
@@ -339,7 +360,7 @@ export default function Dashboard() {
                         <PlayerLink
                           element={p.element}
                           stopPropagation
-                          className="block font-medium text-surface-100"
+                          className="block font-medium text-surface-900"
                         >
                           {p.web_name}
                         </PlayerLink>
@@ -355,9 +376,9 @@ export default function Dashboard() {
                     <span
                       className={`text-base font-semibold font-data tabular-nums ${
                         p.predicted_points >= 6
-                          ? "text-brand-400"
+                          ? "text-brand-700"
                           : p.predicted_points >= 3.5
-                            ? "text-surface-100"
+                            ? "text-surface-900"
                             : "text-surface-500"
                       }`}
                     >
@@ -381,9 +402,9 @@ export default function Dashboard() {
                       <span
                         className={`font-data tabular-nums ${
                           p.form >= 8
-                            ? "text-brand-400 font-semibold"
+                            ? "text-brand-700 font-semibold"
                             : p.form >= 5
-                              ? "text-surface-100"
+                              ? "text-surface-900"
                               : "text-surface-500"
                         }`}
                       >
@@ -391,10 +412,10 @@ export default function Dashboard() {
                       </span>
                     </div>
                   </td>
-                  <td className="py-2.5 px-3 text-surface-300 font-data tabular-nums">
+                  <td className="py-2.5 px-3 text-surface-700 font-data tabular-nums">
                     £{p.value.toFixed(1)}m
                   </td>
-                  <td className="py-2.5 px-3 text-surface-300 font-data tabular-nums">
+                  <td className="py-2.5 px-3 text-surface-700 font-data tabular-nums">
                     {p.selected_by_percent.toFixed(1)}%
                   </td>
                   <td className="py-2.5 px-3">
@@ -404,7 +425,7 @@ export default function Dashboard() {
                           ? "text-danger-400"
                           : calcEO(p) > 60
                             ? "text-warning-400"
-                            : "text-surface-400"
+                            : "text-surface-600"
                       }`}
                     >
                       {calcEO(p).toFixed(1)}%
@@ -416,7 +437,7 @@ export default function Dashboard() {
                 </tr>
                 {expandedPlayer === p.element && (
                   <tr key={`${p.element}-detail`}>
-                    <td colSpan={9} className="bg-surface-800/20">
+                    <td colSpan={9} className="bg-surface-200/20">
                       <div className="px-4 py-3">
                         <div className="flex items-baseline gap-2 mb-2">
                           <span className="section-label">Why {p.predicted_points.toFixed(1)}</span>
@@ -437,7 +458,7 @@ export default function Dashboard() {
                                 key={factor.feature}
                                 className="flex items-center gap-2 text-xs w-72"
                               >
-                                <span className="text-surface-300 flex-1 truncate">
+                                <span className="text-surface-700 flex-1 truncate">
                                   {describe(factor, p)}
                                 </span>
                                 <span

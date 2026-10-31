@@ -26,13 +26,13 @@ function PlayerSelector({ selected, onChange, label, excludeId, allPlayers }) {
       <p className="section-label mb-2">{label}</p>
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between bg-surface-800 border border-surface-700 rounded-md px-4 py-3 text-left hover:border-surface-600 transition-colors"
+        className="w-full flex items-center justify-between bg-surface-200 border border-surface-300 rounded-md px-4 py-3 text-left hover:border-surface-400 transition-colors"
       >
         {selectedPlayer ? (
           <div className="flex items-center gap-3">
             <TeamBadge team={selectedPlayer.team} />
             <div>
-              <p className="text-sm font-medium text-surface-100">{selectedPlayer.web_name}</p>
+              <p className="text-sm font-medium text-surface-900">{selectedPlayer.web_name}</p>
               <p className="text-xs text-surface-500">
                 <span className={POSITION_COLORS[selectedPlayer.position]}>
                   {selectedPlayer.position}
@@ -55,15 +55,15 @@ function PlayerSelector({ selected, onChange, label, excludeId, allPlayers }) {
       </button>
 
       {open && (
-        <div className="absolute z-50 mt-1 w-full bg-surface-800 border border-surface-700 rounded-md max-h-72 overflow-hidden">
-          <div className="p-2 border-b border-surface-700">
+        <div className="absolute z-50 mt-1 w-full bg-surface-200 border border-surface-300 rounded-md max-h-72 overflow-hidden">
+          <div className="p-2 border-b border-surface-300">
             <input
               type="text"
               aria-label="Search by name, team or position"
               placeholder="Search name, team, position..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full bg-surface-900 border border-surface-700 rounded px-3 py-1.5 text-sm text-surface-100 placeholder:text-surface-500 focus:outline-none focus:border-brand-500"
+              className="w-full bg-surface-100 border border-surface-300 rounded px-3 py-1.5 text-sm text-surface-900 placeholder:text-surface-500 focus:outline-none focus:border-brand-600"
               // eslint-disable-next-line jsx-a11y/no-autofocus -- the reader just opened this panel
               autoFocus
             />
@@ -77,20 +77,20 @@ function PlayerSelector({ selected, onChange, label, excludeId, allPlayers }) {
                     setOpen(false);
                     setSearch("");
                   }}
-                  className={`w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-surface-700/50 transition-colors ${
-                    p.id === selected ? "bg-brand-600/20" : ""
+                  className={`w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-surface-300/50 transition-colors ${
+                    p.id === selected ? "bg-brand-700/20" : ""
                   }`}
                 >
                   <TeamBadge team={p.team} size="sm" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-surface-100 truncate">{p.web_name}</p>
+                    <p className="text-sm text-surface-900 truncate">{p.web_name}</p>
                     <p className="text-xs text-surface-500">
                       <span className={POSITION_COLORS[p.position]}>{p.position}</span> · £
                       {p.value.toFixed(1)}m · {p.predicted_points.toFixed(1)} pts
                     </p>
                   </div>
                   <span
-                    className={`text-xs font-medium ${STATUS_CONFIG[p.status]?.cls || "text-surface-400"}`}
+                    className={`text-xs font-medium ${STATUS_CONFIG[p.status]?.cls || "text-surface-600"}`}
                   >
                     {STATUS_CONFIG[p.status]?.label}
                   </span>

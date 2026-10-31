@@ -13,6 +13,9 @@ export default function TeamBadge({ team, size = "md" }) {
   const g = parseInt(hex.slice(3, 5), 16);
   const b = parseInt(hex.slice(5, 7), 16);
   const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  // Both arms used to be near-white, because the scale ran backwards and the
+  // bright-badge arm named a step that looked dark but was not. WOL's gold sat
+  // at 1.64:1 and City's blue at 2.34:1; dark text puts them at 9.73 and 6.82.
   const textClass = luminance > 0.55 ? "text-surface-900" : "text-white";
 
   return (

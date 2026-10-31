@@ -20,7 +20,7 @@ export default function XGTab({ predictions }) {
         const barPct = Math.min((Math.abs(diff) / maxBar) * 100, 100);
         return (
           <div key={p.element} className="flex items-center gap-3">
-            <PlayerLink element={p.element} className="text-sm text-surface-300 w-28 truncate">
+            <PlayerLink element={p.element} className="text-sm text-surface-700 w-28 truncate">
               {p.web_name}
             </PlayerLink>
             <span className="text-xs text-surface-500 w-20 text-right shrink-0">
@@ -54,7 +54,7 @@ export default function XGTab({ predictions }) {
           </div>
         );
       })}
-      <div className="flex items-center gap-4 mt-3 text-2xs text-surface-600">
+      <div className="flex items-center gap-4 mt-3 text-2xs text-surface-400">
         <span>+ outscoring xG</span>
         <span>− underperforming</span>
       </div>

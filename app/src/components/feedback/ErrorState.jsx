@@ -5,7 +5,7 @@ export default function ErrorState({ message = "Something went wrong", onRetry }
       {onRetry && (
         <button
           onClick={onRetry}
-          className="mt-3 px-4 py-1.5 text-sm font-medium rounded bg-surface-800 text-surface-300 hover:text-surface-100 transition-colors"
+          className="mt-3 px-4 py-1.5 text-sm font-medium rounded bg-surface-200 text-surface-700 hover:text-surface-900 transition-colors"
         >
           Retry
         </button>

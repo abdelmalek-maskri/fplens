@@ -41,7 +41,7 @@ export default function ShapTab({ shapFeatures }) {
 
   return (
     <div className="space-y-6">
-      <div className="py-3 border-b border-surface-700">
+      <div className="py-3 border-b border-surface-300">
         <span className="section-label">What Drives Predictions</span>
         <p className="text-xs text-surface-500 mt-1">
           SHAP analysis shows how much each input variable influences the model&apos;s predicted
@@ -79,7 +79,7 @@ export default function ShapTab({ shapFeatures }) {
       </div>
 
       <div>
-        <div className="py-3 border-b border-surface-700 mb-3">
+        <div className="py-3 border-b border-surface-300 mb-3">
           <span className="section-label">Top 10 Most Influential Variables</span>
           <p className="text-xs text-surface-500 mt-1">
             Each bar shows how much that single variable contributes to the prediction, as a
@@ -98,14 +98,14 @@ export default function ShapTab({ shapFeatures }) {
               <div key={f.feature} className="flex items-center gap-3">
                 <span className="text-xs text-surface-500 w-5 text-right shrink-0">{idx + 1}</span>
                 <div className="w-52 shrink-0">
-                  <span className="text-sm text-surface-200 block truncate">
+                  <span className="text-sm text-surface-800 block truncate">
                     {featureLabels[f.feature] || f.feature}
                   </span>
                   {featureLabels[f.feature] && (
-                    <span className="text-2xs text-surface-600 font-data">{f.feature}</span>
+                    <span className="text-2xs text-surface-400 font-data">{f.feature}</span>
                   )}
                 </div>
-                <div className="flex-1 h-7 bg-surface-800 rounded overflow-hidden relative">
+                <div className="flex-1 h-7 bg-surface-200 rounded overflow-hidden relative">
                   <div
                     className="h-full rounded flex items-center"
                     style={{

@@ -25,7 +25,7 @@ export default function DifferentialsTab({ predictions }) {
       </p>
       <table className="w-full">
         <thead>
-          <tr className="border-b border-surface-800/60">
+          <tr className="border-b border-surface-200/60">
             <th scope="col" className="text-xs text-surface-500 text-left py-1.5 font-normal w-8">
               #
             </th>
@@ -48,12 +48,12 @@ export default function DifferentialsTab({ predictions }) {
             const impact = calcDifferential(p);
             const barPct = (impact / maxImpact) * 100;
             return (
-              <tr key={p.element} className="border-b border-surface-800/40">
-                <td className="py-2 text-xs text-surface-600 font-data">{idx + 1}</td>
+              <tr key={p.element} className="border-b border-surface-200/40">
+                <td className="py-2 text-xs text-surface-400 font-data">{idx + 1}</td>
                 <td className="py-2">
                   <div className="flex items-center gap-2">
                     <TeamBadge team={p.team_name} size="sm" />
-                    <PlayerLink element={p.element} className="text-sm text-surface-100">
+                    <PlayerLink element={p.element} className="text-sm text-surface-900">
                       {p.web_name}
                     </PlayerLink>
                     <span
@@ -66,18 +66,18 @@ export default function DifferentialsTab({ predictions }) {
                 <td className="py-2 text-xs text-surface-500 text-right font-data tabular-nums">
                   {p.selected_by_percent}%
                 </td>
-                <td className="py-2 text-sm text-surface-300 text-right font-data tabular-nums">
+                <td className="py-2 text-sm text-surface-700 text-right font-data tabular-nums">
                   {p.predicted_points.toFixed(1)}
                 </td>
                 <td className="py-2 text-right">
                   <div className="flex items-center justify-end gap-2">
-                    <div className="w-12 h-1.5 bg-surface-800 rounded overflow-hidden">
+                    <div className="w-12 h-1.5 bg-surface-200 rounded overflow-hidden">
                       <div
-                        className="h-full bg-brand-500/60 rounded"
+                        className="h-full bg-brand-600/60 rounded"
                         style={{ width: `${barPct}%` }}
                       />
                     </div>
-                    <span className="text-sm font-semibold text-surface-100 font-data tabular-nums w-8">
+                    <span className="text-sm font-semibold text-surface-900 font-data tabular-nums w-8">
                       {impact.toFixed(1)}
                     </span>
                   </div>

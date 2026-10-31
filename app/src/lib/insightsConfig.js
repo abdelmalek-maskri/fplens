@@ -176,7 +176,7 @@ export const ablationConfigs = [
     r2: 0.253,
     rho: 0.685,
     features: 148,
-    color: "bg-brand-500",
+    color: "bg-brand-600",
   },
   {
     config: "C",
@@ -264,7 +264,7 @@ export const calibrationDeciles = {
 };
 
 export const categoryColors = {
-  Recency: "bg-brand-500",
+  Recency: "bg-brand-600",
   Season: "bg-info-500",
   Static: "bg-success-500",
   Rolling: "bg-warning-500",
@@ -273,11 +273,11 @@ export const categoryColors = {
 };
 
 export const categoryTextColors = {
-  Recency: "text-brand-400",
+  Recency: "text-brand-700",
   Season: "text-info-400",
   Static: "text-success-400",
   Rolling: "text-warning-400",
-  Understat: "text-surface-300",
+  Understat: "text-surface-700",
   Injury: "text-danger-400",
 };
 

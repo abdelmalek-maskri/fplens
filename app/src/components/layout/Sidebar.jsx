@@ -50,16 +50,19 @@ const Sidebar = forwardRef(function Sidebar({ open, onClose, gwData }, ref) {
   return (
     <aside
       ref={ref}
-      className={`fixed left-0 top-0 h-screen w-[200px] bg-surface-900 border-r border-surface-700 flex flex-col z-50 transition-transform duration-150 ${open ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0`}
+      aria-label="Site navigation"
+      role={open ? "dialog" : undefined}
+      aria-modal={open ? true : undefined}
+      className={`fixed left-0 top-0 h-screen w-[200px] bg-surface-100 border-r border-surface-300 flex flex-col z-50 transition-transform duration-150 ${open ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0`}
     >
-      <div className="px-3 py-3 border-b border-surface-700">
+      <div className="px-3 py-3 border-b border-surface-300">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded bg-brand-600 flex items-center justify-center">
+            <div className="w-6 h-6 rounded bg-brand-700 flex items-center justify-center">
               <span className="text-white font-bold text-2xs leading-none">FL</span>
             </div>
             <div>
-              <h1 className="font-semibold text-surface-100 text-sm leading-none">FPLens</h1>
+              <h1 className="font-semibold text-surface-900 text-sm leading-none">FPLens</h1>
               <p className="text-2xs text-surface-500 mt-0.5">
                 {currentGw ? `Gameweek ${currentGw}` : "—"}
               </p>
@@ -68,7 +71,7 @@ const Sidebar = forwardRef(function Sidebar({ open, onClose, gwData }, ref) {
           <button
             onClick={onClose}
             aria-label="Close menu"
-            className="lg:hidden text-surface-400 hover:text-surface-200"
+            className="lg:hidden text-surface-600 hover:text-surface-800"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path
@@ -86,9 +89,9 @@ const Sidebar = forwardRef(function Sidebar({ open, onClose, gwData }, ref) {
         {navItems.map((group, idx) => (
           <div
             key={group.section}
-            className={idx > 0 ? "mt-1 pt-1 border-t border-surface-700" : ""}
+            className={idx > 0 ? "mt-1 pt-1 border-t border-surface-300" : ""}
           >
-            <p className="text-2xs font-medium text-surface-600 tracking-widest px-2.5 mb-1 mt-2">
+            <p className="text-2xs font-medium text-surface-400 tracking-widest px-2.5 mb-1 mt-2">
               {group.section}
             </p>
             <ul className="space-y-0.5">
@@ -108,14 +111,14 @@ const Sidebar = forwardRef(function Sidebar({ open, onClose, gwData }, ref) {
         ))}
       </nav>
 
-      <div className="px-3 pb-2.5 pt-2 border-t border-surface-700">
+      <div className="px-3 pb-2.5 pt-2 border-t border-surface-300">
         <div className="flex items-center gap-1.5 px-0.5" title={freshness.detail ?? undefined}>
           <span className={`status-${freshness.level}`} />
-          <span className="text-2xs text-surface-400">{freshness.label}</span>
+          <span className="text-2xs text-surface-600">{freshness.label}</span>
           {deadline && <span className="text-2xs text-surface-500 ml-auto">Deadline</span>}
         </div>
         {deadline && (
-          <p className="text-2xs text-surface-600 mt-0.5 px-0.5 text-right">{deadline}</p>
+          <p className="text-2xs text-surface-400 mt-0.5 px-0.5 text-right">{deadline}</p>
         )}
       </div>
     </aside>

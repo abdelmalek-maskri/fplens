@@ -46,8 +46,8 @@ export default function Watchlist() {
             }}
             className={`px-3 py-1.5 text-sm font-medium rounded transition-colors ${
               showAdd
-                ? "bg-surface-700 text-surface-200"
-                : "bg-brand-600 text-white hover:bg-brand-700"
+                ? "bg-surface-300 text-surface-800"
+                : "bg-brand-700 text-white hover:bg-brand-800"
             }`}
           >
             {showAdd ? "Done" : "+ Add player"}
@@ -64,10 +64,10 @@ export default function Watchlist() {
               onChange={(e) => setSearch(e.target.value)}
               // eslint-disable-next-line jsx-a11y/no-autofocus -- the reader just opened this panel
               autoFocus
-              className="w-full bg-surface-900 border border-surface-700 rounded-md px-3 py-2 text-sm text-surface-100 placeholder:text-surface-500 focus:border-brand-500 focus:outline-none"
+              className="w-full bg-surface-100 border border-surface-300 rounded-md px-3 py-2 text-sm text-surface-900 placeholder:text-surface-500 focus:border-brand-600 focus:outline-none"
             />
             {searchResults.length > 0 && (
-              <div className="mt-1 border border-surface-800 rounded-md divide-y divide-surface-800/60">
+              <div className="mt-1 border border-surface-200 rounded-md divide-y divide-surface-200/60">
                 {searchResults.map((p) => (
                   <button
                     key={p.element}
@@ -75,9 +75,9 @@ export default function Watchlist() {
                       add(p.element);
                       setSearch("");
                     }}
-                    className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-surface-800 transition-colors"
+                    className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-surface-200 transition-colors"
                   >
-                    <span className="text-sm text-surface-100">
+                    <span className="text-sm text-surface-900">
                       {p.web_name}
                       <span className="text-2xs text-surface-500 ml-2">
                         {p.team_name} ·{" "}
@@ -85,7 +85,7 @@ export default function Watchlist() {
                         {p.value.toFixed(1)}m
                       </span>
                     </span>
-                    <span className="text-xs text-brand-400">+ Add</span>
+                    <span className="text-xs text-brand-700">+ Add</span>
                   </button>
                 ))}
               </div>

@@ -4,7 +4,7 @@ import PlayerLink from "../../components/ui/PlayerLink";
 const TREND_CONFIG = {
   rise: { icon: "▲", cls: "text-success-400 bg-success-500/15", label: "Rising" },
   fall: { icon: "▼", cls: "text-danger-400 bg-danger-500/15", label: "Falling" },
-  stable: { icon: "–", cls: "text-surface-400 bg-surface-700", label: "Stable" },
+  stable: { icon: "–", cls: "text-surface-600 bg-surface-300", label: "Stable" },
 };
 
 export default function PriceTab({ predictions }) {
@@ -32,7 +32,7 @@ export default function PriceTab({ predictions }) {
               >
                 {t.icon}
               </span>
-              <PlayerLink element={p.element} className="text-sm text-surface-200">
+              <PlayerLink element={p.element} className="text-sm text-surface-800">
                 {p.web_name}
               </PlayerLink>
               <span className="text-xs text-surface-500">£{p.value}m</span>
