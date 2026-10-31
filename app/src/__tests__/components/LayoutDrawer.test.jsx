@@ -71,6 +71,25 @@ describe("mobile drawer", () => {
     expect(menuButton()).not.toHaveFocus();
   });
 
+  // The backdrop is a click-catcher. Naming it put two identical "Close menu"
+  // entries in the screen reader's element list with nothing to tell them
+  // apart, and a viewport-sized button in the tab order.
+  it("leaves exactly one way out named for a screen reader", () => {
+    renderLayout();
+    fireEvent.click(menuButton());
+    expect(screen.getAllByRole("button", { name: "Close menu" })).toHaveLength(1);
+  });
+
+  it("still closes when the backdrop is clicked", () => {
+    const { container } = renderLayout();
+    fireEvent.click(menuButton());
+    const backdrop = container.querySelector('[aria-hidden="true"][tabindex="-1"]');
+    expect(backdrop).toBeInTheDocument();
+
+    fireEvent.click(backdrop);
+    expect(screen.getByLabelText("Site navigation")).not.toHaveAttribute("aria-modal");
+  });
+
   // The backdrop and close button are lg:hidden, so leaving the drawer "open"
   // past that breakpoint keeps aria-modal over a sidebar that is just part of
   // the page, walling a screen reader off from content it can see.
