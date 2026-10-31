@@ -329,8 +329,19 @@ export default function Dashboard() {
                     expandedPlayer === p.element ? "bg-surface-800/30" : ""
                   }`}
                 >
-                  <td className="py-2.5 px-3 text-surface-600 text-xs font-data tabular-nums w-8">
-                    {pageStart + idx + 1}
+                  <td className="py-2.5 px-3 w-8">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        expand(p.element);
+                      }}
+                      aria-expanded={expandedPlayer === p.element}
+                      aria-label={`Why ${p.web_name} is predicted ${p.predicted_points.toFixed(1)}`}
+                      className="text-surface-600 text-xs font-data tabular-nums hover:text-surface-300 transition-colors"
+                    >
+                      {pageStart + idx + 1}
+                    </button>
                   </td>
                   <td className="py-2.5 px-3">
                     <div className="flex items-center gap-2.5">

@@ -109,3 +109,32 @@ describe("dashboard fixtures and empty state", () => {
     expect(screen.getByText(/No flagged players in this position/)).toBeInTheDocument();
   });
 });
+
+describe("Dashboard row disclosure", () => {
+  const renderDashboard = () =>
+    render(
+      <MemoryRouter>
+        <Dashboard />
+      </MemoryRouter>
+    );
+
+  it("exposes each row's detail as a button a keyboard can reach", () => {
+    renderDashboard();
+    const toggle = screen.getByRole("button", { name: /Why Player 1 is predicted/ });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("reports the row as expanded once opened", () => {
+    renderDashboard();
+    const toggle = screen.getByRole("button", { name: /Why Player 1 is predicted/ });
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("links each player name to their page", () => {
+    renderDashboard();
+    const links = screen.getAllByRole("link", { name: "Player 1" });
+    expect(links.length).toBeGreaterThan(0);
+    links.forEach((a) => expect(a).toHaveAttribute("href", "/player/1"));
+  });
+});
