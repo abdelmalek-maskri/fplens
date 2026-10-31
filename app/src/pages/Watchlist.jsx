@@ -62,6 +62,7 @@ export default function Watchlist() {
               placeholder="Search player or team"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              // eslint-disable-next-line jsx-a11y/no-autofocus -- the reader just opened this panel
               autoFocus
               className="w-full bg-surface-900 border border-surface-700 rounded-md px-3 py-2 text-sm text-surface-100 placeholder:text-surface-500 focus:border-brand-500 focus:outline-none"
             />

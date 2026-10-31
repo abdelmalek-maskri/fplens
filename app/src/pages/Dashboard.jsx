@@ -5,6 +5,7 @@ import StatusBadge from "../components/badges/StatusBadge";
 import FdrBadge from "../components/badges/FdrBadge";
 import SortHeader from "../components/ui/SortHeader";
 import TeamBadge from "../components/badges/TeamBadge";
+import PlayerLink from "../components/ui/PlayerLink";
 
 import TabBar from "../components/ui/TabBar";
 import ErrorState from "../components/feedback/ErrorState";
@@ -335,15 +336,13 @@ export default function Dashboard() {
                     <div className="flex items-center gap-2.5">
                       <TeamBadge team={p.team_name} />
                       <div>
-                        <p
-                          className="font-medium text-surface-100 hover:text-brand-400 transition-colors cursor-pointer"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(`/player/${p.element}`);
-                          }}
+                        <PlayerLink
+                          element={p.element}
+                          stopPropagation
+                          className="block font-medium text-surface-100"
                         >
                           {p.web_name}
-                        </p>
+                        </PlayerLink>
                         <p className="text-xs text-surface-500">
                           <span className={POSITION_COLORS[p.position]}>{p.position}</span>
                           {" · "}
