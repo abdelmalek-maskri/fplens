@@ -109,13 +109,13 @@ export default function Dashboard() {
   const predictions = useMemo(() => data?.predictions ?? [], [data]);
   const activeModel = models.find((m) => m.id === selectedModel) || models[0];
 
-  const filteredPredictions = useMemo(() => {
+  // Everything the other filters allow, before the flagged toggle narrows it.
+  // The toggle's own count is read off this, so it answers "how many of what I
+  // am looking at" rather than "how many in the whole league".
+  const scopedPredictions = useMemo(() => {
     let result = [...predictions];
     if (positionFilter !== "ALL") {
       result = result.filter((p) => p.position === positionFilter);
-    }
-    if (flaggedOnly) {
-      result = result.filter(isFlagged);
     }
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
@@ -123,13 +123,23 @@ export default function Dashboard() {
         (p) => p.web_name.toLowerCase().includes(query) || p.team_name.toLowerCase().includes(query)
       );
     }
+    return result;
+  }, [predictions, positionFilter, searchQuery]);
+
+  const flaggedCount = useMemo(
+    () => scopedPredictions.filter(isFlagged).length,
+    [scopedPredictions]
+  );
+
+  const filteredPredictions = useMemo(() => {
+    const result = flaggedOnly ? scopedPredictions.filter(isFlagged) : [...scopedPredictions];
     result.sort((a, b) => {
       const aVal = a[sortBy];
       const bVal = b[sortBy];
       return sortDesc ? bVal - aVal : aVal - bVal;
     });
     return result;
-  }, [predictions, positionFilter, flaggedOnly, sortBy, sortDesc, searchQuery]);
+  }, [scopedPredictions, flaggedOnly, sortBy, sortDesc]);
 
   const { page, setPage, totalPages, pageStart, pageItems } = usePagination(
     filteredPredictions,
@@ -163,7 +173,7 @@ export default function Dashboard() {
             onClick={() => setParam("flagged", flaggedOnly ? "0" : "1")}
             aria-pressed={flaggedOnly}
           >
-            {predictions.filter(isFlagged).length} flagged
+            {flaggedCount} flagged
           </FilterChip>
 
           <FilterChip
