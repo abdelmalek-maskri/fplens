@@ -347,7 +347,7 @@ export default function Dashboard() {
                         expand(p.element);
                       }}
                       aria-expanded={expandedPlayer === p.element}
-                      aria-label={`Why ${p.web_name} is predicted ${p.predicted_points.toFixed(1)}`}
+                      aria-label={`${pageStart + idx + 1}. Why ${p.web_name} is predicted ${p.predicted_points.toFixed(1)}`}
                       className="text-surface-400 text-xs font-data tabular-nums hover:text-surface-700 transition-colors"
                     >
                       {pageStart + idx + 1}

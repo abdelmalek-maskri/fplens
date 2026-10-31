@@ -7,7 +7,8 @@ export default function Layout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { data: gwData } = useGameweek();
   const sidebarRef = useRef(null);
-  const triggerRef = useRef(null);
+  const menuButtonRef = useRef(null);
+  const wasOpenRef = useRef(false);
 
   useEffect(() => {
     if (!sidebarOpen) return;
@@ -31,15 +32,38 @@ export default function Layout({ children }) {
 
   // Without this a reader who closes the drawer is dropped at the top of the
   // document, with no way back to the control they were just using.
+  //
+  // Focus goes to the menu button by name rather than to whatever was active
+  // when the drawer opened: Safari does not focus a button when it is clicked,
+  // so document.activeElement is often <body> there. The menu button is the
+  // only thing that opens this, so it is always the right place to come back to.
   useEffect(() => {
     if (sidebarOpen) {
-      triggerRef.current = document.activeElement;
+      wasOpenRef.current = true;
       sidebarRef.current?.querySelector("a[href], button:not([disabled])")?.focus();
-    } else if (triggerRef.current instanceof HTMLElement) {
-      triggerRef.current.focus();
-      triggerRef.current = null;
+    } else if (wasOpenRef.current) {
+      wasOpenRef.current = false;
+      menuButtonRef.current?.focus();
     }
   }, [sidebarOpen]);
+
+  // Crossing into the desktop layout hides the backdrop and the close button,
+  // both lg:hidden, but would leave aria-modal and the focus trap switched on
+  // over a sidebar that is now simply part of the page. That walls a screen
+  // reader off from content it can see.
+  useEffect(() => {
+    const mq = window.matchMedia?.("(min-width: 1024px)");
+    if (!mq) return;
+    const sync = (e) => {
+      if (e.matches) setSidebarOpen(false);
+    };
+    sync(mq);
+    // addListener is the pre-14 Safari spelling, which is the browser this
+    // whole effect exists for.
+    mq.addEventListener ? mq.addEventListener("change", sync) : mq.addListener(sync);
+    return () =>
+      mq.removeEventListener ? mq.removeEventListener("change", sync) : mq.removeListener(sync);
+  }, []);
 
   const handleTrapFocus = useCallback((e) => {
     if (e.key !== "Tab" || !sidebarRef.current) return;
@@ -81,7 +105,11 @@ export default function Layout({ children }) {
         onClose={() => setSidebarOpen(false)}
         gwData={gwData}
       />
-      <Header onMenuToggle={() => setSidebarOpen((o) => !o)} gwData={gwData} />
+      <Header
+        onMenuToggle={() => setSidebarOpen((o) => !o)}
+        gwData={gwData}
+        menuButtonRef={menuButtonRef}
+      />
 
       <main className="lg:ml-[200px] pt-11 min-h-screen">
         <div className="p-4 sm:p-5">{children}</div>
