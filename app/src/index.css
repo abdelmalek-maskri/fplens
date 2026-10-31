@@ -159,13 +159,19 @@
     @apply bg-brand-500/15 text-brand-700;
   }
 
-  /* Status dots */
+  /* Status dots. No glow: the design is flat, and the three states have to be
+     told apart by hue alone, so one of them cannot carry an extra cue. */
   .status-dot {
     @apply w-1.5 h-1.5 rounded-full;
   }
   .status-live {
     @apply status-dot bg-success-500;
-    box-shadow: 0 0 6px rgba(34, 197, 94, 0.5);
+  }
+  .status-stale {
+    @apply status-dot bg-warning-500;
+  }
+  .status-unknown {
+    @apply status-dot bg-surface-600;
   }
 
   /* Navigation */
