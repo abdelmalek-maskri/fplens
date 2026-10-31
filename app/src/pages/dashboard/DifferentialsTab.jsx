@@ -1,13 +1,11 @@
 import { useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import PlayerLink from "../../components/ui/PlayerLink";
 import { POSITION_COLORS } from "../../lib/constants";
 import TeamBadge from "../../components/badges/TeamBadge";
 
 const calcDifferential = (p) => p.predicted_points * (1 - p.selected_by_percent / 100);
 
 export default function DifferentialsTab({ predictions }) {
-  const navigate = useNavigate();
-
   const diffs = useMemo(
     () =>
       [...predictions]
@@ -55,12 +53,9 @@ export default function DifferentialsTab({ predictions }) {
                 <td className="py-2">
                   <div className="flex items-center gap-2">
                     <TeamBadge team={p.team_name} size="sm" />
-                    <span
-                      className="text-sm text-surface-100 hover:text-brand-400 transition-colors cursor-pointer"
-                      onClick={() => navigate(`/player/${p.element}`)}
-                    >
+                    <PlayerLink element={p.element} className="text-sm text-surface-100">
                       {p.web_name}
-                    </span>
+                    </PlayerLink>
                     <span
                       className={`text-xs ${POSITION_COLORS[p.position] || "text-surface-500"}`}
                     >

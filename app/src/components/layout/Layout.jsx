@@ -54,7 +54,9 @@ export default function Layout({ children }) {
   return (
     <div className="min-h-screen bg-surface-900 text-surface-200">
       {sidebarOpen && (
-        <div
+        <button
+          type="button"
+          aria-label="Close menu"
           className="fixed inset-0 bg-black/60 z-40 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />

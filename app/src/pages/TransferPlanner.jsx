@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { POSITION_COLORS } from "../lib/constants";
 import TeamBadge from "../components/badges/TeamBadge";
+import PlayerLink from "../components/ui/PlayerLink";
 import { useTransfers } from "../hooks";
 import { computeSuggestions, WILDCARD, SQUAD_SIZE } from "./transfers/suggestions";
 import Loading from "../components/feedback/Loading";
@@ -188,12 +189,12 @@ export default function TransferPlanner() {
                     <span className="text-[10px] uppercase text-danger-400 font-medium">Sell</span>
                     <div className="flex items-center gap-2 mt-0.5">
                       <TeamBadge team={s.out.team} size="sm" />
-                      <span
-                        className="text-sm text-surface-100 cursor-pointer hover:text-brand-400 transition-colors truncate"
-                        onClick={() => navigate(`/player/${s.out.element}`)}
+                      <PlayerLink
+                        element={s.out.element}
+                        className="text-sm text-surface-100 truncate"
                       >
                         {s.out.web_name}
-                      </span>
+                      </PlayerLink>
                       <span className="text-xs text-surface-500">{s.out.sum.toFixed(1)} pts</span>
                     </div>
                     <span className="text-[10px] text-surface-600 mt-0.5">{s.reason}</span>

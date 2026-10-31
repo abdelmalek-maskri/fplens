@@ -1,9 +1,7 @@
 import { useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import PlayerLink from "../../components/ui/PlayerLink";
 
 export default function XGTab({ predictions }) {
-  const navigate = useNavigate();
-
   const players = useMemo(
     () =>
       [...predictions]
@@ -22,12 +20,9 @@ export default function XGTab({ predictions }) {
         const barPct = Math.min((Math.abs(diff) / maxBar) * 100, 100);
         return (
           <div key={p.element} className="flex items-center gap-3">
-            <span
-              className="text-sm text-surface-300 w-28 truncate hover:text-brand-400 transition-colors cursor-pointer"
-              onClick={() => navigate(`/player/${p.element}`)}
-            >
+            <PlayerLink element={p.element} className="text-sm text-surface-300 w-28 truncate">
               {p.web_name}
-            </span>
+            </PlayerLink>
             <span className="text-xs text-surface-500 w-20 text-right shrink-0">
               {p.goals}G / {p.xG}xG
             </span>
