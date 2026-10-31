@@ -390,3 +390,18 @@
 .stagger > *:nth-child(8) {
   animation-delay: 175ms;
 }
+
+/* The skeleton shimmer and the loader's bouncing ball both run forever, which
+   for a vestibular disorder is a physical problem rather than a preference.
+   Kept at 0.01ms rather than `none` so animationend still fires and nothing
+   waits on a callback that never arrives. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
