@@ -7,6 +7,7 @@ import TeamBadge from "../components/badges/TeamBadge";
 import FdrBadge from "../components/badges/FdrBadge";
 import ErrorState from "../components/feedback/ErrorState";
 import AlertRow from "../components/feedback/AlertRow";
+import PlayerLink from "../components/ui/PlayerLink";
 import { useTeam, useFixtures } from "../hooks";
 import FplIdHelp from "./my-team/FplIdHelp";
 
@@ -254,12 +255,12 @@ export default function MyTeam() {
             )}
           </div>
           <div className="flex items-center gap-3">
-            <p
-              className="font-semibold text-surface-100 hover:text-brand-400 transition-colors cursor-pointer"
-              onClick={() => handlePlayerClick(recommendedCaptain.element)}
+            <PlayerLink
+              element={recommendedCaptain.element}
+              className="block font-semibold text-surface-100"
             >
               {recommendedCaptain.web_name}
-            </p>
+            </PlayerLink>
             <span className="text-xs text-surface-500">
               {recommendedCaptain.position} · {recommendedCaptain.team_name} vs{" "}
               {recommendedCaptain.opponent_name}
@@ -276,12 +277,12 @@ export default function MyTeam() {
         <div className="flex-1 hidden sm:block">
           <span className="section-label">Vice Captain</span>
           <div className="flex items-center gap-3 mt-1">
-            <p
-              className="font-semibold text-surface-100 hover:text-brand-400 transition-colors cursor-pointer"
-              onClick={() => handlePlayerClick(recommendedVice.element)}
+            <PlayerLink
+              element={recommendedVice.element}
+              className="block font-semibold text-surface-100"
             >
               {recommendedVice.web_name}
-            </p>
+            </PlayerLink>
             <span className="text-xs text-surface-500">
               {recommendedVice.position} · {recommendedVice.team_name} vs{" "}
               {recommendedVice.opponent_name}
@@ -341,7 +342,6 @@ export default function MyTeam() {
           <AlertRow
             players={injuredStarters}
             borderColor="border-danger-500"
-            onPlayerClick={handlePlayerClick}
             renderDetail={(p) => (
               <>
                 {" "}
@@ -354,7 +354,6 @@ export default function MyTeam() {
           <AlertRow
             players={doubtfulStarters}
             borderColor="border-warning-500"
-            onPlayerClick={handlePlayerClick}
             renderDetail={(p) => (
               <>
                 {" "}
@@ -367,7 +366,6 @@ export default function MyTeam() {
           <AlertRow
             players={toughFixtureStarters}
             borderColor="border-surface-600"
-            onPlayerClick={handlePlayerClick}
             renderDetail={(p) => (
               <>
                 {" — tough fixture vs "}
@@ -379,7 +377,6 @@ export default function MyTeam() {
           <AlertRow
             players={benchOutscoring}
             borderColor="border-brand-500"
-            onPlayerClick={handlePlayerClick}
             renderDetail={(p) => (
               <>
                 {" "}
@@ -449,12 +446,12 @@ export default function MyTeam() {
                       <div className="flex items-center gap-2.5">
                         <TeamBadge team={p.team_name} />
                         <div>
-                          <p
-                            className="font-medium text-surface-100 hover:text-brand-400 transition-colors cursor-pointer"
-                            onClick={() => handlePlayerClick(p.element)}
+                          <PlayerLink
+                            element={p.element}
+                            className="block font-medium text-surface-100"
                           >
                             {p.web_name}
-                          </p>
+                          </PlayerLink>
                           <p className="text-xs text-surface-500">
                             <span className={POSITION_COLORS[p.position]}>{p.position}</span>
                             {" · "}
@@ -507,12 +504,12 @@ export default function MyTeam() {
                     <div className="flex items-center gap-2.5">
                       <TeamBadge team={p.team_name} />
                       <div>
-                        <p
-                          className="font-medium text-surface-300 hover:text-brand-400 transition-colors cursor-pointer"
-                          onClick={() => handlePlayerClick(p.element)}
+                        <PlayerLink
+                          element={p.element}
+                          className="block font-medium text-surface-300"
                         >
                           {p.web_name}
-                        </p>
+                        </PlayerLink>
                         <p className="text-xs text-surface-600">
                           <span className={POSITION_COLORS[p.position]}>{p.position}</span>
                           {" · "}
@@ -558,12 +555,9 @@ export default function MyTeam() {
             >
               <div className="flex-1">
                 <p className="text-xs text-danger-400 font-medium uppercase mb-1">Sell</p>
-                <p
-                  className="font-medium text-surface-100 hover:text-brand-400 transition-colors cursor-pointer"
-                  onClick={() => handlePlayerClick(t.out.element)}
-                >
+                <PlayerLink element={t.out.element} className="block font-medium text-surface-100">
                   {t.out.web_name}
-                </p>
+                </PlayerLink>
                 <p className="text-xs text-surface-500">
                   {t.out.position} · {t.out.team_name} · {t.out.predicted_points.toFixed(1)} pts
                 </p>

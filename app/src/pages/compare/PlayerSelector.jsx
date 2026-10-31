@@ -64,6 +64,7 @@ function PlayerSelector({ selected, onChange, label, excludeId, allPlayers }) {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full bg-surface-900 border border-surface-700 rounded px-3 py-1.5 text-sm text-surface-100 placeholder:text-surface-500 focus:outline-none focus:border-brand-500"
+              // eslint-disable-next-line jsx-a11y/no-autofocus -- the reader just opened this panel
               autoFocus
             />
           </div>

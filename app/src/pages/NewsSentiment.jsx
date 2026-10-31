@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { TEAM_COLORS } from "../lib/constants";
 import TeamBadge from "../components/badges/TeamBadge";
 import TabBar from "../components/ui/TabBar";
@@ -212,11 +212,11 @@ export default function NewsSentiment() {
           <span className="section-label">Most mentioned</span>
           <div className="mt-3 space-y-0 lg:max-h-[calc(100vh-160px)] lg:overflow-y-auto lg:scrollbar-thin">
             {trendingPlayers.map((p, i) => (
-              <div
+              <Link
                 key={p.element}
-                className="flex items-center gap-2.5 py-2 border-b border-surface-800/60 last:border-0 group cursor-pointer"
+                to={`/player/${p.element}`}
+                className="flex items-center gap-2.5 py-2 border-b border-surface-800/60 last:border-0 group"
                 style={{ borderLeftColor: TEAM_COLORS[p.team_name], borderLeftWidth: 2 }}
-                onClick={() => navigate(`/player/${p.element}`)}
               >
                 <span className="text-xs text-surface-600 w-4 text-right font-data tabular-nums">
                   {i + 1}
@@ -231,7 +231,7 @@ export default function NewsSentiment() {
                 <span className={`text-2xs ${sentiment(p.avgSentiment).text}`}>
                   {sentiment(p.avgSentiment).label}
                 </span>
-              </div>
+              </Link>
             ))}
           </div>
         </div>

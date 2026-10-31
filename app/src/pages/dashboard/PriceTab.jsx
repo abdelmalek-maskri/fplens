@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import PlayerLink from "../../components/ui/PlayerLink";
 
 const TREND_CONFIG = {
   rise: { icon: "▲", cls: "text-success-400 bg-success-500/15", label: "Rising" },
@@ -8,8 +8,6 @@ const TREND_CONFIG = {
 };
 
 export default function PriceTab({ predictions }) {
-  const navigate = useNavigate();
-
   const players = useMemo(
     () =>
       [...predictions]
@@ -34,12 +32,9 @@ export default function PriceTab({ predictions }) {
               >
                 {t.icon}
               </span>
-              <span
-                className="text-sm text-surface-200 hover:text-brand-400 transition-colors cursor-pointer"
-                onClick={() => navigate(`/player/${p.element}`)}
-              >
+              <PlayerLink element={p.element} className="text-sm text-surface-200">
                 {p.web_name}
-              </span>
+              </PlayerLink>
               <span className="text-xs text-surface-500">£{p.value}m</span>
             </div>
             <div className="flex items-center gap-3">
