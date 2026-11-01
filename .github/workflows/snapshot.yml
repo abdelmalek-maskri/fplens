@@ -30,9 +30,12 @@ jobs:
         with:
           persist-credentials: false
 
+      # Minor version, not the patch in .python-version. Runner images retire
+      # patch builds when ubuntu-latest rolls forward. 3.10 is what must hold:
+      # joblib.load below reads models pickled on it.
       - uses: actions/setup-python@v7
         with:
-          python-version-file: .python-version
+          python-version: "3.10"
           cache: pip
           cache-dependency-path: requirements-job.txt
 
