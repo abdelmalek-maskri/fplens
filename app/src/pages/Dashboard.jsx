@@ -384,10 +384,6 @@ export default function Dashboard() {
                     >
                       {p.predicted_points.toFixed(1)}
                     </span>
-                    <span className="block text-2xs text-surface-500 font-data tabular-nums">
-                      {Math.max(0, p.predicted_points - p.uncertainty).toFixed(1)}–
-                      {(p.predicted_points + p.uncertainty).toFixed(1)}
-                    </span>
                   </td>
                   <td className="py-2.5 px-3">
                     {p.status === "a" ? (

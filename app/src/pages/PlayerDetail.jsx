@@ -23,7 +23,6 @@ export default function PlayerDetail() {
   if (!player) return null;
 
   const netTransfers = player.transfers_in_event - player.transfers_out_event;
-  const [low, high] = player.predicted_range;
   const displayName = player.first_name?.startsWith(player.web_name)
     ? player.web_name
     : `${player.first_name?.split(" ")[0]} ${player.web_name}`;
@@ -65,9 +64,6 @@ export default function PlayerDetail() {
             {player.predicted_points.toFixed(1)}
           </span>
           <p className="text-xs text-surface-500 mt-1">predicted points</p>
-          <p className="text-xs text-surface-500 font-data tabular-nums">
-            likely {low.toFixed(1)} to {high.toFixed(1)}
-          </p>
         </div>
       </div>
 

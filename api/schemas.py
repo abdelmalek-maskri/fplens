@@ -23,9 +23,6 @@ class Player(BaseModel):
     status: str = "a"
     chance_of_playing: float | None = 100
     opponent_name: str = ""
-    uncertainty: float = 0
-    predicted_range_low: float = 0
-    predicted_range_high: float = 0
 
 
 class BestXI(BaseModel):
@@ -90,9 +87,6 @@ class Pick(BaseModel):
     chance_of_playing: float | None = 100
     opponent_name: str = ""
     value: float = 0
-    uncertainty: float = 0
-    predicted_range_low: float = 0
-    predicted_range_high: float = 0
 
 
 class Team(BaseModel):

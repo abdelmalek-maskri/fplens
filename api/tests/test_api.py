@@ -20,9 +20,6 @@ PLAYERS = [
         "chance_of_playing": 100,
         "form": 8.0,
         "opponent_name": "ARS",
-        "uncertainty": 0.5,
-        "predicted_range_low": 5.7,
-        "predicted_range_high": 7.3,
     }
 ]
 

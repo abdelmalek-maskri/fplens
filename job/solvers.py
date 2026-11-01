@@ -34,9 +34,6 @@ OUTPUT_COLS = [
     "status",
     "chance_of_playing",
     "opponent_name",
-    "uncertainty",
-    "predicted_range_low",
-    "predicted_range_high",
 ]
 
 POSITION_LIMITS = {"GK": 2, "DEF": 5, "MID": 5, "FWD": 3}

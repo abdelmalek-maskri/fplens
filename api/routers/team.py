@@ -26,9 +26,6 @@ _ENRICH_FIELDS = {
     "chance_of_playing": 100,
     "opponent_name": "",
     "value": 0,
-    "uncertainty": 0,
-    "predicted_range_low": 0,
-    "predicted_range_high": 0,
 }
 
 

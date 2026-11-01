@@ -15,7 +15,6 @@ vi.mock("../../hooks", async (importOriginal) => {
     position: "MID",
     status: "a",
     predicted_points: 51 - i,
-    uncertainty: 1,
     form: 2,
     value: 5,
     selected_by_percent: 1,
