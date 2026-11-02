@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { FDR_COLORS } from "../../lib/constants";
+import TeamBadge from "../../components/badges/TeamBadge";
 
 // The snapshot stores fixtures per team, so every match appears twice: once
 // under the home side and once under the away side. Keeping only the home
@@ -38,11 +39,11 @@ function groupByDay(matches) {
   for (const m of matches) {
     const key = m.kickoff
       ? new Date(m.kickoff).toLocaleDateString("en-GB", {
-          weekday: "short",
+          weekday: "long",
           day: "numeric",
-          month: "short",
+          month: "long",
         })
-      : "Date TBC";
+      : "Date to be confirmed";
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push(m);
   }
@@ -55,49 +56,61 @@ function kickoffTime(iso) {
   return new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
 }
 
-function Fdr({ rating }) {
+function Fdr({ rating, team }) {
   const colors = FDR_COLORS[rating] || FDR_COLORS[3];
   return (
     <span
       className={`inline-flex items-center justify-center w-4 h-4 rounded text-2xs font-bold shrink-0 ${colors.bg} ${colors.text}`}
     >
+      <span className="sr-only">{`${team} fixture difficulty `}</span>
       {rating}
     </span>
   );
 }
 
-// Sits above a table of several hundred rows, so it has to earn its vertical
-// space: a three column grid keeps ten matches to four rows instead of ten.
+function Match({ match }) {
+  const time = kickoffTime(match.kickoff);
+
+  return (
+    <div className="flex items-center gap-2 py-2 border-b border-surface-100">
+      <div className="flex-1 flex items-center justify-end gap-2">
+        <Fdr rating={match.homeFdr} team={match.home} />
+        <TeamBadge team={match.home} size="sm" />
+      </div>
+
+      <span className="w-14 shrink-0 text-center text-2xs font-data tabular-nums text-surface-600 bg-surface-200 rounded py-1">
+        {time || "v"}
+      </span>
+
+      <div className="flex-1 flex items-center gap-2">
+        <TeamBadge team={match.away} size="sm" />
+        <Fdr rating={match.awayFdr} team={match.away} />
+      </div>
+    </div>
+  );
+}
+
+// Sits above a paginated table, so days stack but their matches run two or
+// three abreast: ten matches stay inside four rows rather than ten.
 export default function GameweekFixtures({ fixtureData }) {
   const days = useMemo(() => groupByDay(buildMatches(fixtureData)), [fixtureData]);
 
   if (!days.length) return null;
 
   return (
-    <section className="border-y border-surface-200 py-3">
-      <div className="flex flex-wrap gap-x-6 gap-y-3">
-        {days.map(([day, matches]) => (
-          <div key={day} className="min-w-0">
-            <div className="text-2xs uppercase tracking-wide text-surface-500 mb-1.5">{day}</div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-x-5 gap-y-1">
-              {matches.map((m) => (
-                <div
-                  key={`${m.home}-${m.away}`}
-                  className="flex items-center gap-1.5 text-xs text-surface-700 tabular-nums"
-                >
-                  <Fdr rating={m.homeFdr} />
-                  <span className="text-surface-800 w-8">{m.home}</span>
-                  <span className="text-surface-500 w-10 text-center">
-                    {kickoffTime(m.kickoff) || "v"}
-                  </span>
-                  <span className="text-surface-800 w-8">{m.away}</span>
-                  <Fdr rating={m.awayFdr} />
-                </div>
-              ))}
-            </div>
+    <section className="border border-surface-200 rounded-lg overflow-hidden">
+      {days.map(([day, matches]) => (
+        <div key={day}>
+          <h3 className="bg-surface-200 px-3 py-1.5 text-2xs font-semibold uppercase tracking-wide text-surface-700">
+            {day}
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-x-8 px-3">
+            {matches.map((m) => (
+              <Match key={`${m.home}-${m.away}`} match={m} />
+            ))}
           </div>
-        ))}
-      </div>
+        </div>
+      ))}
     </section>
   );
 }
