@@ -14,8 +14,6 @@ const PLAYER = {
   position: "MID",
   value: 12.0,
   predicted_points: 6.9,
-  predicted_range_low: 3.6,
-  predicted_range_high: 10.3,
   // A strong club's opponents all find it hard, so defFdr is 4 every week.
   // Averaging that in made every fixture render as 4.
   fixtures: [
@@ -46,12 +44,5 @@ describe("usePlayer", () => {
     await waitFor(() => expect(result.current.data).not.toBeNull());
 
     expect(result.current.data.fixtures[0].fdr).toBe(5);
-  });
-
-  it("builds the prediction range from the two snapshot fields", async () => {
-    const { result } = renderHook(() => usePlayer("426"));
-    await waitFor(() => expect(result.current.data).not.toBeNull());
-
-    expect(result.current.data.predicted_range).toEqual([3.6, 10.3]);
   });
 });

@@ -20,7 +20,6 @@ export function usePlayer(playerId) {
           ...raw,
           first_name: raw.first_name || nameParts.slice(0, -1).join(" ") || raw.web_name,
           second_name: raw.second_name || nameParts.slice(-1)[0] || "",
-          predicted_range: [raw.predicted_range_low ?? 0, raw.predicted_range_high ?? 0],
           transfers_in_event: raw.transfers_in_event ?? raw.transfers_in ?? 0,
           transfers_out_event: raw.transfers_out_event ?? raw.transfers_out ?? 0,
           // atkFdr is this team's own difficulty, the number FPL shows. defFdr is

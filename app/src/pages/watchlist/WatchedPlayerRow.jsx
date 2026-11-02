@@ -27,9 +27,6 @@ function WatchedPlayerRow({ p, onNavigate, onRemove }) {
         <p className="text-sm font-bold text-brand-700 font-data tabular-nums">
           {p.predicted_points.toFixed(1)}
         </p>
-        <p className="text-2xs text-surface-500 font-data tabular-nums">
-          {p.predicted_range_low.toFixed(1)} to {p.predicted_range_high.toFixed(1)}
-        </p>
       </div>
 
       <p className="text-right text-sm text-surface-800 font-data tabular-nums">

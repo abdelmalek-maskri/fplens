@@ -20,7 +20,6 @@ vi.mock("../../hooks", async (importOriginal) => {
     element: i + 1,
     team_name: "ARS",
     predicted_points: squad.length - i,
-    uncertainty: 1,
     form: 2,
     value: 5,
     selected_by_percent: 1,

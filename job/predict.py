@@ -2,8 +2,8 @@
 Run inference on live FPL data using the trained production model.
 
 Fetches current-GW player data from the FPL API, aligns features to match
-the training format, generates predictions with uncertainty estimates and
-per-player SHAP explanations, and outputs enriched predictions.
+the training format, generates predictions and per-player SHAP
+explanations, and outputs enriched predictions.
 
 Default model: Config D stacked ensemble (outputs/experiments/ablation/config_D/).
 
@@ -28,7 +28,6 @@ DEFAULT_MODEL = Path("outputs/experiments/ablation/config_D/model.joblib")
 OUTPUT_DIR = Path("data/inference")
 
 # Prediction constants
-UNCERTAINTY_MULTIPLIER = 1.5  # predicted_range = prediction ± N × uncertainty
 CAPTAIN_OWNERSHIP_FACTOR = 0.15  # captain_pct ≈ selected_by_percent × factor
 BUDGET_THRESHOLD = 7.0  # max price (£m) for "budget pick" summary
 
@@ -184,34 +183,25 @@ def predict(
 
     # Normalize output: stacked ensembles return (pred, base_preds_dict),
     # two-head models return a dict with "soft"/"hard" keys,
-    # plain models return an array.
+    # plain models return an array. Only the combined prediction is kept; the
+    # base learners were read for the uncertainty band and nothing else.
     if isinstance(raw, dict):
         best_key = getattr(model, "best_method", "soft")
         predictions = raw.get(best_key, raw.get("soft", next(iter(raw.values()))))
-        base_preds = {k: v for k, v in raw.items() if k not in ("play_prob", "points_if_play")}
     elif isinstance(raw, tuple):
-        predictions, base_preds = raw
+        predictions = raw[0]
     else:
-        predictions, base_preds = raw, None
-
-    # Uncertainty from ensemble disagreement
-    if base_preds is not None:
-        # Use regressor base learners only (exclude classifier and derived keys)
-        skip = {"played_prob", "mean", "median", "stacked"}
-        regressor_preds = np.array([v for k, v in base_preds.items() if k not in skip])
-        uncertainty = np.std(regressor_preds, axis=0)
-    else:
-        uncertainty = np.zeros(len(predictions))
+        predictions = raw
 
     # Clip negative predictions (FPL points can't be negative in practice)
     predictions = np.clip(predictions, 0, None)
 
-    # Start from all player info columns
+    # No uncertainty band. The spread across base learners measured how much
+    # they disagreed, not how often the score landed inside the range, and three
+    # of the nine models have no base learners, so their band was always zero.
+    # Publish one again only with a coverage figure behind it.
     result = player_info.copy()
     result["predicted_points"] = np.round(predictions, 2)
-    result["uncertainty"] = np.round(uncertainty, 3)
-    result["predicted_range_low"] = np.clip(predictions - UNCERTAINTY_MULTIPLIER * uncertainty, 0, None).round(2)
-    result["predicted_range_high"] = (predictions + UNCERTAINTY_MULTIPLIER * uncertainty).round(2)
 
     # Rename columns to match frontend field names
     rename_map = {

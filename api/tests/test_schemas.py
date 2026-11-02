@@ -29,9 +29,6 @@ def _make_pool(n=100):
             "chance_of_playing": [100.0] * n,
             "form": [3.0] * n,
             "opponent_name": ["OPP"] * n,
-            "uncertainty": [0.5] * n,
-            "predicted_range_low": np.linspace(3.0, 0.5, n),
-            "predicted_range_high": np.linspace(5.0, 1.5, n),
         }
     )
 
