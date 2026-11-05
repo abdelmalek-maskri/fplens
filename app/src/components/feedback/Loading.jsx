@@ -2,10 +2,8 @@ import { useState, useEffect } from "react";
 
 const FIRST_MESSAGE = "Nice things take time :)";
 
-// For the pages that call the API. The free host sleeps when idle and takes
-// about a minute to come back, and the visitor deserves to know that rather
-// than watch a ball bounce.
-export const WAKING_API = "Waking the server. This can take up to a minute.";
+// For pages that call the API and may take longer than expected.
+export const WAKING_API = "Loading is taking longer than expected. Please wait.";
 
 const MESSAGES = [
   "Crunching the numbers...",
@@ -36,9 +34,8 @@ function BouncingBall() {
 
 /**
  * @param slowMessage  Shown instead of the rotating lines once the wait passes
- *                     slowAfterMs. Pages that call the API pass the reason a
- *                     long wait happens, because a bouncing ball claiming to
- *                     scout 800 players for a minute reads as broken.
+ *                     slowAfterMs, instead of continuing to cycle through
+ *                     the loading messages.
  */
 export default function Loading({ slowMessage = null, slowAfterMs = 6_000 }) {
   const [msg, setMsg] = useState(FIRST_MESSAGE);

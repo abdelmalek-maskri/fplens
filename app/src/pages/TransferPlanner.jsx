@@ -75,9 +75,17 @@ export default function TransferPlanner() {
     setTransfers((prev) => [...prev, { out: s.out.element, in: s.in.element }]);
   };
 
-  // Only the squad comes from the API here; the rest is a static file. A wait
-  // long enough to reach this message is the API waking, every time.
-  if (isLoading) return <Loading slowMessage={WAKING_API} />;
+  // A saved FPL ID adds a squad API request to the static data request.
+  if (isLoading)
+    return (
+      <Loading
+        slowMessage={
+          localStorage.getItem("fpl_id")
+            ? WAKING_API
+            : "Loading transfer data is taking longer than expected. Please wait."
+        }
+      />
+    );
   if (error) return <ErrorState message="Failed to load transfer data." />;
   if (!transferData) return null;
 
