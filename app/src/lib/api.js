@@ -5,7 +5,15 @@ const BASE_URL = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000").repla
 // from this app's own origin. No API, no CORS, no model in memory.
 const SNAPSHOT_BASE = "/data";
 
+// Generous for a static file served from this origin. If one of those takes
+// half a minute, waiting longer will not help.
 const DEFAULT_TIMEOUT = 30_000;
+
+// The API sleeps after about 15 minutes idle on Render's free plan and takes
+// roughly a minute to wake. At 30s the abort killed the very request that was
+// doing the waking, so the first visit to a page that needs the API always
+// failed and a refresh moments later always worked.
+const API_TIMEOUT = 75_000;
 
 async function request(
   base,
@@ -41,7 +49,7 @@ async function request(
   }
 }
 
-const apiFetch = (path, opts) => request(BASE_URL, path, opts);
+const apiFetch = (path, opts) => request(BASE_URL, path, { timeout: API_TIMEOUT, ...opts });
 const snapshotFetch = (path, opts) => request(SNAPSHOT_BASE, path, opts);
 
 export function getManifest() {

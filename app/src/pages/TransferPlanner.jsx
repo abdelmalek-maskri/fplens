@@ -5,7 +5,7 @@ import TeamBadge from "../components/badges/TeamBadge";
 import PlayerLink from "../components/ui/PlayerLink";
 import { useTransfers } from "../hooks";
 import { computeSuggestions, WILDCARD, SQUAD_SIZE } from "./transfers/suggestions";
-import Loading from "../components/feedback/Loading";
+import Loading, { WAKING_API } from "../components/feedback/Loading";
 import ErrorState from "../components/feedback/ErrorState";
 
 export default function TransferPlanner() {
@@ -75,7 +75,17 @@ export default function TransferPlanner() {
     setTransfers((prev) => [...prev, { out: s.out.element, in: s.in.element }]);
   };
 
-  if (isLoading) return <Loading />;
+  // A saved FPL ID adds a squad API request to the static data request.
+  if (isLoading)
+    return (
+      <Loading
+        slowMessage={
+          localStorage.getItem("fpl_id")
+            ? WAKING_API
+            : "Loading transfer data is taking longer than expected. Please wait."
+        }
+      />
+    );
   if (error) return <ErrorState message="Failed to load transfer data." />;
   if (!transferData) return null;
 

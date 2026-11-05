@@ -241,8 +241,25 @@ breaks visibly rather than quietly allowing every site on the internet to call t
 
 On the free plan the service sleeps after about 15 minutes with no traffic, so the
 first request after a quiet period takes roughly a minute. Everything except **My
-Team** and **News** is a static file, so a sleeping API does not stop the dashboard
-from loading.
+Team**, **Transfers** and **News** is a static file, so a sleeping API does not stop
+the dashboard from loading.
+
+**Transfers** is easy to miss in that list. It reads `multi_gw.json` like any other
+page, but it also calls `/api/team/{id}` when an FPL ID is saved, so it waits on the
+API exactly as **My Team** does.
+
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:d3ede04feab0124bb7838c0b28d8f8fe6516e7c49327c5258d614ac5f3043fcb -->
+
+The app asks for `/api/health` on load so the service starts waking while someone is
+reading the dashboard. API calls default to a 75-second timeout, while static files
+get 30 seconds. `getNews()` uses a 150-second timeout, and `useNews()` retries once,
+so News may take longer than 75 seconds to fail. Without the longer API timeout the
+abort killed the request that was doing the waking, so the first visit failed and a
+refresh succeeded.
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 Visiting the API root returns 404. That is correct: every route lives under `/api`.
 Use `/api/health` to check it is alive.
