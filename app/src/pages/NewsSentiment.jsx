@@ -4,7 +4,7 @@ import { TEAM_COLORS } from "../lib/constants";
 import TeamBadge from "../components/badges/TeamBadge";
 import TabBar from "../components/ui/TabBar";
 import { useNews } from "../hooks";
-import Loading from "../components/feedback/Loading";
+import Loading, { WAKING_API } from "../components/feedback/Loading";
 import ErrorState from "../components/feedback/ErrorState";
 import EmptyState from "../components/feedback/EmptyState";
 
@@ -131,7 +131,8 @@ export default function NewsSentiment() {
     return { total, positive, negative, injuries };
   }, [articles]);
 
-  if (isLoading) return <Loading />;
+  // News cannot be precomputed, so this page always waits on the API.
+  if (isLoading) return <Loading slowMessage={WAKING_API} />;
 
   if (error) return <ErrorState message="Failed to load news articles." />;
 

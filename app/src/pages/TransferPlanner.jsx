@@ -5,7 +5,7 @@ import TeamBadge from "../components/badges/TeamBadge";
 import PlayerLink from "../components/ui/PlayerLink";
 import { useTransfers } from "../hooks";
 import { computeSuggestions, WILDCARD, SQUAD_SIZE } from "./transfers/suggestions";
-import Loading from "../components/feedback/Loading";
+import Loading, { WAKING_API } from "../components/feedback/Loading";
 import ErrorState from "../components/feedback/ErrorState";
 
 export default function TransferPlanner() {
@@ -75,7 +75,9 @@ export default function TransferPlanner() {
     setTransfers((prev) => [...prev, { out: s.out.element, in: s.in.element }]);
   };
 
-  if (isLoading) return <Loading />;
+  // Only the squad comes from the API here; the rest is a static file. A wait
+  // long enough to reach this message is the API waking, every time.
+  if (isLoading) return <Loading slowMessage={WAKING_API} />;
   if (error) return <ErrorState message="Failed to load transfer data." />;
   if (!transferData) return null;
 

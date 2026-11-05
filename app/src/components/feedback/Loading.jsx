@@ -2,6 +2,11 @@ import { useState, useEffect } from "react";
 
 const FIRST_MESSAGE = "Nice things take time :)";
 
+// For the pages that call the API. The free host sleeps when idle and takes
+// about a minute to come back, and the visitor deserves to know that rather
+// than watch a ball bounce.
+export const WAKING_API = "Waking the server. This can take up to a minute.";
+
 const MESSAGES = [
   "Crunching the numbers...",
   "Scouting 800+ players...",
@@ -29,11 +34,26 @@ function BouncingBall() {
   );
 }
 
-export default function Loading() {
+/**
+ * @param slowMessage  Shown instead of the rotating lines once the wait passes
+ *                     slowAfterMs. Pages that call the API pass the reason a
+ *                     long wait happens, because a bouncing ball claiming to
+ *                     scout 800 players for a minute reads as broken.
+ */
+export default function Loading({ slowMessage = null, slowAfterMs = 6_000 }) {
   const [msg, setMsg] = useState(FIRST_MESSAGE);
   const [fade, setFade] = useState(true);
+  const [isSlow, setIsSlow] = useState(false);
 
   useEffect(() => {
+    if (!slowMessage) return;
+    const timer = setTimeout(() => setIsSlow(true), slowAfterMs);
+    return () => clearTimeout(timer);
+  }, [slowMessage, slowAfterMs]);
+
+  useEffect(() => {
+    // Once there is something true to say, stop cycling through guesses.
+    if (isSlow) return;
     let i = -1;
     let timeout;
     const interval = setInterval(() => {
@@ -48,7 +68,7 @@ export default function Loading() {
       clearInterval(interval);
       clearTimeout(timeout);
     };
-  }, []);
+  }, [isSlow]);
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh]">
@@ -56,9 +76,11 @@ export default function Loading() {
       <p
         role="status"
         aria-live="polite"
-        className={`text-base text-surface-600 transition-opacity duration-200 ${fade ? "opacity-100" : "opacity-0"}`}
+        className={`text-base text-surface-600 transition-opacity duration-200 ${
+          isSlow || fade ? "opacity-100" : "opacity-0"
+        }`}
       >
-        {msg}
+        {isSlow ? slowMessage : msg}
       </p>
     </div>
   );
