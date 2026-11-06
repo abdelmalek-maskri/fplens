@@ -8,7 +8,7 @@ from fastapi import APIRouter, HTTPException, Path, Request, Response
 
 from api.schemas import Team
 from api.snapshot import load_predictions
-from job.fetch_live_data import fetch_user_team
+from job.fetch_live_data import FPLAPIError, fetch_user_team
 from job.solvers import suggest_transfers
 
 logger = logging.getLogger(__name__)
@@ -43,11 +43,16 @@ def get_team(
 
     try:
         team_data = cache.get_or_fetch(f"team_{fpl_id}", lambda: fetch_user_team(fpl_id))
-    except RuntimeError:
-        raise HTTPException(status_code=502, detail="Failed to fetch team data") from None
-    except Exception as e:
-        if "404" in str(e) or "Not Found" in str(e):
+    # Before FPLAPIError carried the status, every upstream failure arrived as a
+    # RuntimeError and was answered 502, including a 404. Order matters here:
+    # FPLAPIError is a RuntimeError, so it has to be caught first.
+    except FPLAPIError as e:
+        if e.status_code == 404:
             raise HTTPException(status_code=404, detail="FPL ID not found") from None
+        logger.warning("FPL API returned %s for %s", e.status_code, e.url)
+        raise HTTPException(status_code=502, detail="Failed to fetch team data") from None
+    except Exception:
+        logger.warning("Could not fetch squad for %s", fpl_id, exc_info=True)
         raise HTTPException(status_code=502, detail="Failed to fetch team data") from None
 
     # merge picks with predictions for player names + predicted points
