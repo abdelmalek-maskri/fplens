@@ -8,12 +8,17 @@ from fastapi import APIRouter, HTTPException, Path, Request, Response
 
 from api.schemas import Team
 from api.snapshot import load_predictions
-from job.fetch_live_data import FPLAPIError, fetch_user_team
+from job.fetch_live_data import FPLAPIError, fetch_user_team, get_bootstrap_data
 from job.solvers import suggest_transfers
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["Team"])
+
+# bootstrap-static is ~1.8MB and identical for everyone. Only the gameweek list
+# is read from it here, and that changes once a week, so an hour of staleness
+# costs nothing. /news already caches it under this key.
+BOOTSTRAP_CACHE_TTL = 60
 
 # Fields to enrich from predictions onto each pick
 _ENRICH_FIELDS = {
@@ -42,7 +47,10 @@ def get_team(
     cache = request.app.state.cache
 
     try:
-        team_data = cache.get_or_fetch(f"team_{fpl_id}", lambda: fetch_user_team(fpl_id))
+        # Shared across every manager, so it is fetched once per TTL rather
+        # than once per squad.
+        bootstrap = cache.get_or_fetch("bootstrap", get_bootstrap_data, ttl_minutes=BOOTSTRAP_CACHE_TTL)
+        team_data = cache.get_or_fetch(f"team_{fpl_id}", lambda: fetch_user_team(fpl_id, bootstrap))
     # Before FPLAPIError carried the status, every upstream failure arrived as a
     # RuntimeError and was answered 502, including a 404. Order matters here:
     # FPLAPIError is a RuntimeError, so it has to be caught first.
