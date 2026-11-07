@@ -6,6 +6,7 @@ import logging
 
 from fastapi import APIRouter, HTTPException, Path, Request, Response
 
+from api.ratelimit import RateLimited, client_key
 from api.schemas import Team
 from api.snapshot import load_predictions
 from job.fetch_live_data import FPLAPIError, fetch_user_team, get_bootstrap_data
@@ -45,12 +46,30 @@ def get_team(
     # browser can hand this response to a different visitor.
     response.headers["Cache-Control"] = "private, no-store"
     cache = request.app.state.cache
+    guard = request.app.state.upstream_guard
+    caller = client_key(request)
 
     try:
         # Shared across every manager, so it is fetched once per TTL rather
-        # than once per squad.
+        # than once per squad. One shared key with a TTL cannot be driven by a
+        # caller, so it is not billed to anyone.
         bootstrap = cache.get_or_fetch("bootstrap", get_bootstrap_data, ttl_minutes=BOOTSTRAP_CACHE_TTL)
-        team_data = cache.get_or_fetch(f"team_{fpl_id}", lambda: fetch_user_team(fpl_id, bootstrap))
+
+        def fetch():
+            # Billed inside the fetch, not at the top of the handler, so the
+            # budget tracks what the FPL API actually sees. A cached squad never
+            # reaches here, which keeps a manager refreshing their own team off
+            # the limit.
+            guard.charge(caller)
+            return fetch_user_team(fpl_id, bootstrap)
+
+        team_data = cache.get_or_fetch(f"team_{fpl_id}", fetch)
+    except RateLimited as e:
+        raise HTTPException(
+            status_code=429,
+            detail="Too many FPL lookups right now. Try again in a moment.",
+            headers={"Retry-After": str(e.retry_after)},
+        ) from None
     # Before FPLAPIError carried the status, every upstream failure arrived as a
     # RuntimeError and was answered 502, including a 404. Order matters here:
     # FPLAPIError is a RuntimeError, so it has to be caught first.
