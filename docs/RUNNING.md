@@ -128,6 +128,9 @@ All read from the environment, and `.env` in the project root is loaded automati
 | `CORS_ORIGINS` | local Vite | Comma-separated allowed origins. Must include the deployed dashboard's URL. |
 | `REFRESH_SECRET` | unset | Secret for `POST /api/refresh`. Unset disables the endpoint (503) rather than leaving a guessable default. |
 | `FPLENS_SNAPSHOT_DIR` | `app/public/data` | Where the API reads predictions from. Override when the API is deployed apart from the site. |
+| `RATE_LIMIT_PER_CLIENT` | `10` | New squads one caller may fetch from the FPL API per minute. Cached lookups do not count. |
+| `RATE_LIMIT_OVERALL` | `60` | New squads this process will fetch from the FPL API per minute, across every caller. |
+| `TRUST_PROXY_HEADERS` | unset | Set to `1` only when a proxy is in front, so the per-caller limit reads `X-Forwarded-For` instead of the proxy's own address. |
 
 `FPLENS_MODELS` applies to the snapshot job, not the API — the API loads no models at
 all. The showcase set is nine models; `all` adds catboost_twohead, at roughly 350KB of
@@ -229,6 +232,13 @@ Environment variables to set:
 | `CORS_ORIGINS` | `https://fplens.abdelmalekmaskri18.workers.dev` |
 | `GUARDIAN_API_KEY` | free key, for `/api/news` |
 | `REFRESH_SECRET` | any long random string, or leave unset to disable `/api/refresh` |
+| `TRUST_PROXY_HEADERS` | `1` |
+
+`TRUST_PROXY_HEADERS` matters here. Render's load balancer is in front, so without
+it every request looks like it came from the same address and the per-caller rate
+limit on **My Team** becomes a second overall limit. The overall limit still holds
+either way, so FPL stays protected; the only cost is that one busy caller can spend
+the shared budget.
 
 `CORS_ORIGINS` has to match the browser's origin character for character: scheme,
 host, no trailing slash, no path. `https://example.com/` fails against

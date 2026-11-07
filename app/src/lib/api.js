@@ -33,6 +33,13 @@ async function request(
     if (!res.ok) {
       if (res.status === 422) throw new Error("Invalid input — check your values and try again.");
       if (res.status === 404) throw new Error("Not found.");
+      // The API rate-limits squad lookups, so this is a status a visitor can
+      // actually see. Retry-After is in seconds.
+      if (res.status === 429) {
+        const wait = Number(res.headers.get("Retry-After"));
+        const when = Number.isFinite(wait) && wait > 0 ? `${wait} seconds` : "a moment";
+        throw new Error(`Too many lookups just now. Try again in ${when}.`);
+      }
       const body = await res.json().catch(() => null);
       const detail = body?.detail || res.statusText;
       throw new Error(`${res.status}: ${detail}`);
@@ -150,5 +157,7 @@ export function health() {
 
 export async function getStatus() {
   const { gameweek, deadline, generated_at } = await getManifest();
-  return { current_gw: gameweek, deadline, generated_at };
+  // The gameweek the snapshot predicted when it ran, which is not the one in
+  // progress once its deadline has gone. gameweekPhase() tells the two apart.
+  return { predicted_gw: gameweek, deadline, generated_at };
 }

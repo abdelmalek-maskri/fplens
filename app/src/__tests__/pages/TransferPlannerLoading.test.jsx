@@ -3,10 +3,11 @@ import { act, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import TransferPlanner from "../../pages/TransferPlanner";
 import { WAKING_API } from "../../components/feedback/Loading";
-import { getMultiGW, getTeam } from "../../lib/api";
+import { getMultiGW, getStatus, getTeam } from "../../lib/api";
 
 vi.mock("../../lib/api", () => ({
   getMultiGW: vi.fn(),
+  getStatus: vi.fn(),
   getTeam: vi.fn(),
 }));
 
@@ -16,6 +17,9 @@ describe("TransferPlanner loading", () => {
     vi.useFakeTimers();
     getMultiGW.mockReturnValue(new Promise(() => {}));
     getTeam.mockReturnValue(new Promise(() => {}));
+    // The page reads the manifest to tell whether the gameweek it is planning
+    // for has already kicked off.
+    getStatus.mockReturnValue(new Promise(() => {}));
   });
 
   afterEach(() => {

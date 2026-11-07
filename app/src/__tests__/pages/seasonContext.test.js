@@ -5,13 +5,14 @@ describe("seasonContext", () => {
   it("says only what is next when scoring is up to date", () => {
     // The heading already names the scored gameweek, so repeating it here
     // would be noise.
-    expect(seasonContext(7, true, 8)).toEqual({ note: null, next: 8 });
+    expect(seasonContext(7, true, 8)).toEqual({ note: null, next: 8, inPlay: null });
   });
 
   it("calls out a gameweek that was played but not checked", () => {
     expect(seasonContext(6, true, 8)).toEqual({
       note: "Gameweek 7 has been played but not checked yet.",
       next: 8,
+      inPlay: null,
     });
   });
 
@@ -30,10 +31,30 @@ describe("seasonContext", () => {
   it("points nowhere when the upcoming gameweek is unknown", () => {
     // useGameweek reads the manifest separately, so it can still be loading
     // or have failed when accuracy has arrived.
-    expect(seasonContext(7, true, undefined)).toEqual({ note: null, next: null });
+    expect(seasonContext(7, true, undefined)).toEqual({ note: null, next: null, inPlay: null });
   });
 
   it("points nowhere after the final gameweek of the season", () => {
-    expect(seasonContext(38, true, 38)).toEqual({ note: null, next: null });
+    expect(seasonContext(38, true, 38)).toEqual({ note: null, next: null, inPlay: null });
+  });
+
+  describe("once the deadline has gone", () => {
+    it("says the gameweek is being played, not that it is next", () => {
+      // The state on 2026-11-07: GW9 scored, GW10 kicked off the evening
+      // before. The page called GW10 "next" for 20 hours.
+      expect(seasonContext(9, true, 10, true)).toEqual({
+        note: null,
+        next: null,
+        inPlay: 10,
+      });
+    });
+
+    it("still reports gameweeks the scoring run has not caught up with", () => {
+      expect(seasonContext(6, true, 8, true)).toEqual({
+        note: "Gameweek 7 has been played but not checked yet.",
+        next: null,
+        inPlay: 8,
+      });
+    });
   });
 });

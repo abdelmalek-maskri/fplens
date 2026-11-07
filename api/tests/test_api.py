@@ -1,12 +1,14 @@
 """Tests for the two endpoints that still need a server."""
 
 import json
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
 
 from api.main import app
+from api.ratelimit import UpstreamGuard, client_key
 from job.fetch_live_data import FPLAPIError
 
 PLAYERS = [
@@ -28,6 +30,12 @@ PLAYERS = [
 @pytest.fixture
 def client():
     with TestClient(app) as c:
+        # One app instance serves the whole module, so the upstream budget would
+        # otherwise carry over and fail whichever test happened to run tenth.
+        # The cache carries over the same way, and the shared "bootstrap" key
+        # would make a test's upstream call count depend on what ran before it.
+        c.app.state.upstream_guard.reset()
+        c.app.state.cache.invalidate()
         yield c
 
 
@@ -184,6 +192,112 @@ class TestUpstreamCost:
             client.get("/api/team/7")
 
         assert fetch.call_args.args == (7, shared)
+
+
+class TestTeamRateLimit:
+    """The fpl_id is this endpoint's cache key, so a caller who varies it can
+    make the process call the FPL API at will. Path(le=15_000_000) bounds the
+    value, not the rate."""
+
+    @pytest.fixture
+    def guard(self, client):
+        """Small budgets, so a test spends them in a few calls."""
+        guard = UpstreamGuard(per_client_limit=2, overall_limit=3)
+        client.app.state.upstream_guard = guard
+        yield guard
+        client.app.state.upstream_guard = UpstreamGuard()
+
+    @pytest.fixture
+    def from_callers(self):
+        """Every TestClient request shares one client host, so the per-caller
+        budget can only be told apart through the proxy header."""
+        with patch("api.ratelimit.TRUST_PROXY_HEADERS", True):
+            yield lambda ip: {"X-Forwarded-For": ip}
+
+    @pytest.fixture
+    def fpl(self):
+        """A stand-in FPL API that answers for any id, so each new id is a miss.
+
+        bootstrap-static is patched too. It is not billed, but leaving it real
+        would have these tests call the live FPL API for 1.8MB they never read.
+        """
+        with (
+            patch("api.routers.team.get_bootstrap_data", return_value={"events": []}),
+            patch("api.routers.team.fetch_user_team") as fetch,
+        ):
+            fetch.side_effect = lambda fpl_id, bootstrap=None: {
+                **TestTeam._fpl_response(self),
+                "fpl_id": fpl_id,
+            }
+            yield fetch
+
+    def test_refuses_once_a_caller_has_spent_its_budget(self, client, snapshot, guard, fpl, from_callers):
+        codes = [client.get(f"/api/team/{i}", headers=from_callers("10.0.0.1")).status_code for i in range(1, 5)]
+        assert codes == [200, 200, 429, 429]
+
+    def test_says_when_to_come_back(self, client, snapshot, guard, fpl, from_callers):
+        for i in range(1, 3):
+            client.get(f"/api/team/{i}", headers=from_callers("10.0.0.2"))
+        r = client.get("/api/team/99", headers=from_callers("10.0.0.2"))
+        assert r.status_code == 429
+        assert 1 <= int(r.headers["Retry-After"]) <= 60
+
+    def test_a_cached_squad_costs_the_caller_nothing(self, client, snapshot, guard, fpl, from_callers):
+        """The budget protects the FPL API, and a repeat lookup never reaches it."""
+        codes = [client.get("/api/team/123", headers=from_callers("10.0.0.3")).status_code for _ in range(5)]
+        assert codes == [200] * 5
+        assert fpl.call_count == 1
+
+    def test_caps_what_fpl_sees_across_every_caller(self, client, snapshot, guard, fpl, from_callers):
+        """A per-caller limit alone would miss a scrape spread over many IPs."""
+        codes = [client.get(f"/api/team/{i}", headers=from_callers(f"10.0.1.{i}")).status_code for i in range(1, 6)]
+        assert codes == [200, 200, 200, 429, 429]
+        assert fpl.call_count == guard.overall.limit
+
+    def test_the_rest_of_the_api_keeps_serving(self, client, snapshot, guard, fpl, from_callers):
+        """The budget is on one upstream service, not on the process."""
+        for i in range(1, 6):
+            client.get(f"/api/team/{i}", headers=from_callers(f"10.0.2.{i}"))
+        assert client.get("/api/health").status_code == 200
+
+
+class TestClientKey:
+    def test_ignores_a_spoofed_forwarded_header_by_default(self):
+        """Trusting it unconditionally would hand every caller a free way to
+        look like a million callers."""
+        request = SimpleNamespace(headers={"X-Forwarded-For": "1.2.3.4"}, client=SimpleNamespace(host="10.0.0.9"))
+        assert client_key(request) == "10.0.0.9"
+
+    def test_bills_the_hop_the_proxy_wrote_not_the_one_the_caller_sent(self):
+        """Render appends, so the first entry is caller-controlled. Reading it
+        would let anyone spend someone else's budget."""
+        request = SimpleNamespace(
+            headers={"X-Forwarded-For": "1.2.3.4, 203.0.113.7"}, client=SimpleNamespace(host="10.0.0.9")
+        )
+        with patch("api.ratelimit.TRUST_PROXY_HEADERS", True):
+            assert client_key(request) == "203.0.113.7"
+
+    def test_falls_back_when_there_is_no_client(self):
+        request = SimpleNamespace(headers={}, client=None)
+        assert client_key(request) == "unknown"
+
+
+class TestEnvLimits:
+    def test_a_limit_of_zero_is_refused(self):
+        """Silently switching the limit off is the one failure worth being loud
+        about."""
+        with (
+            patch.dict("os.environ", {"RATE_LIMIT_PER_CLIENT": "0"}),
+            pytest.raises(ValueError, match="at least 1"),
+        ):
+            UpstreamGuard()
+
+    def test_a_non_numeric_limit_is_refused(self):
+        with (
+            patch.dict("os.environ", {"RATE_LIMIT_OVERALL": "lots"}),
+            pytest.raises(ValueError, match="positive integer"),
+        ):
+            UpstreamGuard()
 
 
 class TestNews:
