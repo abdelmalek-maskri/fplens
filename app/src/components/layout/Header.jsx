@@ -1,7 +1,7 @@
 import { useLocation } from "react-router-dom";
 import { useState, useCallback } from "react";
 import { refresh } from "../../lib/api";
-import { snapshotFreshness } from "../../lib/freshness";
+import { gameweekPhase, snapshotFreshness } from "../../lib/freshness";
 
 const PAGE_TITLES = {
   "/optimal-xi": "Optimal XI",
@@ -17,14 +17,16 @@ const PAGE_TITLES = {
 
 // The weekday alone is ambiguous once a gameweek spans more than seven days,
 // which blank and double gameweeks regularly do.
-function formatDeadlineShort(iso) {
-  if (!iso) return null;
-  const d = new Date(iso);
+function formatDeadlineShort({ locked, deadlineAt }) {
+  if (!deadlineAt) return null;
+  // Printing a date that has gone by, in the same words as one still ahead,
+  // reads as a deadline the visitor can still make.
+  if (locked) return "Deadline passed";
   return (
     "Deadline " +
-    d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }) +
+    deadlineAt.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }) +
     " · " +
-    d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
+    deadlineAt.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
   );
 }
 
@@ -33,15 +35,15 @@ export default function Header({ onMenuToggle, gwData, menuButtonRef }) {
   const [syncedAt, setSyncedAt] = useState(null);
   const [spinning, setSpinning] = useState(false);
 
-  const currentGw = gwData?.current_gw;
+  const phase = gameweekPhase(gwData?.current_gw, gwData?.deadline);
   const lastUpdated = syncedAt ?? snapshotFreshness(gwData?.generated_at).detail;
   const pageTitle =
     pathname === "/"
-      ? currentGw
-        ? `Gameweek ${currentGw}`
+      ? phase.gw
+        ? `Gameweek ${phase.gw}${phase.locked ? " · in play" : ""}`
         : "Dashboard"
       : PAGE_TITLES[pathname] || "FPLens";
-  const deadlineLabel = formatDeadlineShort(gwData?.deadline);
+  const deadlineLabel = formatDeadlineShort(phase);
 
   const handleRefresh = useCallback(() => {
     setSpinning(true);

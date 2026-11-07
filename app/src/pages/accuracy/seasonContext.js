@@ -8,24 +8,31 @@
  * `scored` comes from the accuracy file, `upcoming` from the snapshot
  * manifest. They are normally one apart; the gap widens when a gameweek has
  * finished but the scoring run has not caught up with it.
+ *
+ * `locked` says the upcoming gameweek's deadline has gone, so it is being
+ * played rather than waiting. Without it the page called GW10 "next" while
+ * GW10 was in progress.
  */
-export function seasonContext(scored, final, upcoming) {
+export function seasonContext(scored, final, upcoming, locked = false) {
   if (!final) {
     return {
       note: "Bonus points are not confirmed yet, so these numbers can still change.",
       next: null,
+      inPlay: null,
     };
   }
 
-  const next = upcoming != null && upcoming > scored ? upcoming : null;
-  const unchecked = next == null ? 0 : next - scored - 1;
+  const ahead = upcoming != null && upcoming > scored ? upcoming : null;
+  const next = locked ? null : ahead;
+  const inPlay = locked ? ahead : null;
+  const unchecked = ahead == null ? 0 : ahead - scored - 1;
 
   let note = null;
   if (unchecked === 1) {
     note = `Gameweek ${scored + 1} has been played but not checked yet.`;
   } else if (unchecked > 1) {
-    note = `Gameweeks ${scored + 1}-${next - 1} have been played but not checked yet.`;
+    note = `Gameweeks ${scored + 1}-${ahead - 1} have been played but not checked yet.`;
   }
 
-  return { note, next };
+  return { note, next, inPlay };
 }

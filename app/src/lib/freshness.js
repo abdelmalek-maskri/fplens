@@ -23,6 +23,27 @@ export function snapshotFreshness(generatedAt, now = Date.now()) {
   return { level: "stale", label: "Outdated", detail };
 }
 
+/**
+ * Whether the gameweek the snapshot predicted is still open.
+ *
+ * The manifest ships one gameweek number, chosen when the job ran, and the job
+ * runs on a daily timer. Once that gameweek's deadline passes the squad is
+ * frozen, so the predictions on screen can no longer be acted on, and they stay
+ * on screen until the next run. On 2026-11-07 that left GW10 predictions up for
+ * 20 hours after GW10 had kicked off, with the header still presenting the
+ * deadline as if it were ahead.
+ *
+ * The deadline is already in the manifest, so the page can work this out
+ * itself rather than waiting to be told.
+ */
+export function gameweekPhase(gameweek, deadline, now = Date.now()) {
+  const at = deadline ? new Date(deadline).getTime() : NaN;
+  if (gameweek == null || Number.isNaN(at)) {
+    return { gw: gameweek ?? null, locked: false, deadlineAt: null };
+  }
+  return { gw: gameweek, locked: now >= at, deadlineAt: new Date(at) };
+}
+
 function relative(age) {
   if (age < HOUR) {
     const mins = Math.floor(age / 60_000);

@@ -3,7 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { POSITION_COLORS } from "../lib/constants";
 import TeamBadge from "../components/badges/TeamBadge";
 import PlayerLink from "../components/ui/PlayerLink";
-import { useTransfers } from "../hooks";
+import { useGameweek, useTransfers } from "../hooks";
+import { gameweekPhase } from "../lib/freshness";
 import { computeSuggestions, WILDCARD, SQUAD_SIZE } from "./transfers/suggestions";
 import Loading, { WAKING_API } from "../components/feedback/Loading";
 import ErrorState from "../components/feedback/ErrorState";
@@ -11,10 +12,12 @@ import ErrorState from "../components/feedback/ErrorState";
 export default function TransferPlanner() {
   const navigate = useNavigate();
   const { data: transferData, isLoading, error } = useTransfers();
+  const { data: gwData } = useGameweek();
   const [horizon, setHorizon] = useState(3);
   const [transfers, setTransfers] = useState([]);
   const [freeTransfers, setFreeTransfers] = useState(1);
 
+  const phase = gameweekPhase(gwData?.current_gw, gwData?.deadline);
   const myTeam = useMemo(() => transferData?.myTeam || [], [transferData]);
   const targets = useMemo(() => transferData?.targets || [], [transferData]);
 
@@ -178,6 +181,16 @@ export default function TransferPlanner() {
             Any manager&apos;s ID works, not only your own.
           </p>
         </div>
+      )}
+
+      {/* The snapshot keeps serving the gameweek it predicted until its next
+          daily run, which can be a day after that gameweek kicked off. Without
+          this the page invites transfers that FPL will not accept. */}
+      {phase.locked && !noTeam && (
+        <p className="text-sm text-surface-600 border border-surface-300/50 rounded-md px-4 py-3">
+          Gameweek {phase.gw} has kicked off, so these transfers can no longer be made. Predictions
+          for the next gameweek appear after the daily update.
+        </p>
       )}
 
       {suggestions.length > 0 && !noTeam && (

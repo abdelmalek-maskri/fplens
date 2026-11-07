@@ -1,6 +1,6 @@
 import { NavLink } from "react-router-dom";
 import { forwardRef } from "react";
-import { snapshotFreshness } from "../../lib/freshness";
+import { gameweekPhase, snapshotFreshness } from "../../lib/freshness";
 
 const navItems = [
   {
@@ -33,19 +33,19 @@ const navItems = [
   },
 ];
 
-function formatDeadline(iso) {
-  if (!iso) return null;
-  const d = new Date(iso);
+function formatDeadline(deadlineAt) {
+  if (!deadlineAt) return null;
   return (
-    d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }) +
+    deadlineAt.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }) +
     " · " +
-    d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
+    deadlineAt.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
   );
 }
 
 const Sidebar = forwardRef(function Sidebar({ open, onClose, gwData }, ref) {
-  const currentGw = gwData?.current_gw;
-  const deadline = formatDeadline(gwData?.deadline);
+  const phase = gameweekPhase(gwData?.current_gw, gwData?.deadline);
+  const currentGw = phase.gw;
+  const deadline = formatDeadline(phase.deadlineAt);
   const freshness = snapshotFreshness(gwData?.generated_at);
   return (
     <aside
@@ -115,7 +115,11 @@ const Sidebar = forwardRef(function Sidebar({ open, onClose, gwData }, ref) {
         <div className="flex items-center gap-1.5 px-0.5" title={freshness.detail ?? undefined}>
           <span className={`status-${freshness.level}`} />
           <span className="text-2xs text-surface-600">{freshness.label}</span>
-          {deadline && <span className="text-2xs text-surface-500 ml-auto">Deadline</span>}
+          {deadline && (
+            <span className="text-2xs text-surface-500 ml-auto">
+              {phase.locked ? "Kicked off" : "Deadline"}
+            </span>
+          )}
         </div>
         {deadline && (
           <p className="text-2xs text-surface-400 mt-0.5 px-0.5 text-right">{deadline}</p>
