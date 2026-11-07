@@ -158,6 +158,34 @@ class TestTeam:
         assert client.get("/api/team/99999999").status_code == 422
 
 
+class TestUpstreamCost:
+    """bootstrap-static is ~1.8MB and identical for everyone, so fetching it
+    per squad made it the heaviest part of a request that never reads it."""
+
+    def test_bootstrap_is_fetched_once_for_many_managers(self, client, snapshot):
+        squad = TestTeam._fpl_response(self)
+        with (
+            patch("api.routers.team.get_bootstrap_data", return_value={"events": []}) as bootstrap,
+            patch("api.routers.team.fetch_user_team", return_value=squad),
+        ):
+            for fpl_id in range(1, 11):
+                assert client.get(f"/api/team/{fpl_id}").status_code == 200
+
+        assert bootstrap.call_count == 1
+
+    def test_the_cached_bootstrap_is_handed_to_the_fetch(self, client, snapshot):
+        """Otherwise fetch_user_team quietly fetches its own copy."""
+        squad = TestTeam._fpl_response(self)
+        shared = {"events": []}
+        with (
+            patch("api.routers.team.get_bootstrap_data", return_value=shared),
+            patch("api.routers.team.fetch_user_team", return_value=squad) as fetch,
+        ):
+            client.get("/api/team/7")
+
+        assert fetch.call_args.args == (7, shared)
+
+
 class TestNews:
     """News cannot be precomputed: the Guardian's free tier forbids retaining
     content beyond 24 hours, and the snapshot is committed to a public repo."""

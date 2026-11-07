@@ -13,6 +13,7 @@ for the API's fixture, team, and player detail endpoints.
 """
 
 import logging
+import os
 import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
@@ -44,8 +45,19 @@ class FPLAPIError(RuntimeError):
         self.url = url
 
 
-# FPL API endpoints
-FPL_BASE_URL = "https://fantasy.premierleague.com/api"
+# (connect, read). A connection that never establishes is a different failure
+# from a server that accepts and then goes quiet, and the second needs the
+# longer budget because bootstrap-static is ~1.8MB.
+#
+# Without this, a hung connection holds its caller forever. In the API that
+# caller is one of 40 anyio threadpool threads, so 40 of them stall every route
+# in the process, /api/health included, and the service looks healthy while
+# answering nothing.
+FPL_TIMEOUT = (5, 20)
+
+# FPL API endpoints. Overridable so a load test can point at a local stand-in
+# rather than aiming its traffic at a third party we do not own.
+FPL_BASE_URL = os.environ.get("FPL_BASE_URL", "https://fantasy.premierleague.com/api")
 BOOTSTRAP_URL = f"{FPL_BASE_URL}/bootstrap-static/"
 FIXTURES_URL = f"{FPL_BASE_URL}/fixtures/"
 
@@ -83,7 +95,7 @@ def get_bootstrap_data() -> dict:
     # Fetch bootstrap-static data from FPL API.
     # Contains: all players, teams, gameweeks, game settings.
     print("Fetching FPL bootstrap-static data...")
-    response = requests.get(BOOTSTRAP_URL, timeout=30)
+    response = requests.get(BOOTSTRAP_URL, timeout=FPL_TIMEOUT)
 
     if response.status_code != 200:
         raise RuntimeError(f"FPL API error: {response.status_code}")
@@ -123,7 +135,7 @@ def get_current_gameweek(events: list[dict]) -> dict:
 
 def get_fixtures_for_gw(gw: int) -> pd.DataFrame:
     # Fetch fixtures for a specific gameweek.
-    response = requests.get(FIXTURES_URL, params={"event": gw})
+    response = requests.get(FIXTURES_URL, params={"event": gw}, timeout=FPL_TIMEOUT)
 
     if response.status_code != 200:
         return pd.DataFrame()
@@ -1230,7 +1242,7 @@ def fetch_fixtures(bootstrap_data: dict | None = None, num_gws: int = 6) -> dict
     target_gws = list(range(current_gw, current_gw + num_gws))
 
     # fetch all fixtures
-    response = requests.get(FIXTURES_URL)
+    response = requests.get(FIXTURES_URL, timeout=FPL_TIMEOUT)
     if response.status_code != 200:
         raise RuntimeError(f"FPL fixtures API error: {response.status_code}")
     all_fixtures = response.json()
@@ -1315,12 +1327,18 @@ def get_player_fdr_avg(fixtures_by_team: dict, team: str, mode: str = "combined"
     return round(sum(values) / len(values), 2)
 
 
-def fetch_user_team(fpl_id: int) -> dict:
+def fetch_user_team(fpl_id: int, bootstrap: dict | None = None) -> dict:
     """Fetch a user's FPL team picks for the latest finished gameweek.
     it returns manager info + 15 picks with captain, vice, multiplier.
     Uses the latest finished GW because the picks endpoint only works for played GWs.
+
+    Only the gameweek list is wanted from `bootstrap`, which is ~1.8MB and the
+    same for every manager. Callers serving more than one person should pass
+    their own cached copy; fetching it per squad makes bootstrap the slowest
+    and heaviest part of a request that does not need it fresh.
     """
-    bootstrap = get_bootstrap_data()
+    if bootstrap is None:
+        bootstrap = get_bootstrap_data()
     events = bootstrap["events"]
 
     # find latest finished GW (picks only exist for played GWs)
@@ -1338,14 +1356,14 @@ def fetch_user_team(fpl_id: int) -> dict:
 
     # fetch manager entry info
     entry_url = f"{FPL_BASE_URL}/entry/{fpl_id}/"
-    resp = requests.get(entry_url)
+    resp = requests.get(entry_url, timeout=FPL_TIMEOUT)
     if resp.status_code != 200:
         raise FPLAPIError(resp.status_code, entry_url)
     entry = resp.json()
 
     # fetch picks for latest finished GW (= user's current squad)
     picks_url = f"{FPL_BASE_URL}/entry/{fpl_id}/event/{picks_gw}/picks/"
-    resp = requests.get(picks_url)
+    resp = requests.get(picks_url, timeout=FPL_TIMEOUT)
     if resp.status_code != 200:
         raise FPLAPIError(resp.status_code, picks_url)
     picks_data = resp.json()
