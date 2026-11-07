@@ -7,6 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from api.main import app
+from job.fetch_live_data import FPLAPIError
 
 PLAYERS = [
     {
@@ -124,8 +125,27 @@ class TestTeam:
             r = client.get("/api/team/123")
         assert r.headers["cache-control"] == "private, no-store"
 
+    # These mock what fetch_user_team actually raises. Mocking a bare Exception
+    # passed while production answered 502 for every unknown ID, because the
+    # real error is a RuntimeError subclass and was caught by the arm above.
     def test_404_for_an_unknown_fpl_id(self, client, snapshot):
-        with patch("api.routers.team.fetch_user_team", side_effect=Exception("404 Not Found")):
+        error = FPLAPIError(404, "https://fantasy.premierleague.com/api/entry/123/")
+        with patch("api.routers.team.fetch_user_team", side_effect=error):
+            r = client.get("/api/team/123")
+        assert r.status_code == 404
+
+    def test_502_when_fpl_itself_is_broken(self, client, snapshot):
+        error = FPLAPIError(503, "https://fantasy.premierleague.com/api/entry/123/")
+        with patch("api.routers.team.fetch_user_team", side_effect=error):
+            r = client.get("/api/team/123")
+        assert r.status_code == 502
+
+    # The status is read off the exception, so rewording the message upstream
+    # cannot turn a 404 into a 502 the way a substring check did.
+    def test_classifies_on_status_not_on_message_text(self, client, snapshot):
+        error = FPLAPIError(404, "https://fantasy.premierleague.com/api/entry/123/")
+        error.args = ("something completely different",)
+        with patch("api.routers.team.fetch_user_team", side_effect=error):
             r = client.get("/api/team/123")
         assert r.status_code == 404
 

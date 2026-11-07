@@ -27,6 +27,23 @@ logger = logging.getLogger(__name__)
 # Paths
 OUTPUT_DIR = Path("data/inference")
 
+
+class FPLAPIError(RuntimeError):
+    """An FPL API call that did not return 200, carrying the status.
+
+    Callers need to tell "no such manager" apart from "FPL is down", and the
+    only place that distinction exists is the status code. Reading it back out
+    of the message text breaks the moment FPL rewords an error.
+
+    Subclasses RuntimeError so anything already catching that still does.
+    """
+
+    def __init__(self, status_code: int, url: str):
+        super().__init__(f"FPL API returned {status_code} for {url}")
+        self.status_code = status_code
+        self.url = url
+
+
 # FPL API endpoints
 FPL_BASE_URL = "https://fantasy.premierleague.com/api"
 BOOTSTRAP_URL = f"{FPL_BASE_URL}/bootstrap-static/"
@@ -1323,14 +1340,14 @@ def fetch_user_team(fpl_id: int) -> dict:
     entry_url = f"{FPL_BASE_URL}/entry/{fpl_id}/"
     resp = requests.get(entry_url)
     if resp.status_code != 200:
-        raise RuntimeError(f"FPL entry API error: {resp.status_code}")
+        raise FPLAPIError(resp.status_code, entry_url)
     entry = resp.json()
 
     # fetch picks for latest finished GW (= user's current squad)
     picks_url = f"{FPL_BASE_URL}/entry/{fpl_id}/event/{picks_gw}/picks/"
     resp = requests.get(picks_url)
     if resp.status_code != 200:
-        raise RuntimeError(f"FPL picks API error: {resp.status_code}")
+        raise FPLAPIError(resp.status_code, picks_url)
     picks_data = resp.json()
 
     # extract pick details
