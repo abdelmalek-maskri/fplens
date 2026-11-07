@@ -55,7 +55,7 @@ class TestBounds:
 
     def test_drops_the_least_recently_used(self, cache):
         for key in ("a", "b", "c"):
-            cache.get_or_fetch(key, lambda: key)
+            cache.get_or_fetch(key, lambda k=key: k)
         cache.get_or_fetch("a", lambda: "a")  # "b" is now the coldest
         cache.get_or_fetch("d", lambda: "d")
         assert set(cache.keys()) == {"a", "c", "d"}
