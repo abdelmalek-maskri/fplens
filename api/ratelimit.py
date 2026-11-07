@@ -92,11 +92,11 @@ class FixedWindowLimiter:
 
     def charge(self, key: str) -> None:
         """Record one event against `key`, or raise RateLimited."""
-        # monotonic, so a clock change cannot hand out a fresh window.
-        now = int(time.monotonic())
-        window_start = now - (now % self.window)
-
         with self._lock:
+            # monotonic, so a clock change cannot hand out a fresh window.
+            now = int(time.monotonic())
+            window_start = now - (now % self.window)
+
             if len(self._counts) > MAX_TRACKED_KEYS:
                 self._counts = {k: v for k, v in self._counts.items() if v[0] == window_start}
 

@@ -1354,7 +1354,8 @@ def _deadline(event: dict) -> datetime | None:
     if not raw:
         return None
     try:
-        return datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        deadline = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        return deadline if deadline.utcoffset() is not None else None
     except ValueError:
         logger.warning("Unparseable deadline_time %r on GW%s", raw, event.get("id"))
         return None

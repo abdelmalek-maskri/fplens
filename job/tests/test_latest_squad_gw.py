@@ -65,6 +65,14 @@ class TestLatestSquadGw:
         events = [LIVE[0], _gw(10, "not a date")]
         assert latest_squad_gw(events, now=NOW) == 9
 
+    def test_skips_a_timezone_less_deadline(self):
+        events = [LIVE[0], _gw(10, "2026-11-06T18:30:00")]
+        assert latest_squad_gw(events, now=NOW) == 9
+
+    def test_accepts_a_deadline_with_a_timezone_offset(self):
+        events = [LIVE[0], _gw(10, "2026-11-07T14:00:00+01:00")]
+        assert latest_squad_gw(events, now=NOW) == 10
+
     def test_defaults_to_the_current_time(self):
         """The production path passes no clock."""
         just_gone = (datetime.now(timezone.utc) - timedelta(minutes=1)).isoformat().replace("+00:00", "Z")
