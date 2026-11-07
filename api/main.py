@@ -23,6 +23,7 @@ from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.cache import FPLDataCache
+from api.ratelimit import UpstreamGuard
 from api.routers import news, team
 
 # Before any os.environ read below. Previously only the news modules called this,
@@ -36,8 +37,13 @@ REFRESH_SECRET = os.environ.get("REFRESH_SECRET", "")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Only the per-user cache needs setting up now."""
+    """The per-user cache, and the budget for the fetches it cannot absorb.
+
+    /team is the only endpoint whose cache key a caller chooses, so it is the
+    only one that can be made to call the FPL API at will.
+    """
     app.state.cache = FPLDataCache(ttl_minutes=15)
+    app.state.upstream_guard = UpstreamGuard()
     yield
 
 

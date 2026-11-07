@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { POSITION_COLORS } from "../lib/constants";
 import { useAccuracy, useGameweek, usePagination } from "../hooks";
 import { seasonContext } from "./accuracy/seasonContext";
+import { gameweekPhase } from "../lib/freshness";
 import Loading from "../components/feedback/Loading";
 import ErrorState from "../components/feedback/ErrorState";
 import EmptyState from "../components/feedback/EmptyState";
@@ -55,7 +56,8 @@ export default function Accuracy() {
   // level, so fall back to that for the model that produced it.
   const xi = model?.xi ?? (selected === data.defaultModel ? data.xi : null);
   const margin = xi && xi.average_manager != null ? xi.points - xi.average_manager : null;
-  const context = seasonContext(data.gameweek, data.final, gwData?.current_gw);
+  const phase = gameweekPhase(gwData?.predicted_gw, gwData?.deadline);
+  const context = seasonContext(data.gameweek, data.final, phase.gw, phase.locked);
 
   return (
     <div className="space-y-6 stagger">
@@ -72,13 +74,22 @@ export default function Accuracy() {
             Bonus points can still change until FPL signs off the gameweek.
           </p>
         )}
-        {(context.note || context.next != null) && (
+        {(context.note || context.next != null || context.inPlay != null) && (
           <p className="text-sm text-surface-600 mt-2">
             {context.note}
-            {context.note && context.next != null && " "}
+            {context.note && (context.next != null || context.inPlay != null) && " "}
             {context.next != null && (
               <>
                 Gameweek {context.next} is next.{" "}
+                <Link to="/" className="link">
+                  See its predictions
+                </Link>
+                .
+              </>
+            )}
+            {context.inPlay != null && (
+              <>
+                Gameweek {context.inPlay} is being played now.{" "}
                 <Link to="/" className="link">
                   See its predictions
                 </Link>

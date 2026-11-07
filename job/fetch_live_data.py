@@ -16,7 +16,7 @@ import logging
 import os
 import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
@@ -1327,10 +1327,44 @@ def get_player_fdr_avg(fixtures_by_team: dict, team: str, mode: str = "combined"
     return round(sum(values) / len(values), 2)
 
 
+def latest_squad_gw(events: list[dict], now: datetime | None = None) -> int:
+    """The newest gameweek FPL will serve picks for.
+
+    Picks go public at the deadline, not when the gameweek ends. Keying off
+    `finished` therefore skipped the gameweek being played: on 2026-11-07 the
+    live API served 15 picks for GW10 with finished=False, while this returned
+    GW9. That is roughly Friday evening to Monday night every week, so a squad
+    page showed last week's team for most of the time anyone looks at it.
+    """
+    now = now or datetime.now(timezone.utc)
+    started = [e for e in events if _deadline(e) is not None and _deadline(e) <= now]
+    if not started:
+        raise RuntimeError("No gameweek deadline has passed yet")
+    return max(started, key=lambda e: e["id"])["id"]
+
+
+def _deadline(event: dict) -> datetime | None:
+    """A gameweek's deadline as an aware datetime, or None if unusable.
+
+    FPL sends ISO 8601 with a `Z` suffix, which fromisoformat rejects before
+    Python 3.11. A missing or malformed deadline makes the gameweek ineligible
+    rather than crashing the whole lookup.
+    """
+    raw = event.get("deadline_time")
+    if not raw:
+        return None
+    try:
+        return datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except ValueError:
+        logger.warning("Unparseable deadline_time %r on GW%s", raw, event.get("id"))
+        return None
+
+
 def fetch_user_team(fpl_id: int, bootstrap: dict | None = None) -> dict:
-    """Fetch a user's FPL team picks for the latest finished gameweek.
+    """Fetch a user's FPL team picks for the gameweek currently in play.
     it returns manager info + 15 picks with captain, vice, multiplier.
-    Uses the latest finished GW because the picks endpoint only works for played GWs.
+    Uses the latest gameweek whose deadline has passed, which is exactly when
+    FPL makes picks public.
 
     Only the gameweek list is wanted from `bootstrap`, which is ~1.8MB and the
     same for every manager. Callers serving more than one person should pass
@@ -1341,14 +1375,7 @@ def fetch_user_team(fpl_id: int, bootstrap: dict | None = None) -> dict:
         bootstrap = get_bootstrap_data()
     events = bootstrap["events"]
 
-    # find latest finished GW (picks only exist for played GWs)
-    latest_finished = None
-    for e in events:
-        if e["finished"]:
-            latest_finished = e
-    if latest_finished is None:
-        raise RuntimeError("No finished gameweeks yet")
-    picks_gw = latest_finished["id"]
+    picks_gw = latest_squad_gw(events)
 
     # the upcoming GW for predictions
     upcoming_gw_info = get_current_gameweek(events)
