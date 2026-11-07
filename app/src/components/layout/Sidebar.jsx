@@ -43,7 +43,7 @@ function formatDeadline(deadlineAt) {
 }
 
 const Sidebar = forwardRef(function Sidebar({ open, onClose, gwData }, ref) {
-  const phase = gameweekPhase(gwData?.current_gw, gwData?.deadline);
+  const phase = gameweekPhase(gwData?.predicted_gw, gwData?.deadline);
   const currentGw = phase.gw;
   const deadline = formatDeadline(phase.deadlineAt);
   const freshness = snapshotFreshness(gwData?.generated_at);

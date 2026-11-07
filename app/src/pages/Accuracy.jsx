@@ -56,7 +56,7 @@ export default function Accuracy() {
   // level, so fall back to that for the model that produced it.
   const xi = model?.xi ?? (selected === data.defaultModel ? data.xi : null);
   const margin = xi && xi.average_manager != null ? xi.points - xi.average_manager : null;
-  const phase = gameweekPhase(gwData?.current_gw, gwData?.deadline);
+  const phase = gameweekPhase(gwData?.predicted_gw, gwData?.deadline);
   const context = seasonContext(data.gameweek, data.final, phase.gw, phase.locked);
 
   return (

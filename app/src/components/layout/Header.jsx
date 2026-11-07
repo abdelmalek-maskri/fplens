@@ -35,7 +35,7 @@ export default function Header({ onMenuToggle, gwData, menuButtonRef }) {
   const [syncedAt, setSyncedAt] = useState(null);
   const [spinning, setSpinning] = useState(false);
 
-  const phase = gameweekPhase(gwData?.current_gw, gwData?.deadline);
+  const phase = gameweekPhase(gwData?.predicted_gw, gwData?.deadline);
   const lastUpdated = syncedAt ?? snapshotFreshness(gwData?.generated_at).detail;
   const pageTitle =
     pathname === "/"

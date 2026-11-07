@@ -157,5 +157,7 @@ export function health() {
 
 export async function getStatus() {
   const { gameweek, deadline, generated_at } = await getManifest();
-  return { current_gw: gameweek, deadline, generated_at };
+  // The gameweek the snapshot predicted when it ran, which is not the one in
+  // progress once its deadline has gone. gameweekPhase() tells the two apart.
+  return { predicted_gw: gameweek, deadline, generated_at };
 }

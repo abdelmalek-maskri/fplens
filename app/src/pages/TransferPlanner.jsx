@@ -17,7 +17,7 @@ export default function TransferPlanner() {
   const [transfers, setTransfers] = useState([]);
   const [freeTransfers, setFreeTransfers] = useState(1);
 
-  const phase = gameweekPhase(gwData?.current_gw, gwData?.deadline);
+  const phase = gameweekPhase(gwData?.predicted_gw, gwData?.deadline);
   const myTeam = useMemo(() => transferData?.myTeam || [], [transferData]);
   const targets = useMemo(() => transferData?.targets || [], [transferData]);
 

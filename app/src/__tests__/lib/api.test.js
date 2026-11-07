@@ -205,7 +205,7 @@ describe("snapshot files", () => {
   it("getStatus reshapes the manifest instead of calling the API", async () => {
     mockFetch.mockResolvedValue(jsonResponse({ gameweek: 4, deadline: "2026-09-12T17:30:00Z" }));
     await expect(getStatus()).resolves.toEqual({
-      current_gw: 4,
+      predicted_gw: 4,
       deadline: "2026-09-12T17:30:00Z",
     });
     expect(mockFetch.mock.calls[0][0]).toBe("/data/manifest.json");
