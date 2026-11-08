@@ -7,7 +7,8 @@ Predicts how many points every Fantasy Premier League player will score next gam
 
 The dashboard loads instantly because it is static files. **My Team** and **News** call the API, which sleeps on Render's free plan, so the first of those after a quiet period takes about half a minute.
 
-![Dashboard](docs/screenshots/dashboard.png)
+![Dashboard](<img width="1457" height="829" alt="image" src="https://github.com/user-attachments/assets/479bc53c-9f57-4486-be07-aff34872ec65" />
+)
 
 ## What it does
 
