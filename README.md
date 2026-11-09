@@ -12,7 +12,7 @@ The dashboard loads instantly because it is static files. **My Team** and **News
 ## What it does
 
 - **Predicts** next gameweek points for all ~800 players, each with a confidence range and a SHAP breakdown explaining *why*.
-- **Builds squads**: integer linear programming picks the optimal 15 players within the £100m budget, position limits, and max-3-per-club rule, in under 200ms.
+- **Builds squads** integer linear programming picks the optimal 15 players within the £100m budget, position limits, and max-3-per-club rule, in under 200ms.
 - **Plans transfers** over a 1-3 gameweek horizon, with a separately trained model for each horizon.
 
 <details>
