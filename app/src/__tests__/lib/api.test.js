@@ -13,6 +13,7 @@ import {
   getStatus,
   refresh,
   health,
+  clearSnapshotCache,
 } from "../../lib/api";
 
 // Mock global fetch
@@ -32,6 +33,9 @@ function jsonResponse(data, status = 200) {
 beforeEach(() => {
   mockFetch.mockReset();
   mockFetch.mockResolvedValue(jsonResponse({ ok: true }));
+  // Snapshot reads are memoised in a module-level map, which outlives a test.
+  // Without this, the second test to read manifest.json never calls fetch.
+  clearSnapshotCache();
 });
 
 describe("apiFetch shared behavior", () => {
@@ -240,5 +244,57 @@ describe("refresh (POST)", () => {
     await refresh("my-prod-secret");
     const [, opts] = mockFetch.mock.calls[0];
     expect(opts.headers["X-Refresh-Secret"]).toBe("my-prod-secret");
+  });
+});
+
+describe("snapshot memoisation", () => {
+  it("reads a file once however many callers ask for it", async () => {
+    await getModels();
+    await getModels();
+    expect(mockFetch).toHaveBeenCalledOnce();
+  });
+
+  it("joins a request that is still in flight rather than starting a second", async () => {
+    // Both callers start before either resolves, which is what happens on
+    // first paint when two components each want the manifest.
+    const [a, b] = await Promise.all([getManifest(), getManifest()]);
+    expect(mockFetch).toHaveBeenCalledOnce();
+    expect(a).toBe(b);
+  });
+
+  it("keeps different files apart", async () => {
+    await getModels();
+    await getManifest();
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not remember a failure", async () => {
+    mockFetch.mockRejectedValueOnce(new Error("offline"));
+    await expect(getModels()).rejects.toThrow("offline");
+    await expect(getModels()).resolves.toEqual({ ok: true });
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("evicts the least recently used file once the cap is passed", async () => {
+    // The cap is 8. models.json is read first, then kept warm, so the file
+    // that goes is the oldest one nobody has touched since.
+    await getModels();
+    for (let i = 0; i < 7; i++) await getPredictions(`m${i}`);
+    await getModels();
+    await getPredictions("m7");
+
+    mockFetch.mockClear();
+    await getModels();
+    expect(mockFetch).not.toHaveBeenCalled();
+    await getPredictions("m0");
+    expect(mockFetch).toHaveBeenCalledOnce();
+  });
+
+  it("is emptied by a sync, so the next read sees the new snapshot", async () => {
+    await getModels();
+    await refresh();
+    mockFetch.mockClear();
+    await getModels();
+    expect(mockFetch).toHaveBeenCalledOnce();
   });
 });
