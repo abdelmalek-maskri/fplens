@@ -233,6 +233,13 @@ Environment variables to set:
 | `GUARDIAN_API_KEY` | free key, for `/api/news` |
 | `REFRESH_SECRET` | any long random string, or leave unset to disable `/api/refresh` |
 | `TRUST_PROXY_HEADERS` | `1` |
+| `SENTRY_DSN` | the DSN from the Sentry project, or leave unset to disable error reporting |
+| `SENTRY_ENV` | `production` |
+
+`SENTRY_DSN` is the one that fails quietly. Leave it unset and the API runs exactly
+as before and reports nothing, so the only way to notice is that errors never
+arrive. Check `/api/health` responds, then confirm the Sentry project shows the
+deploy's release after the next crash.
 
 `TRUST_PROXY_HEADERS` matters here. Render's load balancer is in front, so without
 it every request looks like it came from the same address and the per-caller rate

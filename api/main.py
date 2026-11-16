@@ -15,6 +15,7 @@ retaining content beyond 24 hours, so it cannot live in a committed snapshot.
 """
 
 import os
+import re
 import secrets
 from contextlib import asynccontextmanager
 
@@ -33,6 +34,64 @@ load_dotenv()
 # No default. A shared fallback in a public repo is a published credential, so an
 # unset secret disables the endpoint rather than leaving a guessable one in place.
 REFRESH_SECRET = os.environ.get("REFRESH_SECRET", "")
+
+
+SENTRY_DSN = os.environ.get("SENTRY_DSN", "")
+
+# A manager's FPL ID is in the path of every /team request, and an ID plus a
+# squad is enough to name the person. Sentry stores the request URL on every
+# event, so it has to come back out before the event leaves the process.
+_FPL_ID_IN_PATH = re.compile(r"(/api/team/)\d+")
+
+
+def scrub_fpl_id(event, hint):
+    """Replace the manager ID in any URL on the event with a placeholder.
+
+    The route pattern FastAPI reports as the transaction name is already
+    anonymous; it is the concrete request URL, and any breadcrumb recording a
+    call to it, that carry the real number.
+    """
+    request = event.get("request")
+    if request and isinstance(request.get("url"), str):
+        request["url"] = _FPL_ID_IN_PATH.sub(r"\1{fpl_id}", request["url"])
+
+    for crumb in event.get("breadcrumbs", {}).get("values", []) or []:
+        url = crumb.get("data", {}).get("url")
+        if isinstance(url, str):
+            crumb["data"]["url"] = _FPL_ID_IN_PATH.sub(r"\1{fpl_id}", url)
+
+    return event
+
+
+# Guarded so local runs and the test suite stay silent. An unset DSN is the
+# normal case everywhere except the deployed API.
+if SENTRY_DSN:
+    import sentry_sdk
+    from sentry_sdk.integrations.fastapi import FastApiIntegration
+    from sentry_sdk.integrations.starlette import StarletteIntegration
+
+    # The SDK reports every 5xx by default, and most of ours are deliberate:
+    # a 503 when refresh is unconfigured is a setting, not a fault. 500 is an
+    # unhandled crash and 502 means the FPL API itself is failing, which are
+    # the two worth waking up for.
+    REPORTABLE = {500, 502}
+
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        integrations=[
+            StarletteIntegration(failed_request_status_codes=REPORTABLE),
+            FastApiIntegration(failed_request_status_codes=REPORTABLE),
+        ],
+        environment=os.environ.get("SENTRY_ENV", "production"),
+        # Render exposes the deployed commit, so an issue points at the code that
+        # produced it rather than at whatever main happened to be that week.
+        release=os.environ.get("RENDER_GIT_COMMIT"),
+        # Errors only. Tracing would spend the quota on healthy requests, and
+        # there is no latency question open that it would answer.
+        traces_sample_rate=0.0,
+        send_default_pii=False,
+        before_send=scrub_fpl_id,
+    )
 
 
 @asynccontextmanager
