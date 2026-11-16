@@ -39,6 +39,23 @@ from job.solvers import solve_best_squad
 
 logger = logging.getLogger(__name__)
 
+# The twelve files this writes are an API, and the frontend is its only client.
+# They ship in the same commit, so there is no window in which to roll one back
+# without the other: a renamed key reaches every visitor at once and renders
+# blank with nothing raised anywhere.
+#
+# Three rules keep that from happening:
+#
+#   1. Add fields. Never rename or remove one. A rename is a delete plus an
+#      add, and the delete is the half that breaks readers.
+#   2. Readers ignore keys they do not recognise, so adding is always safe.
+#   3. Bump this when rule 1 has to be broken anyway. The frontend compares it
+#      against the version it was built for and says so when a snapshot is
+#      newer than the code reading it.
+#
+# Mirrored by SUPPORTED_SCHEMA_VERSION in app/src/lib/api.js. Bump both.
+SCHEMA_VERSION = 1
+
 DEFAULT_OUT = Path("app/public/data")
 
 OUTPUTS = Path("outputs")
@@ -433,6 +450,7 @@ def build(
     )
 
     manifest = {
+        "schema_version": SCHEMA_VERSION,
         "gameweek": gameweek,
         # Carried so the header can show the countdown without an API call.
         "deadline": event.get("deadline_time"),
