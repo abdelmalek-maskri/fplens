@@ -33,3 +33,7 @@ numpy==2.2.6
 requests==2.32.5
 beautifulsoup4==4.11.1
 python-dotenv==1.2.2
+
+
+# Error tracking. ~1MB, no ML dependencies, so the thin-API saving holds.
+sentry-sdk[fastapi]==2.75.0
