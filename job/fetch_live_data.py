@@ -15,6 +15,7 @@ for the API's fixture, team, and player detail endpoints.
 import logging
 import os
 import re
+import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
@@ -22,6 +23,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +64,57 @@ FPL_BASE_URL = os.environ.get("FPL_BASE_URL", "https://fantasy.premierleague.com
 BOOTSTRAP_URL = f"{FPL_BASE_URL}/bootstrap-static/"
 FIXTURES_URL = f"{FPL_BASE_URL}/fixtures/"
 
+# A snapshot makes roughly 800 of these. Without a retry, one transient 503
+# zero-fills that player for the day, and nothing distinguishes a player the
+# API would not serve from one who genuinely has no history.
+#
+# Only transient statuses. A 404 is an answer, not a failure, and retrying it
+# would add seconds to the API's "FPL ID not found" response for nothing.
+RETRY_STATUSES = (429, 500, 502, 503, 504)
+
+# Three attempts after the first, waiting 0.5s, 1s, 2s. The whole run has a
+# 30s-ish budget per call already, so this cannot turn a slow fetch into a
+# stuck one.
+RETRY_TOTAL = 3
+RETRY_BACKOFF = 0.5
+
+# Without jitter, twenty workers that fail together wait the identical 0.5s and
+# retry in the same instant, rebuilding the spike that caused the failure.
+RETRY_JITTER = 0.3
+
+# One session per thread. requests.Session is not documented as thread-safe,
+# and fetch_all_player_histories runs twenty at once.
+_thread_local = threading.local()
+
+
+def fpl_session() -> requests.Session:
+    """A requests Session that retries transient failures with backoff.
+
+    GET only: every call here is a read, so a repeat is free. A POST would
+    need an idempotency key before it could be retried safely, and there are
+    none in this module.
+
+    respect_retry_after_header is urllib3's default and is why 429 is in the
+    list: FPL tells us how long to wait and the session obeys it.
+    """
+    session = getattr(_thread_local, "fpl_session", None)
+    if session is None:
+        retry = Retry(
+            total=RETRY_TOTAL,
+            backoff_factor=RETRY_BACKOFF,
+            backoff_jitter=RETRY_JITTER,
+            status_forcelist=RETRY_STATUSES,
+            allowed_methods=frozenset(["GET"]),
+            raise_on_status=False,
+        )
+        session = requests.Session()
+        adapter = HTTPAdapter(max_retries=retry)
+        session.mount("https://", adapter)
+        session.mount("http://", adapter)
+        _thread_local.fpl_session = session
+    return session
+
+
 # Feature engineering constants, must match build_extended_features.py exactly
 HISTORY_NUM_COLS = [
     "total_points",
@@ -95,7 +149,7 @@ def get_bootstrap_data() -> dict:
     # Fetch bootstrap-static data from FPL API.
     # Contains: all players, teams, gameweeks, game settings.
     print("Fetching FPL bootstrap-static data...")
-    response = requests.get(BOOTSTRAP_URL, timeout=FPL_TIMEOUT)
+    response = fpl_session().get(BOOTSTRAP_URL, timeout=FPL_TIMEOUT)
 
     if response.status_code != 200:
         raise RuntimeError(f"FPL API error: {response.status_code}")
@@ -135,7 +189,7 @@ def get_current_gameweek(events: list[dict]) -> dict:
 
 def get_fixtures_for_gw(gw: int) -> pd.DataFrame:
     # Fetch fixtures for a specific gameweek.
-    response = requests.get(FIXTURES_URL, params={"event": gw}, timeout=FPL_TIMEOUT)
+    response = fpl_session().get(FIXTURES_URL, params={"event": gw}, timeout=FPL_TIMEOUT)
 
     if response.status_code != 200:
         return pd.DataFrame()
@@ -163,7 +217,7 @@ def fetch_player_history(element_id: int) -> list[dict] | None:
     # Fetch per-GW history for a single player from /api/element-summary/{id}/
     url = f"{FPL_BASE_URL}/element-summary/{element_id}/"
     try:
-        resp = requests.get(url, timeout=10)
+        resp = fpl_session().get(url, timeout=10)
         if resp.status_code == 200:
             return resp.json().get("history", [])
     except Exception:
@@ -672,7 +726,7 @@ def live_gw_windows() -> pd.DataFrame | None:
     Returns columns [GW, start_date, end_date], or None if kickoff times are
     unavailable.
     """
-    resp = requests.get(f"{FPL_BASE_URL}/fixtures/", timeout=30)
+    resp = fpl_session().get(f"{FPL_BASE_URL}/fixtures/", timeout=30)
     if resp.status_code != 200:
         return None
 
@@ -1242,7 +1296,7 @@ def fetch_fixtures(bootstrap_data: dict | None = None, num_gws: int = 6) -> dict
     target_gws = list(range(current_gw, current_gw + num_gws))
 
     # fetch all fixtures
-    response = requests.get(FIXTURES_URL, timeout=FPL_TIMEOUT)
+    response = fpl_session().get(FIXTURES_URL, timeout=FPL_TIMEOUT)
     if response.status_code != 200:
         raise RuntimeError(f"FPL fixtures API error: {response.status_code}")
     all_fixtures = response.json()
@@ -1384,14 +1438,14 @@ def fetch_user_team(fpl_id: int, bootstrap: dict | None = None) -> dict:
 
     # fetch manager entry info
     entry_url = f"{FPL_BASE_URL}/entry/{fpl_id}/"
-    resp = requests.get(entry_url, timeout=FPL_TIMEOUT)
+    resp = fpl_session().get(entry_url, timeout=FPL_TIMEOUT)
     if resp.status_code != 200:
         raise FPLAPIError(resp.status_code, entry_url)
     entry = resp.json()
 
     # fetch picks for latest finished GW (= user's current squad)
     picks_url = f"{FPL_BASE_URL}/entry/{fpl_id}/event/{picks_gw}/picks/"
-    resp = requests.get(picks_url, timeout=FPL_TIMEOUT)
+    resp = fpl_session().get(picks_url, timeout=FPL_TIMEOUT)
     if resp.status_code != 200:
         raise FPLAPIError(resp.status_code, picks_url)
     picks_data = resp.json()
