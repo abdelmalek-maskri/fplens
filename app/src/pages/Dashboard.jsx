@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef, Fragment } from "react";
+import { useState, useMemo, useRef, Fragment } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { POSITION_COLORS } from "../lib/constants";
 import StatusBadge from "../components/badges/StatusBadge";
@@ -78,6 +78,10 @@ export default function Dashboard() {
   const [sortBy, setSortBy] = useState("predicted_points");
   const [sortDesc, setSortDesc] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  // Null means "whichever model the snapshot published", which usePredictions
+  // resolves from the manifest. Copying models[0].id into here once models.json
+  // landed changed this hook's argument and refetched the same predictions file
+  // a second time, with a loading flash in between.
   const [selectedModel, setSelectedModel] = useState(null);
   const [expandedPlayer, setExpandedPlayer] = useState(null);
   const tableHeadingRef = useRef(null);
@@ -103,9 +107,6 @@ export default function Dashboard() {
   // club strengths that was a season out of date and missing four clubs.
   const fdrFor = (teamName) =>
     fixtureData?.fixtures[teamName]?.find((f) => f.gw === fixtureData.currentGw)?.atkFdr;
-  useEffect(() => {
-    if (!selectedModel && models.length > 0) setSelectedModel(models[0].id);
-  }, [models, selectedModel]);
   const predictions = useMemo(() => data?.predictions ?? [], [data]);
   const activeModel = models.find((m) => m.id === selectedModel) || models[0];
 
