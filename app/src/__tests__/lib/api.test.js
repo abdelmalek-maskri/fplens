@@ -14,6 +14,7 @@ import {
   refresh,
   health,
   clearSnapshotCache,
+  ApiError,
 } from "../../lib/api";
 
 // Mock global fetch
@@ -296,5 +297,48 @@ describe("snapshot memoisation", () => {
     mockFetch.mockClear();
     await getModels();
     expect(mockFetch).toHaveBeenCalledOnce();
+  });
+});
+
+describe("ApiError carries the status", () => {
+  // Callers used to tell "the file is absent" from "something broke" by
+  // comparing the message text, which made user-facing wording a contract
+  // between files. These assert the status is there to branch on instead.
+  function failWith(status, statusText = "Error") {
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status,
+      statusText,
+      json: () => Promise.resolve({ detail: "nope" }),
+      headers: { get: () => null },
+    });
+  }
+
+  it.each([
+    [404, "Not Found"],
+    [422, "Unprocessable Entity"],
+    [429, "Too Many Requests"],
+    [500, "Internal Server Error"],
+  ])("sets status %i on the thrown error", async (status, statusText) => {
+    failWith(status, statusText);
+    const err = await health().catch((e) => e);
+    expect(err).toBeInstanceOf(ApiError);
+    expect(err.status).toBe(status);
+  });
+
+  it("is a real Error, so existing catch blocks still work", async () => {
+    failWith(404, "Not Found");
+    const err = await health().catch((e) => e);
+    expect(err).toBeInstanceOf(Error);
+    expect(err.message).toBe("Not found.");
+  });
+
+  it("gives a player missing from the snapshot a 404 too", async () => {
+    // The file was served fine; the id is not in it. Callers should not have
+    // to care which layer noticed.
+    mockFetch.mockResolvedValue(jsonResponse({ 42: { web_name: "Salah" } }));
+    const err = await getPlayer(999).catch((e) => e);
+    expect(err).toBeInstanceOf(ApiError);
+    expect(err.status).toBe(404);
   });
 });
