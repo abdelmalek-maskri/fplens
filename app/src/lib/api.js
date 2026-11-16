@@ -57,7 +57,60 @@ async function request(
 }
 
 const apiFetch = (path, opts) => request(BASE_URL, path, { timeout: API_TIMEOUT, ...opts });
-const snapshotFetch = (path, opts) => request(SNAPSHOT_BASE, path, opts);
+
+// Matches the max-age on /data/* in app/public/_headers, so this never serves
+// anything staler than the browser's own cache would have.
+const SNAPSHOT_TTL = 600_000;
+
+// players.json is 1.2MB of JSON and several times that once parsed, so the map
+// is capped rather than left to grow across a long session.
+const SNAPSHOT_MAX_ENTRIES = 8;
+
+const snapshotCache = new Map();
+
+/** Drop every memoised snapshot file. For tests, and for /api/refresh. */
+export function clearSnapshotCache() {
+  snapshotCache.clear();
+}
+
+/**
+ * Read a snapshot file, reusing one that is already loading or recently loaded.
+ *
+ * Hooks fetch independently and share nothing, so two components mounting
+ * together each asked for manifest.json, and revisiting a page re-downloaded
+ * and re-parsed a file it had already parsed. Deduplicating here covers every
+ * caller at once, which a per-hook fix would not.
+ *
+ * The promise is stored rather than the value, so callers that arrive while a
+ * request is still in flight join it instead of starting a second one.
+ */
+function snapshotFetch(path, opts) {
+  // No caller passes options today. If one ever does, it is asking for
+  // something other than a plain read and should not be served from here.
+  if (opts) return request(SNAPSHOT_BASE, path, opts);
+
+  const hit = snapshotCache.get(path);
+  if (hit && Date.now() - hit.at < SNAPSHOT_TTL) {
+    // Re-inserting moves it to the end, so eviction drops the least recently
+    // used file rather than the oldest one.
+    snapshotCache.delete(path);
+    snapshotCache.set(path, hit);
+    return hit.promise;
+  }
+
+  const promise = request(SNAPSHOT_BASE, path).catch((err) => {
+    // A failed read must not be remembered, or one blip breaks the page until
+    // the TTL expires.
+    snapshotCache.delete(path);
+    throw err;
+  });
+
+  snapshotCache.set(path, { promise, at: Date.now() });
+  if (snapshotCache.size > SNAPSHOT_MAX_ENTRIES) {
+    snapshotCache.delete(snapshotCache.keys().next().value);
+  }
+  return promise;
+}
 
 export function getManifest() {
   return snapshotFetch("/manifest.json");
@@ -145,6 +198,10 @@ export function getAccuracy() {
 }
 
 export function refresh(secret = "dev-secret") {
+  // Sync drops the API's cached squads. Leaving the memoised snapshot files in
+  // place would mean the button refreshes half the page and silently not the
+  // other half; the next navigation now rereads them.
+  clearSnapshotCache();
   return apiFetch("/api/refresh", {
     method: "POST",
     headers: { "X-Refresh-Secret": secret },
