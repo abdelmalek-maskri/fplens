@@ -15,6 +15,22 @@ const DEFAULT_TIMEOUT = 30_000;
 // failed and a refresh moments later always worked.
 const API_TIMEOUT = 75_000;
 
+/**
+ * An HTTP failure that callers can branch on without reading the message.
+ *
+ * The status is what a caller means when it asks "was this file simply absent,
+ * or did something break". Matching the wording instead makes a user-facing
+ * string into a contract between two files: rewording it then changes
+ * behaviour somewhere else, silently.
+ */
+export class ApiError extends Error {
+  constructor(message, status) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
 async function request(
   base,
   path,
@@ -31,18 +47,20 @@ async function request(
     });
 
     if (!res.ok) {
-      if (res.status === 422) throw new Error("Invalid input — check your values and try again.");
-      if (res.status === 404) throw new Error("Not found.");
+      if (res.status === 422) {
+        throw new ApiError("Invalid input — check your values and try again.", 422);
+      }
+      if (res.status === 404) throw new ApiError("Not found.", 404);
       // The API rate-limits squad lookups, so this is a status a visitor can
       // actually see. Retry-After is in seconds.
       if (res.status === 429) {
         const wait = Number(res.headers.get("Retry-After"));
         const when = Number.isFinite(wait) && wait > 0 ? `${wait} seconds` : "a moment";
-        throw new Error(`Too many lookups just now. Try again in ${when}.`);
+        throw new ApiError(`Too many lookups just now. Try again in ${when}.`, 429);
       }
       const body = await res.json().catch(() => null);
       const detail = body?.detail || res.statusText;
-      throw new Error(`${res.status}: ${detail}`);
+      throw new ApiError(`${res.status}: ${detail}`, res.status);
     }
 
     return res.json();
@@ -166,7 +184,9 @@ export function getTeam(fplId) {
 export async function getPlayer(elementId) {
   const players = await snapshotFetch("/players.json");
   const player = players[elementId];
-  if (!player) throw new Error("Not found.");
+  // The file was served; this id is not in it. Same shape as a 404 so callers
+  // branch on one thing, rather than on which layer noticed.
+  if (!player) throw new ApiError("Not found.", 404);
   return player;
 }
 
