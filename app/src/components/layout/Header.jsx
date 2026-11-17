@@ -2,18 +2,7 @@ import { useLocation } from "react-router-dom";
 import { useState, useCallback } from "react";
 import { refresh } from "../../lib/api";
 import { gameweekPhase, snapshotFreshness } from "../../lib/freshness";
-
-const PAGE_TITLES = {
-  "/optimal-xi": "Optimal XI",
-  "/accuracy": "Accuracy",
-  "/my-team": "My Team",
-  "/transfers": "Transfers",
-  "/fixtures": "Fixture Ticker",
-  "/compare": "Player Compare",
-  "/news": "News & Sentiment",
-  "/watchlist": "Watchlist",
-  "/insights": "Model Insights",
-};
+import { ROUTE_META, SITE_NAME } from "../../lib/routeMeta";
 
 // The weekday alone is ambiguous once a gameweek spans more than seven days,
 // which blank and double gameweeks regularly do.
@@ -42,7 +31,7 @@ export default function Header({ onMenuToggle, gwData, menuButtonRef }) {
       ? phase.gw
         ? `Gameweek ${phase.gw}${phase.locked ? " · in play" : ""}`
         : "Dashboard"
-      : PAGE_TITLES[pathname] || "FPLens";
+      : (ROUTE_META[pathname]?.name ?? SITE_NAME);
   const deadlineLabel = formatDeadlineShort(phase);
 
   const handleRefresh = useCallback(() => {
