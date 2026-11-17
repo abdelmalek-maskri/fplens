@@ -1,17 +1,20 @@
-"""Response models for the endpoints that need a server at request time.
+"""Response models for the one endpoint that needs a server at request time.
 
-Only `/team/{fpl_id}` and `/best-squad` are modelled here. Every other endpoint returns data that is identical for all callers and is being moved to precomputed JSON files, whose shape is defined alongside the snapshot job.
+`/team/{fpl_id}` is the only route validated against these. BestXI and
+BestSquad describe what job.solvers emits into best_squad.json, so the tests
+can check that shape without the API serving it: everything identical for
+every caller is a precomputed file, not an endpoint.
 
-Player fields are optional with defaults because `solvers._existing_cols`
-filters OUTPUT_COLS down to whatever the prediction frame actually has, so a
-model missing a column simply omits it rather than failing.
+Player fields are optional with defaults because solvers._existing_cols filters
+OUTPUT_COLS down to whatever the prediction frame actually has, so a model
+missing a column simply omits it rather than failing.
 """
 
 from pydantic import BaseModel, ConfigDict, Field
 
 
 class Player(BaseModel):
-    """A player as the solvers emit them (solvers.OUTPUT_COLS)"""
+    """A player as the solvers emit them, per solvers.OUTPUT_COLS."""
 
     element: int
     web_name: str = ""
@@ -26,6 +29,8 @@ class Player(BaseModel):
 
 
 class BestXI(BaseModel):
+    """The eleven to start, plus the formation they make up."""
+
     formation: str
     total_points: float
     total_with_captain: float
@@ -36,6 +41,8 @@ class BestXI(BaseModel):
 
 
 class BestSquad(BaseModel):
+    """Fifteen players inside the budget, with the XI picked from them."""
+
     squad: list[Player]
     total_value: float
     total_points: float
@@ -56,6 +63,8 @@ class TransferOut(BaseModel):
 
 
 class TransferSuggestion(BaseModel):
+    """One swap: who leaves, who arrives, and what it is predicted to gain."""
+
     # `in` is a keyword, so the field is in_ and serialises under its alias.
     model_config = ConfigDict(populate_by_name=True)
 
