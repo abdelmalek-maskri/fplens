@@ -1,19 +1,8 @@
 import { useLocation } from "react-router-dom";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { refresh } from "../../lib/api";
 import { gameweekPhase, snapshotFreshness } from "../../lib/freshness";
-
-const PAGE_TITLES = {
-  "/optimal-xi": "Optimal XI",
-  "/accuracy": "Accuracy",
-  "/my-team": "My Team",
-  "/transfers": "Transfers",
-  "/fixtures": "Fixture Ticker",
-  "/compare": "Player Compare",
-  "/news": "News & Sentiment",
-  "/watchlist": "Watchlist",
-  "/insights": "Model Insights",
-};
+import { ROUTE_META, SITE_NAME, pageTitle } from "../../lib/routeMeta";
 
 // The weekday alone is ambiguous once a gameweek spans more than seven days,
 // which blank and double gameweeks regularly do.
@@ -35,14 +24,18 @@ export default function Header({ onMenuToggle, gwData, menuButtonRef }) {
   const [syncedAt, setSyncedAt] = useState(null);
   const [spinning, setSpinning] = useState(false);
 
+  useEffect(() => {
+    document.title = pageTitle(pathname);
+  }, [pathname]);
+
   const phase = gameweekPhase(gwData?.predicted_gw, gwData?.deadline);
   const lastUpdated = syncedAt ?? snapshotFreshness(gwData?.generated_at).detail;
-  const pageTitle =
+  const headingTitle =
     pathname === "/"
       ? phase.gw
         ? `Gameweek ${phase.gw}${phase.locked ? " · in play" : ""}`
         : "Dashboard"
-      : PAGE_TITLES[pathname] || "FPLens";
+      : (ROUTE_META[pathname]?.name ?? SITE_NAME);
   const deadlineLabel = formatDeadlineShort(phase);
 
   const handleRefresh = useCallback(() => {
@@ -77,7 +70,7 @@ export default function Header({ onMenuToggle, gwData, menuButtonRef }) {
             />
           </svg>
         </button>
-        <h2 className="text-sm font-semibold text-surface-900 leading-none">{pageTitle}</h2>
+        <h2 className="text-sm font-semibold text-surface-900 leading-none">{headingTitle}</h2>
         {deadlineLabel && (
           <span className="text-2xs text-surface-400 hidden sm:inline">{deadlineLabel}</span>
         )}
