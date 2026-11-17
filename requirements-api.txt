@@ -31,6 +31,12 @@ numpy==2.2.6
 # Live calls: a manager's squad from the FPL API, and Guardian news, which
 # cannot be precomputed because its licence forbids retaining content.
 requests==2.32.5
+
+# Transitive through requests, but pinned because /team goes through
+# job.fetch_live_data, whose Retry uses backoff_jitter. urllib3 1.x does not
+# have it and raises TypeError on the first squad lookup.
+urllib3==2.6.3
+
 beautifulsoup4==4.11.1
 python-dotenv==1.2.2
 

@@ -86,9 +86,14 @@ const SNAPSHOT_MAX_ENTRIES = 8;
 
 const snapshotCache = new Map();
 
+// Warn once per load, not once per read. A console it has filled is a console
+// nobody reads.
+let schemaWarned = false;
+
 /** Drop every memoised snapshot file. For tests, and for /api/refresh. */
 export function clearSnapshotCache() {
   snapshotCache.clear();
+  schemaWarned = false;
 }
 
 /**
@@ -130,8 +135,25 @@ function snapshotFetch(path, opts) {
   return promise;
 }
 
-export function getManifest() {
-  return snapshotFetch("/manifest.json");
+// The shape of /data/*.json this build was written against. Mirrors
+// SCHEMA_VERSION in job/snapshot.py, where the compatibility rules live.
+export const SUPPORTED_SCHEMA_VERSION = 1;
+
+export async function getManifest() {
+  const manifest = await snapshotFetch("/manifest.json");
+  // Absent means a snapshot published before versioning, which is version 1
+  // by definition. Only a snapshot newer than this build is worth saying
+  // anything about: an older one can only be missing fields that were added
+  // since, and every reader here already tolerates that.
+  const version = manifest.schema_version ?? SUPPORTED_SCHEMA_VERSION;
+  if (version > SUPPORTED_SCHEMA_VERSION && !schemaWarned) {
+    schemaWarned = true;
+    console.warn(
+      `Snapshot is schema v${version} but this build reads v${SUPPORTED_SCHEMA_VERSION}. ` +
+        `Some values may be missing until the page is reloaded against a newer build.`
+    );
+  }
+  return manifest;
 }
 
 /**

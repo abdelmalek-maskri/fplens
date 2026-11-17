@@ -106,6 +106,32 @@ def test_manifest_records_the_gameweek_and_models(tmp_path):
     assert manifest["generated_at"].endswith("+00:00")
 
 
+def test_manifest_declares_its_schema_version(tmp_path):
+    """The frontend reads this to tell a snapshot it understands from a newer one.
+
+    Dropping the key would silently disable that check, because an absent
+    version is treated as the oldest one.
+    """
+    out = tmp_path / "data"
+    with _stub():
+        snapshot.build(out_dir=out, log_predictions=False)
+
+    manifest = json.loads((out / "manifest.json").read_text())
+    assert manifest["schema_version"] == snapshot.SCHEMA_VERSION
+    assert isinstance(manifest["schema_version"], int)
+
+
+def test_committed_snapshot_matches_the_schema_the_job_writes():
+    """The shipped manifest and the code that writes it must agree.
+
+    app/public/data is committed and served to every visitor, so a version
+    bump that forgets it leaves the site claiming a schema the job no longer
+    produces.
+    """
+    manifest = json.loads(Path("app/public/data/manifest.json").read_text())
+    assert manifest["schema_version"] == snapshot.SCHEMA_VERSION
+
+
 def test_nan_becomes_null_because_json_has_no_nan(tmp_path):
     out = tmp_path / "data"
     with _stub():
