@@ -1,4 +1,3 @@
-# ml/utils/eval_metrics.py
 """
 Shared evaluation metrics for all models
 """
@@ -18,12 +17,11 @@ def compute_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
 
 def compute_baselines(y_true: np.ndarray, y_train: np.ndarray) -> dict:
     """
-    Compute baseline predictions and their metrics.
-    Baselines:
-      - zero: predict 0 for everything
-      - mean: predict training set mean for everything
-    """
+    The two naive predictions every model has to beat.
 
+    Zero predicts nothing for everyone, which on a 59.8%-zero target is a
+    stronger baseline than it sounds. Mean predicts the training average.
+    """
     zero_preds = np.zeros_like(y_true)
     mean_value = float(np.mean(y_train))
     mean_preds = np.full_like(y_true, mean_value, dtype=float)
@@ -38,10 +36,7 @@ def compute_baselines(y_true: np.ndarray, y_train: np.ndarray) -> dict:
 
 
 def compute_improvements(model_metrics: dict, baselines: dict) -> dict:
-    """
-    Compute how much the model improves over baselines.
-    Positive values = model is better.
-    """
+    """How far the model beats each baseline. Positive means better."""
     return {
         "vs_zero": {
             "mae_improve": baselines["zero_baseline"]["mae"] - model_metrics["mae"],
@@ -78,7 +73,7 @@ def print_final_summary(
     eval_result: dict,
     output_dir: str = None,
 ) -> None:
-
+    """Print one model's holdout metrics in the shared format."""
     m = eval_result["model"]
     b = eval_result["baselines"]
     imp = eval_result["improvements"]

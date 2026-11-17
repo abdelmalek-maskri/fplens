@@ -22,8 +22,8 @@ export default function MyTeam() {
       return p;
     });
   };
-  // A remembered ID loads without a click. The transfers page already treats
-  // the saved ID as "your team"; this page used to make you press Load again.
+  // A remembered ID loads without a click, matching the transfers page, which
+  // also treats a saved ID as "your team" rather than a suggestion.
   const submittedId = searchParams.get("fpl_id") || localStorage.getItem("fpl_id") || null;
   const [fplId, setFplId] = useState(submittedId || "");
 

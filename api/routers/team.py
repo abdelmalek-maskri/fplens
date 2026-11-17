@@ -13,15 +13,16 @@ from job.fetch_live_data import FPLAPIError, fetch_user_team, get_bootstrap_data
 from job.solvers import suggest_transfers
 
 logger = logging.getLogger(__name__)
-
 router = APIRouter(tags=["Team"])
 
+# ---------------------------------------------------------------------------
 # bootstrap-static is ~1.8MB and identical for everyone. Only the gameweek list
 # is read from it here, and that changes once a week, so an hour of staleness
 # costs nothing. /news already caches it under this key.
-BOOTSTRAP_CACHE_TTL = 60
+BOOTSTRAP_CACHE_TTL = 60  # minutes
 
-# Fields to enrich from predictions onto each pick
+# what gets copied from the predictions onto each of a manager's picks,
+# with the value to fall back to when the player is not in the snapshot
 _ENRICH_FIELDS = {
     "web_name": "",
     "position": "",
@@ -33,6 +34,7 @@ _ENRICH_FIELDS = {
     "opponent_name": "",
     "value": 0,
 }
+# ---------------------------------------------------------------------------
 
 
 @router.get("/team/{fpl_id}", response_model=Team)

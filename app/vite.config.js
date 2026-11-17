@@ -145,7 +145,6 @@ function perRouteHtml() {
   }
 }
 
-// https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), preloadDefaultPredictions(), perRouteHtml()],
   test: {

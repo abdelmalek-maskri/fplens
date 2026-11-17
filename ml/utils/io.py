@@ -1,4 +1,3 @@
-# ml/utils/io.py
 """
 I/O utilities for data loading and file operations.
 """
@@ -114,6 +113,7 @@ def _repair_mixed_length_csv(path: str | Path, encoding: str) -> pd.DataFrame | 
 
 
 def safe_read_csv(path: str | Path) -> pd.DataFrame:
+    """Read a CSV, failing with the path rather than a bare parser error."""
     skipped = {"count": 0}
 
     def _count_bad_line(_line: list[str]) -> None:

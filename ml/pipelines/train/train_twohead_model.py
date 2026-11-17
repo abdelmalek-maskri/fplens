@@ -27,11 +27,14 @@ from ml.utils.eval_metrics import (
     print_final_summary,
 )
 
+# ---------------------------------------------------------------------------
 IN_PATH = Path("data/features/extended_features.csv")
 OUT_DIR = Path("outputs/experiments/twohead")
+# ---------------------------------------------------------------------------
 
 
 def prepare_xy(df: pd.DataFrame):
+    """Features and target, with identifier and target columns dropped."""
     y = df[TARGET_COL].values
     drop = set([TARGET_COL] + DROP_COLS)
     X = df.drop(columns=[c for c in drop if c in df.columns])
@@ -115,6 +118,7 @@ def evaluate_all_predictions(y_true: np.ndarray, y_train: np.ndarray, prediction
 
 
 def run():
+    """Train P(plays) and E[points | plays] separately, then combine them."""
     print("=" * 60)
     print("TWO-HEAD MODEL TRAINING")
     print("=" * 60)

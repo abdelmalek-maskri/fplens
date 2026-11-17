@@ -20,24 +20,17 @@ import time
 
 from fastapi import Request
 
-# Fixed windows, so the per-caller limit is "this many new squads a minute".
+# ---------------------------------------------------------------------------
+# Fixed windows, so each limit reads as "this many new squads a minute".
+# PER_CLIENT is far above what a human typing in FPL IDs reaches, and still
+# leaves a scraper needing years for the full ID range. OVERALL is what FPL
+# sees from us at worst however many callers there are, and is what catches a
+# distributed scrape that the per-caller limit alone would miss.
 WINDOW_SECONDS = 60
-
-# A human types in an FPL ID, maybe a friend's, maybe a rival's. Ten new squads
-# a minute is far more than that and still leaves a scraper needing years for
-# the full ID range.
 PER_CLIENT_LIMIT = 10
-
-# What FPL sees from us at worst, whatever the number of callers. The snapshot
-# job makes ~800 calls in 30 seconds without trouble, so one a second sustained
-# is well inside what they tolerate, and it caps a distributed scrape that the
-# per-caller limit alone would miss.
-OVERALL_LIMIT = 60
-
-# Each tracked key is a short tuple, so this bounds the limiter's own memory at
-# a few MB. Reaching it means the current window holds more distinct callers
-# than any real traffic would, and the sweep below drops the stale ones.
-MAX_TRACKED_KEYS = 100_000
+OVERALL_LIMIT = 60  # the job does ~800 calls in 30s, so 1/s sustained is mild
+MAX_TRACKED_KEYS = 100_000  # short tuples, so a few MB; the sweep drops stale ones
+# ---------------------------------------------------------------------------
 
 
 def _env_int(name: str, default: int) -> int:

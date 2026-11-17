@@ -35,8 +35,9 @@ from ml.evaluation.comprehensive_metrics import (
 from ml.pipelines.injury.build_injury_features import FILL_DEFAULTS
 from ml.utils.eval_metrics import full_evaluation, print_final_summary
 
-# -- Paths ---
+# ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
 IN_PATH = Path("data/features/extended_with_injury.csv")
 OUT_DIR = Path("outputs/experiments/stacked_ensemble_injury")
 
@@ -44,11 +45,16 @@ PREV_SUMMARY = Path("outputs/experiments/stacked_ensemble/summary.json")
 PREV_COMPREHENSIVE = Path("outputs/metrics/comprehensive/stacked_ensemble_comprehensive.json")
 
 N_INNER_FOLDS = 3
+# ---------------------------------------------------------------------------
 
-# -- Base learners (identical to train_stacked_ensemble.py) ---
+# ---------------------------------------------------------------------------
 
 
 def build_lgbm() -> LGBMRegressor:
+    """Higher-capacity LightGBM: 800 trees, 63 leaves.
+
+    The strongest single learner in the ensemble, and the one most able to
+    overfit, which is why a smaller twin sits beside it."""
     return LGBMRegressor(
         n_estimators=800,
         learning_rate=0.05,
@@ -62,6 +68,11 @@ def build_lgbm() -> LGBMRegressor:
 
 
 def build_lgbm_v2() -> LGBMRegressor:
+    """Lower-capacity LightGBM: fewer, shallower trees, slower learning.
+
+    Same algorithm as build_lgbm at a different capacity, so the two make
+    different mistakes on the same rows. A different seed as well, so they
+    do not even bag identically."""
     return LGBMRegressor(
         n_estimators=600,
         learning_rate=0.03,
@@ -75,6 +86,10 @@ def build_lgbm_v2() -> LGBMRegressor:
 
 
 def build_xgboost() -> XGBRegressor:
+    """XGBoost, which grows trees depth-wise where LightGBM grows leaf-wise.
+
+    The growth strategy is the point: it reaches a different split order on
+    the same data, which is where the diversity comes from."""
     return XGBRegressor(
         n_estimators=800,
         learning_rate=0.05,
@@ -88,6 +103,10 @@ def build_xgboost() -> XGBRegressor:
 
 
 def build_rf() -> RandomForestRegressor:
+    """Random forest: bagging rather than boosting.
+
+    The only learner here that does not fit its predecessors' residuals, so
+    its errors are the least correlated with the rest."""
     return RandomForestRegressor(
         n_estimators=200,
         max_depth=12,
@@ -99,10 +118,19 @@ def build_rf() -> RandomForestRegressor:
 
 
 def build_ridge() -> Ridge:
+    """Ridge regression, for the relationships that really are linear.
+
+    Weak alone on this target, but it is the only member that cannot carve
+    the feature space into boxes, and the inverse-MAE weighting gives it the
+    small share that earns."""
     return Ridge(alpha=1.0, random_state=42)
 
 
 def build_played_classifier() -> LGBMClassifier:
+    """P(points > 0), which on this target is P(the player appears).
+
+    The target is 59.8% zeros, so a model of whether a player features at all
+    is a different question from how many points they score."""
     return LGBMClassifier(
         n_estimators=500,
         learning_rate=0.05,
@@ -115,10 +143,11 @@ def build_played_classifier() -> LGBMClassifier:
     )
 
 
-# -- Data helpers ---
+# ---------------------------------------------------------------------------
 
 
 def prepare_xy(df: pd.DataFrame):
+    """Features and target, with the identifier and target columns dropped."""
     y = df[TARGET_COL].values
     drop = set([TARGET_COL] + DROP_COLS)
     X = df.drop(columns=[c for c in drop if c in df.columns])
@@ -150,7 +179,7 @@ def to_numeric(X: pd.DataFrame) -> pd.DataFrame:
     return X_num
 
 
-# -- Stacked ensemble ---
+# ---------------------------------------------------------------------------
 
 
 class StackedEnsembleInjury:
@@ -341,10 +370,11 @@ class StackedEnsembleInjury:
         return stacked_pred, base_preds
 
 
-# -- Evaluation ---
+# ---------------------------------------------------------------------------
 
 
 def evaluate_all_predictions(y_true: np.ndarray, y_train: np.ndarray, predictions: dict) -> dict:
+    """Score every combination rule over the holdout."""
     results = {}
     for name, preds in predictions.items():
         eval_result = full_evaluation(y_true, preds, y_train)
@@ -357,6 +387,7 @@ def evaluate_all_predictions(y_true: np.ndarray, y_train: np.ndarray, prediction
 
 
 def load_previous_results() -> tuple[dict | None, dict | None]:
+    """The matching run without injury features, for the comparison below."""
     prev_summary = None
     prev_comprehensive = None
     if PREV_SUMMARY.exists():
@@ -367,6 +398,7 @@ def load_previous_results() -> tuple[dict | None, dict | None]:
 
 
 def print_head_to_head(new_results: dict, new_comprehensive: dict, prev_summary: dict, prev_comprehensive: dict):
+    """Print this run against the no-injury run, metric by metric."""
     print("\n")
     print("=" * 70)
     print("  HEAD-TO-HEAD: Stacked Ensemble WITHOUT vs WITH Injury Features")
@@ -487,10 +519,11 @@ def print_head_to_head(new_results: dict, new_comprehensive: dict, prev_summary:
     print(f"  {'=' * 70}\n")
 
 
-# -- Main ---
+# ---------------------------------------------------------------------------
 
 
 def run():
+    """Train the stacked ensemble with injury features added, and compare."""
     print("=" * 70)
     print("STACKED ENSEMBLE WITH INJURY FEATURES")
     print("=" * 70)

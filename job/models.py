@@ -40,6 +40,7 @@ with contextlib.suppress(ImportError):
     _MODEL_CLASSES.append(StackedEnsembleInjury)
 
 
+# ---------------------------------------------------------------------------
 MODEL_REGISTRY = {
     "config_d": (
         "Stats + injuries + news",
@@ -80,11 +81,9 @@ DEFAULT_MODEL_ID = "config_d"
 # The other four each demonstrate something distinct: lowest MAE but poor ranking,
 # the original baseline, a different architecture, and a failed experiment.
 #
-# This list used to exclude the ablation configs because the API held every model
-# in memory for the life of the process, and each stacked ensemble costs ~120MB.
-# The API no longer loads models at all — the job loads them once, predicts, and
-# exits — so that constraint is gone. What publishing one now costs is ~45MB in
-# the release tarball and ~38KB gzipped per snapshot.
+# Publishing one costs ~45MB in the release tarball and ~38KB gzipped per
+# snapshot. Nothing holds them in memory: the job loads a model, predicts,
+# and exits.
 #
 # catboost_twohead is left out: 46MB to duplicate an architecture already shown.
 SHOWCASE_MODELS = (
@@ -98,6 +97,7 @@ SHOWCASE_MODELS = (
     "twohead",
     "position_specific",
 )
+# ---------------------------------------------------------------------------
 
 
 def patch_unpickle_names() -> None:

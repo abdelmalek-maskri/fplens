@@ -54,7 +54,7 @@ Individual method MAEs:
 3. Momentum features (roll3 - roll10) detect form changes
 4. Availability features (consecutive_starts, minutes_trend, games_since_start) improve played prediction
 
-**Note**: `train_stacked_ensemble.py` was removed to reduce codebase complexity. The Extended Ensemble in `train_extended_ensemble.py` supersedes it with identical architecture but better features.
+**Note**: "Extended Ensemble" is what this document calls the stacked ensemble trained on the extended feature set. The script is `ml/pipelines/train/train_stacked_ensemble.py`, and the feature set it reads is built by `ml/pipelines/features/build_extended_features.py`.
 
 ---
 

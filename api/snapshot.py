@@ -22,6 +22,7 @@ SNAPSHOT_DIR = Path(os.environ.get("FPLENS_SNAPSHOT_DIR", "app/public/data"))
 
 
 def _read(name: str):
+    """Read and parse one snapshot file."""
     path = SNAPSHOT_DIR / name
     if not path.exists():
         raise HTTPException(
@@ -32,6 +33,7 @@ def _read(name: str):
 
 
 def load_manifest() -> dict:
+    """The snapshot manifest, read fresh on each call."""
     return _read("manifest.json")
 
 

@@ -13,13 +13,18 @@ from ml.config.eval_config import CAT_COLS, CV_SEASONS, DROP_COLS, HOLDOUT_SEASO
 from ml.evaluation.comprehensive_metrics import ComprehensiveEvaluator
 from ml.utils.eval_metrics import full_evaluation, print_final_summary
 
+# ---------------------------------------------------------------------------
 IN_PATH = Path("data/features/extended_features.csv")
 OUT_DIR = Path("outputs/experiments/position_specific")
 POSITIONS = ["GK", "DEF", "MID", "FWD"]
+# ---------------------------------------------------------------------------
 
 
 def build_lgbm() -> LGBMRegressor:
-    # more conservative than baseline: each position subset is ~1/4 of the data
+    """A smaller LightGBM, sized for a quarter of the rows."""
+    # Smaller and more regularised than the shared model, because each
+    # position trains on roughly a quarter of the rows and the baseline
+    # settings overfit at that size.
     return LGBMRegressor(
         n_estimators=600,
         learning_rate=0.03,
@@ -33,6 +38,7 @@ def build_lgbm() -> LGBMRegressor:
 
 
 def prepare_xy(df: pd.DataFrame):
+    """Features and target, with identifier and target columns dropped."""
     y = df[TARGET_COL].values
     drop = set([TARGET_COL] + DROP_COLS)
     X = df.drop(columns=[c for c in drop if c in df.columns])
@@ -71,6 +77,12 @@ class PositionSpecificLGBMModel:
 
 
 def run():
+    """Train one model per position and score them as a single ensemble.
+
+    The idea is that what predicts a goalkeeper's points has little to do
+    with what predicts a forward's. It ranks last of the nine, because the
+    shared model learns those differences anyway from the position feature
+    and gets four times the data to do it."""
     print("=" * 60)
     print("POSITION-SPECIFIC LIGHTGBM")
     print("=" * 60)

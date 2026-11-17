@@ -1,4 +1,3 @@
-# ml/evaluation/comprehensive_metrics.py
 """
 Comprehensive evaluation beyond MAE/RMSE: stratified performance,
 calibration, captain pick accuracy, and per-GW stability.
@@ -63,7 +62,8 @@ class StratifiedMetrics:
     mae_def: float | None = None
     mae_mid: float | None = None
     mae_fwd: float | None = None
-    # players scoring >= 5 pts (the ones that matter for captain/transfer decisions)
+    # Error on players who returned 5 or more. Overall MAE is dominated by
+    # the 60% of rows that score zero, where predicting low always wins.
     mae_high_return: float | None = None
     n_high_return: int = 0
 
@@ -103,6 +103,10 @@ class StabilityMetrics:
 
 
 def compute_stratified_metrics(y_true, y_pred, positions=None) -> StratifiedMetrics:
+    """Error broken down by position and by how much a player actually scored.
+
+    An overall figure hides the thing that matters: a model can be accurate
+    on the 60% who score nothing and useless on the players worth owning."""
     mae = mean_absolute_error(y_true, y_pred)
     rmse = np.sqrt(mean_squared_error(y_true, y_pred))
 
@@ -139,6 +143,10 @@ def compute_stratified_metrics(y_true, y_pred, positions=None) -> StratifiedMetr
 
 
 def compute_calibration_metrics(y_true, y_pred, n_bins=10) -> CalibrationMetrics:
+    """Whether a predicted 6 really does average 6 in practice.
+
+    Ranking well and being calibrated are different properties. A model can
+    order players perfectly and still predict every score two points low."""
     correlation = float(np.corrcoef(y_true, y_pred)[0, 1])
     rho = float(stats.spearmanr(y_true, y_pred)[0])
 
@@ -197,6 +205,7 @@ def compute_business_metrics(y_true, y_pred, gameweek_ids) -> BusinessMetrics:
 
 
 def compute_stability_metrics(cv_results, mae_col="mae", season_col="test_season") -> StabilityMetrics:
+    """How much the model's accuracy moves from gameweek to gameweek."""
     vals = cv_results[mae_col].values
     return StabilityMetrics(
         mae_mean=float(np.mean(vals)),
@@ -277,6 +286,7 @@ class ComprehensiveEvaluator:
 
 
 def _prepare_xy(df):
+    """Features and target, with identifier and target columns dropped."""
     y = df[TARGET_COL].values
     drop = set([TARGET_COL] + DROP_COLS)
     X = df.drop(columns=[c for c in drop if c in df.columns])
@@ -284,6 +294,7 @@ def _prepare_xy(df):
 
 
 def _load_holdout(features_path: Path):
+    """The holdout season, with categoricals cast as the models expect."""
     df = pd.read_csv(features_path, low_memory=False)
     for c in CAT_COLS:
         if c in df.columns:
@@ -335,6 +346,7 @@ def _predict(model, X, positions=None):
 
 
 def run_from_cli() -> None:
+    """Score one model from the command line and write its metrics file."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--model-path", required=True)
     parser.add_argument("--features-path", default="data/features/extended_features.csv")

@@ -32,13 +32,19 @@ from ml.utils.eval_metrics import (
     print_final_summary,
 )
 
+# ---------------------------------------------------------------------------
 IN_PATH = Path("data/features/extended_features.csv")
 OUT_DIR = Path("outputs/experiments/stacked_ensemble")
 
 N_INNER_FOLDS = 3
+# ---------------------------------------------------------------------------
 
 
 def build_lgbm() -> LGBMRegressor:
+    """Higher-capacity LightGBM: 800 trees, 63 leaves.
+
+    The strongest single learner in the ensemble, and the one most able to
+    overfit, which is why a smaller twin sits beside it."""
     return LGBMRegressor(
         n_estimators=800,
         learning_rate=0.05,
@@ -52,6 +58,11 @@ def build_lgbm() -> LGBMRegressor:
 
 
 def build_lgbm_v2() -> LGBMRegressor:
+    """Lower-capacity LightGBM: fewer, shallower trees, slower learning.
+
+    Same algorithm as build_lgbm at a different capacity, so the two make
+    different mistakes on the same rows. A different seed as well, so they
+    do not even bag identically."""
     return LGBMRegressor(
         n_estimators=600,
         learning_rate=0.03,
@@ -65,6 +76,10 @@ def build_lgbm_v2() -> LGBMRegressor:
 
 
 def build_xgboost() -> "XGBRegressor":
+    """XGBoost, which grows trees depth-wise where LightGBM grows leaf-wise.
+
+    The growth strategy is the point: it reaches a different split order on
+    the same data, which is where the diversity comes from."""
     return XGBRegressor(
         n_estimators=800,
         learning_rate=0.05,
@@ -78,6 +93,10 @@ def build_xgboost() -> "XGBRegressor":
 
 
 def build_rf() -> RandomForestRegressor:
+    """Random forest: bagging rather than boosting.
+
+    The only learner here that does not fit its predecessors' residuals, so
+    its errors are the least correlated with the rest."""
     return RandomForestRegressor(
         n_estimators=200,
         max_depth=12,
@@ -89,10 +108,19 @@ def build_rf() -> RandomForestRegressor:
 
 
 def build_ridge() -> Ridge:
+    """Ridge regression, for the relationships that really are linear.
+
+    Weak alone on this target, but it is the only member that cannot carve
+    the feature space into boxes, and the inverse-MAE weighting gives it the
+    small share that earns."""
     return Ridge(alpha=1.0, random_state=42)
 
 
 def build_played_classifier() -> LGBMClassifier:
+    """P(points > 0), which on this target is P(the player appears).
+
+    The target is 59.8% zeros, so a model of whether a player features at all
+    is a different question from how many points they score."""
     return LGBMClassifier(
         n_estimators=500,
         learning_rate=0.05,
@@ -106,6 +134,7 @@ def build_played_classifier() -> LGBMClassifier:
 
 
 def prepare_xy(df: pd.DataFrame):
+    """Features and target, with the identifier and target columns dropped."""
     y = df[TARGET_COL].values
     drop = set([TARGET_COL] + DROP_COLS)
     X = df.drop(columns=[c for c in drop if c in df.columns])
@@ -113,6 +142,10 @@ def prepare_xy(df: pd.DataFrame):
 
 
 def to_numeric(X: pd.DataFrame) -> pd.DataFrame:
+    """Categoricals as integer codes, for the learners that cannot take them.
+
+    LightGBM handles pandas categoricals directly; XGBoost, the forest and
+    Ridge do not."""
     X_num = X.copy()
     for c in CAT_COLS:
         if c in X_num.columns and hasattr(X_num[c], "cat"):
@@ -233,6 +266,13 @@ def evaluate_all_predictions(y_true: np.ndarray, y_train: np.ndarray, prediction
 
 
 def run():
+    """Train six diverse base learners and combine them by inverse-MAE weight.
+
+    Out-of-fold predictions come from GroupKFold(3) grouped by season, which
+    prevents within-season leakage but does not enforce temporal order: a
+    fold can train on later seasons to predict earlier ones. The weights land
+    near-uniform at 0.163 to 0.173 and the holdout is unaffected, so the
+    impact here is small, but it is a real caveat on the OOF numbers."""
     print("=" * 60)
     print("EXTENDED FEATURES ENSEMBLE TRAINING")
     print("=" * 60)

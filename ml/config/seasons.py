@@ -1,4 +1,9 @@
-# ml/config/seasons.py
+"""Every season the project has data for, oldest first.
+
+Order matters: the cross-validation folds are chronological, so this list is
+read as a timeline rather than a set. eval_config.py decides which of these
+are trained on, held out, or skipped as incomplete.
+"""
 
 SEASONS_ALL = [
     "2016-17",

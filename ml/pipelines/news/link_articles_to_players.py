@@ -12,6 +12,7 @@ import pandas as pd
 import spacy
 from transformers import pipeline as hf_pipeline
 
+# ---------------------------------------------------------------------------
 RAW_NEWS_DIR = Path("data/raw/news")
 FPL_DATA_PATH = Path("data/features/extended_features.csv")
 OUTPUT_DIR = Path("data/processed/news")
@@ -38,6 +39,7 @@ NEWS_SEASONS = [
     "2023-24",
     "2024-25",
 ]
+# ---------------------------------------------------------------------------
 
 
 # Name matching

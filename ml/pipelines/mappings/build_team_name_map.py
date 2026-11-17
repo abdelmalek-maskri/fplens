@@ -1,3 +1,11 @@
+"""Build a club id to club name lookup for one season.
+
+FPL club ids are assigned alphabetically each season and shift whenever a
+club is promoted or relegated, so id 3 is a different club year to year.
+Every season therefore needs its own map, and the Understat join needs the
+name rather than the id.
+"""
+
 from pathlib import Path
 
 import pandas as pd
@@ -5,16 +13,21 @@ import pandas as pd
 from ml.config.seasons import SEASONS_ALL
 from ml.utils.io import find_latest_snapshot, safe_read_csv
 
+# ---------------------------------------------------------------------------
 SNAPSHOT_ROOT = Path("data/raw/fpl")
 OUT_DIR = Path("data/processed/mappings")
+# ---------------------------------------------------------------------------
 
 
 def _snapshot():
+    """The most recent vaastav archive snapshot on disk."""
     return find_latest_snapshot(SNAPSHOT_ROOT)
 
 
 def norm(s: str) -> str:
-    # normalize team names so matching is more reliable across sources (Understat vs FPL).
+    """Lowercase, collapse spaces, spell out the ampersand."""
+    # Deliberately lighter than ml.utils.name_normalize.norm: this one only
+    # has to make FPL's own spellings consistent with each other.
     s = (s or "").strip().lower()
     s = s.replace("&", "and")
     s = " ".join(s.split())
@@ -22,21 +35,23 @@ def norm(s: str) -> str:
 
 
 def normalize_season(s: str) -> str:
-    # normalize season strings so '2016/17' and '2016-17' match.
+    """Accept 2016/17 or 2016-17 and return 2016-17."""
     return str(s).strip().replace("/", "-")
 
 
 def load_from_master(season: str) -> pd.DataFrame:
-    # returns: DataFrame with columns: team_id, team_name, team_name_norm
-    # or empty DataFrame if season not found (caller will fallback).
+    """Clubs for one season from the archive-wide master list.
 
+    Returns an empty frame when the season is absent, which is the signal
+    for the caller to fall back to that season's own teams.csv.
+    """
     master = _snapshot() / "master_team_list.csv"
     if not master.exists():
         raise FileNotFoundError(f"Missing {master}")
 
     df = safe_read_csv(master)
 
-    # normalize season format to handle both "2016-17" and "2016/17"
+    # The master list has used both separators across the nine seasons.
     df["season_norm"] = df["season"].map(normalize_season)
     season_norm = normalize_season(season)
 
@@ -52,7 +67,6 @@ def load_from_master(season: str) -> pd.DataFrame:
     out = out.dropna(subset=["team_id"]).copy()
     out["team_id"] = out["team_id"].astype(int)
 
-    # Add normalized name for matching
     out["team_name"] = out["team_name"].astype(str)
     out["team_name_norm"] = out["team_name"].map(norm)
 
@@ -60,7 +74,10 @@ def load_from_master(season: str) -> pd.DataFrame:
 
 
 def load_from_teams_csv(season: str) -> pd.DataFrame:
-    # returns: DataFrame with columns: team_id, team_name, team_name_norm
+    """Clubs for one season from that season's own teams.csv.
+
+    The fallback for seasons the master list does not cover.
+    """
     teams_path = _snapshot() / season / "teams.csv"
     if not teams_path.exists():
         raise FileNotFoundError(f"Missing fallback teams.csv: {teams_path}")
@@ -70,7 +87,8 @@ def load_from_teams_csv(season: str) -> pd.DataFrame:
     if "id" not in teams.columns:
         raise ValueError(f"{teams_path} missing 'id'. Columns={list(teams.columns)}")
 
-    # Prefer "name", fallback to "short_name"
+    # Older snapshots publish only short_name, which is three letters but
+    # still normalises to something the Understat map can match.
     name_col = "name" if "name" in teams.columns else ("short_name" if "short_name" in teams.columns else None)
     if name_col is None:
         raise ValueError(
@@ -83,7 +101,6 @@ def load_from_teams_csv(season: str) -> pd.DataFrame:
     out = out.dropna(subset=["team_id"]).copy()
     out["team_id"] = out["team_id"].astype(int)
 
-    # add normalized name for matching
     out["team_name"] = out["team_name"].astype(str)
     out["team_name_norm"] = out["team_name"].map(norm)
 
@@ -91,7 +108,7 @@ def load_from_teams_csv(season: str) -> pd.DataFrame:
 
 
 def run_one(season: str) -> Path:
-    """build team_id -> team_name mapping for a single season"""
+    """Build the club id to name mapping for one season."""
     out = load_from_master(season)
     source = "master_team_list.csv"
 
@@ -109,6 +126,7 @@ def run_one(season: str) -> Path:
 
 
 def main():
+    """Build the club id-to-name mapping for every season."""
     for season in SEASONS_ALL:
         run_one(season)
 

@@ -16,6 +16,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# ---------------------------------------------------------------------------
 GUARDIAN_API_KEY = os.environ.get("GUARDIAN_API_KEY", "test")
 GUARDIAN_ENDPOINT = "https://content.guardianapis.com/search"
 
@@ -45,6 +46,7 @@ _EXCLUDE_PATTERNS = re.compile(
     r")\b",
     re.IGNORECASE,
 )
+# ---------------------------------------------------------------------------
 
 
 def html_to_text(html: str) -> str:

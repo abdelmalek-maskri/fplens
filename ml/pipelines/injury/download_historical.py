@@ -16,6 +16,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+# ---------------------------------------------------------------------------
 REPO_OWNER = "vaastav"
 REPO_NAME = "Fantasy-Premier-League"
 
@@ -34,6 +35,7 @@ SEASONS = [
 OUTPUT_DIR = Path("data/processed/injury")
 SNAPSHOTS_DIR = OUTPUT_DIR / "historical_snapshots"
 _REQUEST_DELAY = 0.5
+# ---------------------------------------------------------------------------
 
 
 def get_commits_for_file(season: str, per_page: int = 100) -> list[dict]:
@@ -251,6 +253,7 @@ def validate_snapshots(injury_df: pd.DataFrame, mapping_df: pd.DataFrame) -> boo
 
 
 def run() -> None:
+    """Download the historical injury snapshots."""
     print("=" * 60)
     print("HISTORICAL INJURY DATA DOWNLOAD")
     print("=" * 60)

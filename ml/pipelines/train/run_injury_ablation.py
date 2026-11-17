@@ -40,6 +40,7 @@ from ml.pipelines.train.train_stacked_with_injury import (
 from ml.utils.eval_metrics import full_evaluation, print_final_summary
 from ml.utils.statistical_tests import print_comparison
 
+# ---------------------------------------------------------------------------
 OUT_DIR = Path("outputs/experiments/ablation")
 
 CONFIGS = {
@@ -60,6 +61,7 @@ CONFIGS = {
         "data": Path("data/features/extended_with_injury_and_news.csv"),
     },
 }
+# ---------------------------------------------------------------------------
 
 
 def train_config(config_key: str, config: dict, out_dir: Path) -> dict:
@@ -243,10 +245,9 @@ def train_config(config_key: str, config: dict, out_dir: Path) -> dict:
     }
 
 
-# Cross-config comparison
-
-
+# ---------------------------------------------------------------------------
 def print_comparison_table(results: dict) -> None:
+    """Print the A/B/C/D configs side by side."""
     configs = sorted(results.keys())
 
     print(f"\n\n{'=' * 70}")
@@ -379,6 +380,7 @@ def print_comparison_table(results: dict) -> None:
 
 
 def print_statistical_tests(results: dict) -> dict:
+    """Print whether the differences above are larger than noise."""
     configs = sorted(results.keys())
     if len(configs) < 2:
         print("\nNeed at least 2 configs for statistical tests.")
@@ -450,6 +452,7 @@ def print_statistical_tests(results: dict) -> dict:
 
 
 def run(config_keys: list[str] | None = None) -> None:
+    """Train with and without injury features and compare the two."""
     if config_keys is None:
         config_keys = [k for k in CONFIGS if CONFIGS[k]["data"].exists()]
 

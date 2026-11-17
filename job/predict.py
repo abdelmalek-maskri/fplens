@@ -23,6 +23,7 @@ import pandas as pd
 from job.fetch_live_data import fetch_current_gw_data
 from ml.config.eval_config import CAT_COLS, DROP_COLS, TARGET_COL
 
+# ---------------------------------------------------------------------------
 # Default paths
 DEFAULT_MODEL = Path("outputs/experiments/ablation/config_D/model.joblib")
 OUTPUT_DIR = Path("data/inference")
@@ -30,11 +31,15 @@ OUTPUT_DIR = Path("data/inference")
 # Prediction constants
 CAPTAIN_OWNERSHIP_FACTOR = 0.15  # captain_pct ≈ selected_by_percent × factor
 BUDGET_THRESHOLD = 7.0  # max price (£m) for "budget pick" summary
+# ---------------------------------------------------------------------------
 
 
 def load_model(model_path: Path = DEFAULT_MODEL):
-    # Load a trained model from the specified path. Supports both plain LightGBM and StackedEnsemble models.
+    """Unpickle a trained model, plain LightGBM or custom ensemble alike.
 
+    The custom classes were pickled under __main__ during training, so
+    job.models.patch_unpickle_names must have run before this is called.
+    """
     print(f"Loading model from {model_path}...")
     model = joblib.load(model_path)
     print(f"Model loaded: {type(model).__name__}")
@@ -42,8 +47,13 @@ def load_model(model_path: Path = DEFAULT_MODEL):
 
 
 def get_model_features(model) -> list[str]:
-    # Extract the feature list from a trained model object.
-    # Stacked ensemble: dig into the first LightGBM base learner
+    """The exact feature names a model expects, in the order it expects them.
+
+    Read off the model rather than from config, because a mismatch between the
+    two is silent: the model scores whatever columns it is handed.
+    """
+    # A stacked ensemble has no feature list of its own, so the first LightGBM
+    # base learner is asked instead.
     if hasattr(model, "base_models") and isinstance(model.base_models, dict):
         for name in getattr(model, "base_names", model.base_models.keys()):
             m, ltype = model.base_models[name]
@@ -123,6 +133,7 @@ PRICE_SCALE = 10.0
 
 
 def _to_training_units(X: pd.DataFrame) -> pd.DataFrame:
+    """Convert live API values into the units the models were trained on."""
     if "value" in X.columns:
         X = X.copy()
         X["value"] = pd.to_numeric(X["value"], errors="coerce") * PRICE_SCALE
@@ -163,8 +174,7 @@ def predict(
     X: pd.DataFrame,
     player_info: pd.DataFrame,
 ) -> pd.DataFrame:
-
-    # Generate predictions and create enriched output dataframe.
+    """Score every player and return them with their names and clubs attached."""
     print("Generating predictions...")
 
     # CatBoost needs string categories, not numeric codes
@@ -292,8 +302,12 @@ FEATURE_DISPLAY_NAMES = {
 
 
 def _get_lgbm_from_model(model):
-    """Extract the primary LightGBM model for SHAP explainer."""
-    # Stacked ensemble: base_models is {name: (model, type_str)}
+    """The LightGBM inside a model, whatever wrapper it arrived in.
+
+    SHAP's TreeExplainer needs a tree model, and four of the ten registry
+    entries are composites that hold one somewhere.
+    """
+    # stacked ensemble: base_models is {name: (model, type_str)}
     if hasattr(model, "base_models") and isinstance(model.base_models, dict):
         base_models = model.base_models
         if not base_models:
@@ -302,10 +316,12 @@ def _get_lgbm_from_model(model):
             return base_models["lgbm"][0]
         first_name = list(base_models.keys())[0]
         return base_models[first_name][0]
-    # TwoHead / CatBoostTwoHead: use the regressor
+
+    # two-head: the regressor is the tree half
     if hasattr(model, "regressor"):
         return model.regressor
-    # PositionSpecific: use the first position model (MID has most data)
+
+    # position-specific: MID has the most data, so it explains best
     if hasattr(model, "models") and isinstance(model.models, dict):
         for pos in ("MID", "DEF", "FWD", "GK"):
             if pos in model.models:
@@ -377,10 +393,13 @@ def _feature_value(v):
 
 
 def get_top_picks(predictions: pd.DataFrame, n: int = 15) -> pd.DataFrame:
-    # Get top N picks by position for team selection.
+    """The best 15 by position: a legal FPL squad shape, ignoring budget.
+
+    Unlike solve_best_squad this respects no budget and no three-per-club cap,
+    so it is a shortlist rather than a buyable squad.
+    """
     picks = []
 
-    # Get best by position
     for pos, count in [("GK", 2), ("DEF", 5), ("MID", 5), ("FWD", 3)]:
         pos_df = predictions[predictions["position"] == pos].head(count)
         picks.append(pos_df)
@@ -398,7 +417,11 @@ def run(
     include_history: bool = True,
     include_understat: bool = True,
 ):
-    # Main inference pipeline
+    """Fetch live data, build features, score every player.
+
+    Standalone entry point for running inference by hand. job/snapshot.py
+    calls the stages separately so it can run several models over one fetch.
+    """
     print("=" * 60)
     print("FPL PREDICTION INFERENCE")
     print("=" * 60)

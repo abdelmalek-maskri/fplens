@@ -48,55 +48,36 @@ class FPLAPIError(RuntimeError):
         self.url = url
 
 
-# (connect, read). A connection that never establishes is a different failure
-# from a server that accepts and then goes quiet, and the second needs the
-# longer budget because bootstrap-static is ~1.8MB.
-#
-# Without this, a hung connection holds its caller forever. In the API that
-# caller is one of 40 anyio threadpool threads, so 40 of them stall every route
-# in the process, /api/health included, and the service looks healthy while
-# answering nothing.
+# ---------------------------------------------------------------------------
+# timeouts are (connect, read). A connection that never establishes is a
+# different failure from a server that accepts and then goes quiet, and the
+# second needs the longer budget because bootstrap-static is ~1.8MB. Without
+# them a hung connection holds its caller forever, and in the API that caller
+# is one of 40 anyio threadpool threads: 40 stalls wedge every route in the
+# process, /api/health included, while the service still looks healthy.
 FPL_TIMEOUT = (5, 20)
-
-# FPL API endpoints. Overridable so a load test can point at a local stand-in
-# rather than aiming its traffic at a third party we do not own.
 FPL_BASE_URL = os.environ.get("FPL_BASE_URL", "https://fantasy.premierleague.com/api")
 BOOTSTRAP_URL = f"{FPL_BASE_URL}/bootstrap-static/"
 FIXTURES_URL = f"{FPL_BASE_URL}/fixtures/"
 
-# A snapshot makes roughly 800 of these. Without a retry, one transient 503
-# zero-fills that player for the day, and nothing distinguishes a player the
-# API would not serve from one who genuinely has no history.
-#
-# Only transient statuses. A 404 is an answer, not a failure, and retrying it
-# would add seconds to the API's "FPL ID not found" response for nothing.
+# A snapshot makes ~800 calls, and one transient 503 zero-fills that player for
+# the day with nothing to distinguish it from a player who has no history. Only
+# transient statuses retry: a 404 is an answer. urllib3 obeys Retry-After up to
+# six hours inside time.sleep(), which no request timeout interrupts, so the
+# cap is what keeps the worst case a number rather than whatever FPL asks for.
+# The interactive profile does not retry at all, because its callers are the
+# request threads the timeout comment above is about.
 RETRY_STATUSES = (429, 500, 502, 503, 504)
-
-# Three attempts after the first, waiting 0.5s, 1s, 2s.
-RETRY_TOTAL = 3
+RETRY_TOTAL = 3  # waits 0.5s, 1s, 2s
 RETRY_BACKOFF = 0.5
-
-# Without jitter, twenty workers that fail together wait the identical 0.5s and
-# retry in the same instant, rebuilding the spike that caused the failure.
-RETRY_JITTER = 0.3
-
-# urllib3 obeys Retry-After, and its own cap on that is six hours: a 429 saying
-# "Retry-After: 3600" sleeps for an hour inside time.sleep(), which no request
-# timeout interrupts because the timeouts are per attempt. Capping the wait is
-# what keeps the worst case a number rather than whatever a third party asks
-# for. Three retries at this cap bounds all waiting for one call to 9 seconds.
-RETRY_AFTER_MAX = 3
-
-# The API does not retry at all. Its callers are anyio threadpool threads, and
-# the comment above FPL_TIMEOUT is about what happens when those stall: 40 of
-# them wedge every route in the process. Multiplying each squad lookup by four
-# attempts would rebuild that, so retries stay where the ~800 calls are and
-# where nobody is waiting on the result.
+RETRY_JITTER = 0.3  # or twenty workers retry in the same instant
+RETRY_AFTER_MAX = 3  # bounds all waiting for one call to 9 seconds
 INTERACTIVE_RETRY_TOTAL = 0
 
-# One session per thread per profile. requests.Session is not documented as
-# thread-safe, and fetch_all_player_histories runs twenty at once.
+# requests.Session is not documented as thread-safe, and
+# fetch_all_player_histories runs twenty at once.
 _thread_local = threading.local()
+# ---------------------------------------------------------------------------
 
 
 def fpl_session(interactive: bool = False) -> requests.Session:
@@ -163,13 +144,12 @@ ROLL_WINDOWS = [3, 5, 10]
 
 
 def get_bootstrap_data(interactive: bool = False) -> dict:
+    """Every player, team and gameweek, in one ~1.8MB response.
 
-    # Fetch bootstrap-static data from FPL API.
-    # Contains: all players, teams, gameweeks, game settings.
-    #
-    # The API calls this with interactive=True. It is behind a 60-minute cache
-    # there, so only one caller ever reaches here, but that caller is a request
-    # thread and must not be made to wait out a retry sequence.
+    The API calls this with interactive=True. It is behind a 60-minute cache
+    there, so only one caller ever reaches here, but that caller is a request
+    thread and must not be made to wait out a retry sequence.
+    """
     print("Fetching FPL bootstrap-static data...")
     response = fpl_session(interactive=interactive).get(BOOTSTRAP_URL, timeout=FPL_TIMEOUT)
 
@@ -210,7 +190,7 @@ def get_current_gameweek(events: list[dict]) -> dict:
 
 
 def get_fixtures_for_gw(gw: int) -> pd.DataFrame:
-    # Fetch fixtures for a specific gameweek.
+    """Fixtures for one gameweek, or an empty frame if FPL will not serve them."""
     response = fpl_session().get(FIXTURES_URL, params={"event": gw}, timeout=FPL_TIMEOUT)
 
     if response.status_code != 200:
@@ -221,7 +201,11 @@ def get_fixtures_for_gw(gw: int) -> pd.DataFrame:
 
 
 def build_team_lookup(teams: list[dict]) -> dict:
-    # Build team ID to name/short_name lookup.
+    """Club id to its names and strength rating.
+
+    Keyed by id because every other FPL response refers to clubs that way,
+    and the ids are reassigned alphabetically each season.
+    """
     return {
         t["id"]: {
             "name": t["name"],
@@ -232,11 +216,16 @@ def build_team_lookup(teams: list[dict]) -> dict:
     }
 
 
-# -- Player History Fetching ---------------------------------------------------
+# ---------------------------------------------------------------------------
 
 
 def fetch_player_history(element_id: int) -> list[dict] | None:
-    # Fetch per-GW history for a single player from /api/element-summary/{id}/
+    """One player's gameweek-by-gameweek history, or None if it cannot be had.
+
+    None rather than an exception because a snapshot makes ~600 of these and
+    one unreachable player should cost that player's rolling features, not
+    the whole run.
+    """
     url = f"{FPL_BASE_URL}/element-summary/{element_id}/"
     try:
         resp = fpl_session().get(url, timeout=10)
@@ -324,7 +313,7 @@ def fetch_and_format_all_histories(
     return {eid: format_player_history(eid, raw_histories.get(eid)) for eid in element_ids}
 
 
-# -- Feature Extraction --------------------------------------------------------
+# ---------------------------------------------------------------------------
 
 
 def extract_player_features(
@@ -342,7 +331,6 @@ def extract_player_features(
     - Injury/availability status
     - Fixture difficulty
     """
-
     rows = []
     # Position mapping (FPL uses 1-4)
     pos_map = {1: "GK", 2: "DEF", 3: "MID", 4: "FWD"}
@@ -425,9 +413,12 @@ def extract_player_features(
 
 
 def add_injury_features(df: pd.DataFrame) -> pd.DataFrame:
+    """Rebuild the injury features the models were trained on, from live status.
 
-    # Add engineered injury features matching the training data format.
-    # These mirror the features from build_injury_features.py.
+    Mirrors ml/pipelines/injury/build_injury_features.py. The two have to agree
+    column for column: a feature named differently here is silently zero-filled
+    at inference, and the model quietly loses it.
+    """
     df = df.copy()
 
     # Status encoding (higher = worse availability)
@@ -491,9 +482,12 @@ def add_injury_features(df: pd.DataFrame) -> pd.DataFrame:
         return 2.0 if len(news_str) > 0 else 0.0
 
     def simple_sentiment(news: str) -> float:
+        """Crude -1 to +1 score for one injury news string."""
         if pd.isna(news) or news == "":
             return 0.0
         news_lower = str(news).lower()
+
+        # word lists
         negative = [
             "injury",
             "injured",
@@ -523,6 +517,8 @@ def add_injury_features(df: pd.DataFrame) -> pd.DataFrame:
             "resumed",
             "minor",
         ]
+
+        # score
         neg_count = sum(1 for word in negative if word in news_lower)
         pos_count = sum(1 for word in positive if word in news_lower)
         total = neg_count + pos_count
@@ -561,12 +557,13 @@ def add_injury_features(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-# -- Rolling Feature Computation -----------------------------------------------
-
-
 def _compute_player_features(history: list[dict]) -> dict:
-    # Compute all rolling/lag/availability features from a player's GW history.
+    """Every lag, rolling and availability feature for one player.
 
+    The inference-time counterpart of build_extended_features.py. That builds
+    them across a whole season with pandas; this builds the same values for a
+    single player from the gameweeks played so far.
+    """
     if not history:
         return {}
 
@@ -578,26 +575,25 @@ def _compute_player_features(history: list[dict]) -> dict:
         values = [float(gw.get(col, 0) or 0) for gw in sorted_gws]
         n = len(values)
 
-        # lag1 = last completed GW
         features[f"{col}_lag1"] = values[-1]
 
-        # rollN = mean of last N completed GWs (min_periods=1)
+        # Short histories use whatever they have rather than returning NaN,
+        # which matches how training built these with min_periods=1.
         for w in ROLL_WINDOWS:
             window = values[-w:] if n >= w else values
             features[f"{col}_roll{w}"] = sum(window) / len(window)
 
-        # season_avg = expanding mean of all completed GWs
         if col in SEASON_AVG_COLS:
             features[f"{col}_season_avg"] = sum(values) / n
 
-    # played_lag1
     features["played_lag1"] = int(features.get("minutes_lag1", 0) > 0)
 
-    # --- Availability features ---
     starts = [int(gw.get("starts", 0) or 0) for gw in sorted_gws]
     minutes_vals = [float(gw.get("minutes", 0) or 0) for gw in sorted_gws]
 
-    # consecutive_starts: count backwards from last GW
+    # Counted backwards from the most recent gameweek, so the run has to be
+    # unbroken up to now. An earlier run of ten starts is worth nothing if
+    # the player was dropped last week.
     consec = 0
     for s in reversed(starts):
         if s == 1:
@@ -606,14 +602,14 @@ def _compute_player_features(history: list[dict]) -> dict:
             break
     features["consecutive_starts"] = consec
 
-    # minutes_trend: (last - first) / max(first, 1) over last 3 GWs
+    # Relative change across the last three gameweeks. max(first, 1) keeps a
+    # player returning from zero minutes from dividing by zero.
     trend_w = minutes_vals[-3:] if len(minutes_vals) >= 3 else minutes_vals
     if len(trend_w) >= 2:
         features["minutes_trend"] = (trend_w[-1] - trend_w[0]) / max(trend_w[0], 1)
     else:
         features["minutes_trend"] = 0.0
 
-    # games_since_start: count backwards until a start
     gss = 0
     for s in reversed(starts):
         if s == 1:
@@ -621,7 +617,7 @@ def _compute_player_features(history: list[dict]) -> dict:
         gss += 1
     features["games_since_start"] = gss
 
-    # --- Momentum features (roll3 - roll10) ---
+    # Recent form minus season-long form. Positive means improving.
     features["points_momentum"] = features.get("total_points_roll3", 0) - features.get("total_points_roll10", 0)
     features["bps_momentum"] = features.get("bps_roll3", 0) - features.get("bps_roll10", 0)
     features["xg_momentum"] = features.get("expected_goals_roll3", 0) - features.get("expected_goals_roll10", 0)
@@ -642,14 +638,15 @@ def _fill_approximate_features(df: pd.DataFrame) -> None:
         else:
             per_game = pd.Series(0, index=df.index)
 
-        # lag1
         lag_col = f"{col}_lag1"
         if lag_col not in df.columns:
             df[lag_col] = per_game
         else:
             df[lag_col] = df[lag_col].fillna(per_game)
 
-        # rollN — for total_points use form (per-game avg), otherwise per_game
+        # FPL publishes a form field that is already a per-game points
+        # average, so it is a closer stand-in for the points roll than a
+        # flat per-game figure. No other column has an equivalent.
         for w in ROLL_WINDOWS:
             roll_col = f"{col}_roll{w}"
             fallback = df["form"] if col == "total_points" and "form" in df.columns else per_game
@@ -658,7 +655,6 @@ def _fill_approximate_features(df: pd.DataFrame) -> None:
             else:
                 df[roll_col] = df[roll_col].fillna(fallback)
 
-        # season_avg
         if col in SEASON_AVG_COLS:
             avg_col = f"{col}_season_avg"
             if avg_col not in df.columns:
@@ -722,7 +718,7 @@ def compute_rolling_features(
     return df
 
 
-# --- Understat enrichment ---
+# ---------------------------------------------------------------------------
 
 US_BASE_COLS = [
     "us_xg",
@@ -1125,7 +1121,9 @@ def add_temporal_injury_features(
         sorted_gws = sorted(history, key=lambda x: x["round"])
         minutes_list = [float(gw.get("minutes", 0) or 0) for gw in sorted_gws]
 
-        # consecutive_gws_out: count backwards where minutes == 0
+        # Approximated from zero-minute gameweeks, because the live API has
+        # no injury history. A rotated player looks the same as an injured
+        # one here, which is why the status flag is a separate feature.
         if current_status == "a":
             consec_out.append(0)
         else:
@@ -1137,7 +1135,6 @@ def add_temporal_injury_features(
                     break
             consec_out.append(c + 1)  # +1 for the upcoming GW
 
-        # gws_since_last_injury: approximate from zero-minute GWs
         if current_status == "i":
             gws_since_inj.append(0)
         else:
@@ -1148,7 +1145,8 @@ def add_temporal_injury_features(
                     break
             gws_since_inj.append(last_zero if last_zero is not None else 38)
 
-        # injury_count_season: count transitions from playing to not playing
+        # Transitions, not zero-minute weeks: a six-week absence is one
+        # injury, and counting weeks would make it look like six.
         episodes = 0
         prev_played = True
         for m in minutes_list:
@@ -1168,7 +1166,7 @@ def add_temporal_injury_features(
     return df
 
 
-# -- Main Fetch Pipeline -------------------------------------------------------
+# ---------------------------------------------------------------------------
 
 
 def fetch_current_gw_data(
@@ -1189,7 +1187,6 @@ def fetch_current_gw_data(
     Returns:
         DataFrame with all players and features for current GW.
     """
-
     # Get bootstrap data
     bootstrap = get_bootstrap_data()
 
@@ -1254,8 +1251,12 @@ def fetch_current_gw_data(
 
 
 def run():
-    # Main entry point - fetch and save live data.
+    """Fetch the current gameweek's data and write it to data/live/.
 
+    Standalone entry point for inspecting what the snapshot would feed the
+    models. job/snapshot.py calls fetch_current_gw_data directly and does not
+    go through here.
+    """
     print("=" * 60)
     print("FETCH LIVE FPL DATA")
     print("=" * 60)
@@ -1306,27 +1307,28 @@ def fetch_fixtures(bootstrap_data: dict | None = None, num_gws: int = 6) -> dict
     if bootstrap_data is None:
         bootstrap_data = get_bootstrap_data()
 
-    # team maps: id -> short_name, id -> full name
+    # Both forms, because the fixture grid is keyed by short name and the
+    # dashboard shows the full one.
     team_short = {t["id"]: t["short_name"] for t in bootstrap_data["teams"]}
     team_full = {t["short_name"]: t["name"] for t in bootstrap_data["teams"]}
 
-    # current GW
     current_event = get_current_gameweek(bootstrap_data["events"])
     current_gw = current_event["id"]
 
-    # target GWs
     target_gws = list(range(current_gw, current_gw + num_gws))
 
-    # fetch all fixtures
     response = fpl_session().get(FIXTURES_URL, timeout=FPL_TIMEOUT)
     if response.status_code != 200:
         raise RuntimeError(f"FPL fixtures API error: {response.status_code}")
     all_fixtures = response.json()
 
-    # filter to target GWs (event != None and in range)
+    # A fixture with no event is unscheduled, usually a postponement waiting
+    # to be rearranged, and belongs to no gameweek yet.
     upcoming = [f for f in all_fixtures if f.get("event") in target_gws and not f.get("finished", False)]
 
-    # build per-team fixture grid
+    # One entry per club per gameweek. A club appears twice in a double
+    # gameweek and not at all in a blank one, which is the whole point of
+    # showing this to a manager.
     fixtures_by_team: dict[str, list] = {short: [] for short in team_short.values()}
 
     for f in upcoming:
@@ -1341,10 +1343,10 @@ def fetch_fixtures(bootstrap_data: dict | None = None, num_gws: int = 6) -> dict
         # present and falls back to a flat list when it is not.
         kickoff = f.get("kickoff_time")
 
-        # home team's fixture
-        # NOTE: FPL API only provides one overall difficulty per team per fixture,
-        # not separate attack/defence ratings. atkFdr = this team's difficulty,
-        # defFdr = opponent's difficulty (used as a proxy for defensive challenge).
+        # FPL publishes one difficulty per team per fixture, not separate
+        # attack and defence ratings. atkFdr is this team's own difficulty;
+        # defFdr borrows the opponent's as a stand-in for how hard the
+        # defensive job is. They are a proxy, not two real ratings.
         fixtures_by_team[home_short].append(
             {
                 "gw": gw,
@@ -1356,7 +1358,6 @@ def fetch_fixtures(bootstrap_data: dict | None = None, num_gws: int = 6) -> dict
             }
         )
 
-        # away team's fixture
         fixtures_by_team[away_short].append(
             {
                 "gw": gw,
@@ -1368,7 +1369,6 @@ def fetch_fixtures(bootstrap_data: dict | None = None, num_gws: int = 6) -> dict
             }
         )
 
-    # sort each team's fixtures by GW
     for team_fixtures in fixtures_by_team.values():
         team_fixtures.sort(key=lambda x: x["gw"])
 
@@ -1383,7 +1383,7 @@ def fetch_fixtures(bootstrap_data: dict | None = None, num_gws: int = 6) -> dict
 
 
 def get_player_fdr(fixtures_by_team: dict, team: str, num_gws: int = 6) -> list[dict]:
-    # Get a player's upcoming fixtures with FDR
+    """A club's next few fixtures with their difficulty ratings."""
     return fixtures_by_team.get(team, [])[:num_gws]
 
 
@@ -1454,25 +1454,23 @@ def fetch_user_team(fpl_id: int, bootstrap: dict | None = None) -> dict:
 
     picks_gw = latest_squad_gw(events)
 
-    # the upcoming GW for predictions
     upcoming_gw_info = get_current_gameweek(events)
     upcoming_gw = upcoming_gw_info["id"]
 
-    # fetch manager entry info
     entry_url = f"{FPL_BASE_URL}/entry/{fpl_id}/"
     resp = fpl_session(interactive=True).get(entry_url, timeout=FPL_TIMEOUT)
     if resp.status_code != 200:
         raise FPLAPIError(resp.status_code, entry_url)
     entry = resp.json()
 
-    # fetch picks for latest finished GW (= user's current squad)
+    # The latest gameweek whose deadline has passed, which is exactly when
+    # FPL makes picks public.
     picks_url = f"{FPL_BASE_URL}/entry/{fpl_id}/event/{picks_gw}/picks/"
     resp = fpl_session(interactive=True).get(picks_url, timeout=FPL_TIMEOUT)
     if resp.status_code != 200:
         raise FPLAPIError(resp.status_code, picks_url)
     picks_data = resp.json()
 
-    # extract pick details
     picks = []
     for p in picks_data["picks"]:
         picks.append(

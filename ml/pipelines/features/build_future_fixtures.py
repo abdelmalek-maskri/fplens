@@ -1,5 +1,3 @@
-# ml/pipelines/features/build_future_fixtures.py
-
 """
 Add future fixture context for multi-horizon forecasting.
 

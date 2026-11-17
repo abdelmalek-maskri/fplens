@@ -1,4 +1,9 @@
-# ml/pipelines/fpl/build_gw_windows.py
+"""Work out the date range each gameweek covers, per season.
+
+A gameweek is a window, not a day: its fixtures can span Friday to Monday,
+and a rearranged match stretches it further. Understat records matches by
+date only, so these windows are what place one in a gameweek.
+"""
 
 from pathlib import Path
 
@@ -7,11 +12,14 @@ import pandas as pd
 from ml.config.seasons import SEASONS_ALL
 from ml.utils.io import find_latest_snapshot, safe_read_csv
 
+# ---------------------------------------------------------------------------
 SNAPSHOT_ROOT = Path("data/raw/fpl")
 OUT_DIR = Path("data/processed/fpl")
+# ---------------------------------------------------------------------------
 
 
 def run_one(season: str) -> Path:
+    """Build one season's gameweek date windows."""
     snap = find_latest_snapshot(SNAPSHOT_ROOT)
 
     gws_dir = snap / season / "gws"
@@ -56,6 +64,7 @@ def run_one(season: str) -> Path:
 
 
 def main() -> None:
+    """Build gameweek date windows for every season."""
     find_latest_snapshot(SNAPSHOT_ROOT)
     for season in SEASONS_ALL:
         run_one(season)

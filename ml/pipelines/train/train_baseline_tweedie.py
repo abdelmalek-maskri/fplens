@@ -1,4 +1,3 @@
-# ml/pipelines/train/train_baseline_tweedie.py
 """Single LightGBM with Tweedie loss (vp=1.5) instead of default MSE."""
 
 import json
@@ -19,11 +18,18 @@ from ml.config.eval_config import (
 from ml.evaluation.comprehensive_metrics import ComprehensiveEvaluator
 from ml.utils.eval_metrics import full_evaluation, print_final_summary
 
+# ---------------------------------------------------------------------------
 IN_PATH = Path("data/features/baseline_features.csv")
 OUT_DIR = Path("outputs/experiments/baseline_tweedie")
+# ---------------------------------------------------------------------------
 
 
 def build_model():
+    """LightGBM with Tweedie loss, for a target that is mostly zeros.
+
+    Tweedie models a distribution with a point mass at zero and a continuous
+    tail, which is the shape of FPL points. It reaches the lowest MAE here
+    and ranks players badly, which is the whole argument for Spearman."""
     return LGBMRegressor(
         objective="tweedie",
         tweedie_variance_power=1.5,
@@ -39,7 +45,12 @@ def build_model():
 
 
 def prepare_xy(df):
-    # Tweedie loss requires y >= 0; FPL points can be negative (red cards, own goals)
+    """Features and target, with the target clipped at zero.
+
+    Tweedie loss is undefined for negative values, and FPL points go negative
+    on a red card or an own goal. Clipping costs the model the difference
+    between -2 and 0, which is rare enough to be worth the loss function.
+    """
     y = df[TARGET_COL].values.clip(min=0)
     drop = set([TARGET_COL] + DROP_COLS)
     X = df.drop(columns=[c for c in drop if c in df.columns])
@@ -47,6 +58,7 @@ def prepare_xy(df):
 
 
 def rolling_season_cv(df, seasons):
+    """Chronological cross-validation: train on past seasons, score the next."""
     rows = []
     for i in range(MIN_TRAIN_SEASONS, len(seasons)):
         test_season = seasons[i]
@@ -80,6 +92,7 @@ def rolling_season_cv(df, seasons):
 
 
 def run():
+    """Train the Tweedie baseline, score it, write model and metrics."""
     print("=" * 60)
     print("BASELINE + TWEEDIE LOSS (LightGBM, vp=1.5)")
     print("=" * 60)

@@ -13,11 +13,13 @@ import pytest
 
 from job.fetch_live_data import RETRY_AFTER_MAX, RETRY_TOTAL, fpl_session
 
+# ---------------------------------------------------------------------------
 # path -> list of statuses to return, one per request, last one repeating.
 SCRIPT: dict[str, list[int]] = {}
 HITS: dict[str, int] = {}
 # path -> Retry-After header value to send with every response.
 RETRY_AFTER: dict[str, str] = {}
+# ---------------------------------------------------------------------------
 
 
 class _Handler(BaseHTTPRequestHandler):

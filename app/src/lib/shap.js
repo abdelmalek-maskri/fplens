@@ -1,6 +1,5 @@
 // One plain sentence per SHAP row, shared by the dashboard table and the player
 // page so the two can never word the same factor differently.
-
 export const num = (v, dp = 1) => (Number.isInteger(v) ? String(v) : Number(v).toFixed(dp));
 
 // One plain sentence per SHAP row. Only the features that show up often get

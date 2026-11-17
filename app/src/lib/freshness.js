@@ -1,14 +1,16 @@
+// --------------------------------------------------------------------------
 // The snapshot job runs once a day, so anything inside a day is normal and
-// anything past it means the numbers on screen are no longer current.
+// anything past it means the numbers on screen are out of date.
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
+// --------------------------------------------------------------------------
 
 /**
  * How current the snapshot is.
  *
- * The sidebar used to show a green dot and the word "Live" unconditionally,
- * which stayed green whether the snapshot was minutes or weeks old. This
- * reads the generated_at the job already ships in manifest.json.
+ * A fixed "Live" badge would say nothing, reading the same whether the
+ * snapshot is minutes or weeks old. This reads the generated_at the job
+ * already ships in manifest.json, so the dot can be honest.
  */
 export function snapshotFreshness(generatedAt, now = Date.now()) {
   if (!generatedAt) return { level: "unknown", label: "No data", detail: null };
