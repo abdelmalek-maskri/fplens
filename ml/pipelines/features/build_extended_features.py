@@ -1,11 +1,13 @@
-# ml/pipelines/features/build_extended_features.py
+"""The full feature set: everything in the baseline, plus four more families.
 
-"""
-adds to baseline features:
-1. Extended time windows: roll10 (10-game form)
-2. Season averages: season_avg (full season context)
-3. Trend features: form momentum indicators
-4. Availability features: consecutive starts, minutes trend
+    Longer windows      roll10, so form is not read off three games alone
+    Season averages     an expanding mean, for where a player sits overall
+    Momentum            short window minus long, which way they are trending
+    Availability        consecutive starts, minutes trend, games since start
+
+Every one of them applies .shift(1) before its window. The roll-3 at GW10
+uses GW 7, 8 and 9, never GW10, because GW10 is part of what is being
+predicted.
 """
 
 from pathlib import Path
@@ -15,6 +17,7 @@ import pandas as pd
 
 from ml.pipelines.features.build_future_fixtures import add_future_fixture_features
 
+# ---------------------------------------------------------------------------
 IN_PATH = Path("data/processed/merged/fpl_with_target.csv")
 OUT_PATH = Path("data/features/extended_features.csv")
 
@@ -35,7 +38,9 @@ BASE_NUM_COLS = [
     "bonus",
 ]
 
-# subset of columns for season averages
+# A subset of BASE_NUM_COLS. Only the stats whose season-long level says
+# something about a player get an expanding mean; the rest would just be a
+# noisier copy of their rolling window.
 SEASON_AVG_COLS = [
     "total_points",
     "minutes",
@@ -46,19 +51,23 @@ SEASON_AVG_COLS = [
     "threat",
     "bps",
 ]
+# ---------------------------------------------------------------------------
 
 
 def add_season_avg_features(df: pd.DataFrame, num_cols: list) -> pd.DataFrame:
-    """add expanding season average features (all games so far this season)."""
+    """Where a player sits across the season so far, not just lately.
+
+    Expanding rather than rolling, so a player with twenty games is measured
+    against all twenty. Grouped by season so last year's form does not leak
+    into this one.
+    """
     print("adding season average features...")
 
-    # group by season and element for expanding mean
     g_season = df.groupby(["season", "element"], sort=False)
 
     new_cols = {}
     for col in num_cols:
         if col in SEASON_AVG_COLS:
-            # expanding mean of all previous games this season
             new_cols[f"{col}_season_avg"] = g_season[col].transform(
                 lambda x: x.shift(1).expanding(min_periods=1).mean()
             )
@@ -70,15 +79,20 @@ def add_season_avg_features(df: pd.DataFrame, num_cols: list) -> pd.DataFrame:
 
 
 def add_availability_features(df: pd.DataFrame, g) -> pd.DataFrame:
-    """add features related to player availability/rotation."""
+    """Whether a player is likely to be on the pitch at all.
+
+    Predicted points are worth nothing if the player is rotated out, and the
+    raw stats cannot tell a benched regular from an injured one.
+    """
     print("adding availability features...")
     new_cols = {}
 
-    # count how many consecutive games the player has started
+    # A long run of starts is the clearest signal that a manager trusts a
+    # player, and it survives a quiet game or two where form does not.
     if "starts" in df.columns:
 
         def count_consecutive(x):
-            """count consecutive 1s (starts) ending at each position"""
+            """How many starts in a row end at each position in the series."""
             result = np.zeros(len(x))
             count = 0
             for i, val in enumerate(x):
@@ -93,7 +107,8 @@ def add_availability_features(df: pd.DataFrame, g) -> pd.DataFrame:
             lambda x: pd.Series(count_consecutive(x.shift(1).fillna(0).values), index=x.index)
         )
 
-    # minutes trend (increasing = more likely to play full 90)
+    # Rising minutes usually means a player is working back into the side,
+    # which the minutes figure alone cannot distinguish from a steady 60.
     if "minutes" in df.columns:
         new_cols["minutes_trend"] = g["minutes"].transform(
             lambda x: (
@@ -103,11 +118,12 @@ def add_availability_features(df: pd.DataFrame, g) -> pd.DataFrame:
             )
         )
 
-    # games since last start (rotation indicator)
+    # The other half of consecutive_starts: how long they have been out of
+    # the side, which is what separates rotation from a lost place.
     if "starts" in df.columns:
 
         def games_since_start(x):
-            """count games since last start"""
+            """How many games since the last start, at each position."""
             result = np.zeros(len(x))
             count = 0
             for i, val in enumerate(x):
@@ -129,19 +145,22 @@ def add_availability_features(df: pd.DataFrame, g) -> pd.DataFrame:
 
 
 def add_form_momentum_features(df: pd.DataFrame, g) -> pd.DataFrame:
-    """add form momentum features (short-term vs long-term form)"""
+    """Which direction a player is heading, not just where they are.
+
+    Short window minus long window. Positive means recent form is better
+    than the season has been, which is the thing a manager is buying.
+    """
     print("adding form momentum features...")
     new_cols = {}
 
-    # form momentum: roll3 - roll10 (positive = improving form)
     if "total_points_roll3" in df.columns and "total_points_roll10" in df.columns:
         new_cols["points_momentum"] = df["total_points_roll3"] - df["total_points_roll10"]
 
-    # BPS momentum (underlying performance)
+    # BPS moves before points do: a player winning bonus-point ranks is
+    # playing well before the goals arrive.
     if "bps_roll3" in df.columns and "bps_roll10" in df.columns:
         new_cols["bps_momentum"] = df["bps_roll3"] - df["bps_roll10"]
 
-    # xG momentum (attacking threat trend)
     if "expected_goals_roll3" in df.columns and "expected_goals_roll10" in df.columns:
         new_cols["xg_momentum"] = df["expected_goals_roll3"] - df["expected_goals_roll10"]
 
@@ -152,17 +171,18 @@ def add_form_momentum_features(df: pd.DataFrame, g) -> pd.DataFrame:
 
 
 def run() -> None:
+    """Build the full feature set the production models train on."""
     print("=" * 60)
     print("Extended Feature Engineering")
     print("=" * 60)
     print("\nloading fpl_with_target...")
     df = pd.read_csv(IN_PATH, low_memory=False)
 
-    # ordering keys
     df["GW"] = pd.to_numeric(df["GW"], errors="coerce")
     df["element"] = pd.to_numeric(df["element"], errors="coerce")
 
-    # stable categoricals
+    # team is numeric IDs up to 2019-20 and club names after, so both halves
+    # are read as str rather than as two different types.
     if "team" in df.columns:
         df["team"] = df["team"].astype(str)
     if "position" in df.columns:
@@ -171,7 +191,8 @@ def run() -> None:
     df = df.sort_values(["season", "element", "GW"]).reset_index(drop=True)
     g = df.groupby(["season", "element"], sort=False)
 
-    # add Understat numeric columns
+    # Picked up by prefix, so a new Understat stat gets lags and rolls
+    # without being listed here too.
     us_cols = [c for c in df.columns if c.startswith("us_")]
     num_cols = []
     for c in BASE_NUM_COLS + us_cols:
@@ -182,12 +203,12 @@ def run() -> None:
     print(f"\nNumeric columns: {len(num_cols)}")
     print("\nbuilding baseline features...")
 
-    # Lag-1 features
     new_cols = {}
     for col in num_cols:
         new_cols[f"{col}_lag1"] = g[col].shift(1)
 
-    # Rolling mean features
+    # shift(1) before the window, never after. Without it the roll-3 at GW10
+    # would include GW10, which is part of what the model is predicting.
     for w in ROLL_WINDOWS:
         for col in num_cols:
             new_cols[f"{col}_roll{w}"] = g[col].transform(
@@ -197,34 +218,36 @@ def run() -> None:
     if new_cols:
         df = pd.concat([df, pd.DataFrame(new_cols, index=df.index)], axis=1)
 
-    # played last GW
+    # Whether they played at all, which a minutes figure cannot say: a
+    # returning starter and a benched regular both show low minutes.
     if "minutes_lag1" in df.columns:
         df["played_lag1"] = (df["minutes_lag1"] > 0).astype(int)
     else:
         df["played_lag1"] = 0
 
-    # ---- Extended features ----
     print("\nbuilding extended features...")
     df = add_season_avg_features(df, num_cols)
     df = add_availability_features(df, g)
     df = add_form_momentum_features(df, g)
 
-    # future fixture features for multi-horizon prediction
+    # Who they face over the next three gameweeks, which is the only thing
+    # the GW+2 and GW+3 models know that the GW+1 model does not.
     print("\nbuilding future fixture features...")
     df = add_future_fixture_features(df)
 
     print("\ncleaning up...")
 
-    # Require at least 1 previous GW
+    # A player's first gameweek of a season has no history, so every lag is
+    # missing and the row would teach the model nothing but its own target.
     before = len(df)
     if "total_points_lag1" in df.columns:
         df = df.dropna(subset=["total_points_lag1"]).copy()
     after = len(df)
 
-    # remove duplicate columns
+    # Upstream merges can leave two columns of the same name, which pandas
+    # tolerates and everything downstream does not.
     df = df.loc[:, ~df.columns.duplicated()].copy()
 
-    # select output columns
     keep = [
         "season",
         "GW",
@@ -242,7 +265,8 @@ def run() -> None:
     ]
     keep = [c for c in keep if c in df.columns]
 
-    # All engineered features
+    # Matched by suffix rather than listed, so adding a feature family above
+    # does not mean remembering to name it again here.
     feature_cols = [
         c
         for c in df.columns
@@ -256,7 +280,6 @@ def run() -> None:
         and c != "played_lag1"
     ]
 
-    # future fixture features for multi-horizon models
     future_fixture_cols = [
         c
         for c in df.columns
@@ -272,7 +295,8 @@ def run() -> None:
     print(f"rows dropped (no lag history): {before - after}")
     print(f"final shape: {out.shape}")
 
-    # summary
+    # Counted by suffix so the printed split reflects what was actually
+    # written, not what this file intended to write.
     baseline_features = len([c for c in out.columns if "_roll3" in c or "_roll5" in c or c.endswith("_lag1")])
     extended_features = len([c for c in out.columns if "_roll10" in c or "_season_avg" in c or "_momentum" in c])
     availability_features = len(

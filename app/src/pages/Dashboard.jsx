@@ -46,8 +46,8 @@ function FilterChip({ active, onClick, children, ...props }) {
 
 const POSITIONS = ["ALL", "GK", "DEF", "MID", "FWD"];
 
-// Every player used to render at once, which put ~670 rows on the page and
-// pushed anything below the table thousands of pixels out of reach.
+// All ~670 players match an empty filter, and a table that long pushes
+// everything below it thousands of pixels out of reach.
 const PAGE_SIZE = 50;
 
 const POS_TAB_UNDERLINE = {

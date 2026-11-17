@@ -39,12 +39,11 @@ from job.solvers import solve_best_squad
 
 logger = logging.getLogger(__name__)
 
+# ---------------------------------------------------------------------------
 # The twelve files this writes are an API, and the frontend is its only client.
 # They ship in the same commit, so there is no window in which to roll one back
 # without the other: a renamed key reaches every visitor at once and renders
-# blank with nothing raised anywhere.
-#
-# Three rules keep that from happening:
+# blank with nothing raised anywhere. Three rules keep that from happening.
 #
 #   1. Add fields. Never rename or remove one. A rename is a delete plus an
 #      add, and the delete is the half that breaks readers.
@@ -56,31 +55,24 @@ logger = logging.getLogger(__name__)
 # Mirrored by SUPPORTED_SCHEMA_VERSION in app/src/lib/api.js. Bump both.
 SCHEMA_VERSION = 1
 
+# paths
 DEFAULT_OUT = Path("app/public/data")
-
 OUTPUTS = Path("outputs")
 SHAP_IMPORTANCE_PATH = OUTPUTS / "evaluation/shap/config_D/global_importance.csv"
 
-# The API capped this at 10 and the UI asks for 6. Writing the maximum lets the
-# frontend slice to whatever it wants from one file.
-FIXTURE_GWS = 10
+# what gets written
+# News is deliberately absent. The Guardian's free tier forbids retaining
+# content beyond 24 hours and this snapshot is committed, so headlines would be
+# kept permanently in git history; /api/news serves it live instead. The
+# model's news features are unaffected, being derived aggregates built inside
+# fetch_current_gw_data rather than article text.
+FIXTURE_GWS = 10  # the UI asks for 6; writing the max lets it slice one file
+MULTI_GW_HORIZON = 3  # GW+2 and GW+3 are the only horizons with trained models
+SQUAD_BUDGET = 100.0  # fixed, so the optimal squad is precomputable
 
-# News is deliberately not written here. The Guardian's free tier forbids
-# retaining content beyond 24 hours and this snapshot is committed, so headlines
-# would be kept permanently in git history. /api/news serves it live instead.
-# The model's news features are unaffected: those are derived aggregates built
-# inside fetch_current_gw_data, not article text.
-
-# GW+2 and GW+3 are the only horizons with trained models.
-MULTI_GW_HORIZON = 3
-
-# The squad budget. Fixed, so the optimal squad is the same for everyone and can
-# be precomputed rather than solved per request.
-SQUAD_BUDGET = 100.0
-
-# Appended to rather than overwritten: this is the record of what was predicted
-# before the gameweek was played, which is the only way to score the model on
-# real outcomes later. Nothing else in the project keeps it.
+# Appended to rather than overwritten: the record of what was predicted before
+# the gameweek was played, which is the only way to score the model on real
+# outcomes later. Nothing else in the project keeps it.
 PREDICTION_LOG = Path("data/predictions_log.csv")
 XI_LOG = Path("data/xi_log.csv")
 PLAYERS_LOG = Path("data/players_log.csv")
@@ -135,6 +127,7 @@ PLAYER_INFO_COLS = [
     "clean_sheets",
     "goals_conceded",
 ]
+# ---------------------------------------------------------------------------
 
 
 def _clean(value):
@@ -147,10 +140,12 @@ def _clean(value):
 
 
 def _records(df: pd.DataFrame) -> list[dict]:
+    """A DataFrame as a list of plain dicts, ready for json.dumps."""
     return [{k: _clean(v) for k, v in row.items()} for row in df.to_dict(orient="records")]
 
 
 def _write_json(path: Path, payload) -> None:
+    """Write JSON compactly, with no spaces between separators."""
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, separators=(",", ":")), encoding="utf-8")
 
@@ -530,6 +525,7 @@ def build(
 
 
 def main() -> None:
+    """Parse arguments and build the snapshot."""
     parser = argparse.ArgumentParser(description="Build the JSON snapshot the website reads.")
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT, help=f"output directory (default: {DEFAULT_OUT})")
     parser.add_argument(

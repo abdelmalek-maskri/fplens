@@ -8,10 +8,12 @@ exactly what happened when solvers.py moved here still importing fastapi.
 import ast
 from pathlib import Path
 
+# ---------------------------------------------------------------------------
 JOB = Path(__file__).resolve().parent.parent
 
 # Installed for serving, not for the job. requirements-job.txt has none of these.
 SERVING_ONLY = {"fastapi", "starlette", "uvicorn"}
+# ---------------------------------------------------------------------------
 
 
 def _imported_modules(path: Path) -> set[str]:

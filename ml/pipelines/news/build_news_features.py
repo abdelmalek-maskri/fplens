@@ -17,6 +17,7 @@ from pathlib import Path
 
 import pandas as pd
 
+# ---------------------------------------------------------------------------
 LINKS_PATH = Path("data/processed/news/article_player_links.csv")
 MAPPINGS_DIR = Path("data/processed/mappings")
 FPL_DATA_PATH = Path("data/features/extended_features.csv")
@@ -41,6 +42,7 @@ NEWS_FEATURE_COLS = [
     "news_sentiment_neg",
     "news_injury_context",
 ]
+# ---------------------------------------------------------------------------
 
 
 def compute_gw_boundaries(season: str) -> pd.DataFrame:

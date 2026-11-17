@@ -1,5 +1,8 @@
-# Tests for job/news.py
-# Covers: _is_pl_relevant, _build_player_lookup, _link_articles_to_players, _compute_sentiment
+"""Guardian article to player linking, and the sentiment fallback.
+
+The linking is where the false positives live: a bare surname belongs to
+several players, and a one-word body match is almost always someone else.
+"""
 
 from job.news import (
     _build_player_lookup,

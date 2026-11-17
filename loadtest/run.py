@@ -16,11 +16,20 @@ import time
 
 import httpx
 
+# ---------------------------------------------------------------------------
+# Both local on purpose. Pointing API at a deployed instance is fine; pointing
+# FAKE_FPL anywhere but the stand-in sends the whole run at the real FPL.
 API = "http://127.0.0.1:8000"
 FAKE_FPL = "http://127.0.0.1:8001"
+# ---------------------------------------------------------------------------
 
 
 async def one(client: httpx.AsyncClient, fpl_id: int) -> tuple[float, int | str]:
+    """One squad request, timed, returning its status or the error's name.
+
+    Errors are returned rather than raised so a failing request still
+    contributes a latency sample and shows up in the outcome split.
+    """
     start = time.perf_counter()
     try:
         r = await client.get(f"{API}/api/team/{fpl_id}")
@@ -32,6 +41,8 @@ async def one(client: httpx.AsyncClient, fpl_id: int) -> tuple[float, int | str]
 
 
 async def main(concurrency: int, total: int, timeout: float) -> None:
+    """Fire the requests, then report latency, throughput and upstream load."""
+    # reset the stand-in's counter first, so _hits below describes this run only
     async with httpx.AsyncClient(timeout=5) as admin:
         await admin.post(f"{FAKE_FPL}/_reset")
 
@@ -48,6 +59,7 @@ async def main(concurrency: int, total: int, timeout: float) -> None:
         results = await asyncio.gather(*(guarded(i) for i in range(1, total + 1)))
         elapsed = time.perf_counter() - started
 
+    # summarise
     latencies = sorted(d for d, _ in results)
     outcomes: dict[int | str, int] = {}
     for _, status in results:

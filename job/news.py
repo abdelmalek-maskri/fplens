@@ -21,6 +21,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# ---------------------------------------------------------------------------
 logger = logging.getLogger(__name__)
 
 GUARDIAN_API_KEY = os.environ.get("GUARDIAN_API_KEY", "")
@@ -52,6 +53,7 @@ MIN_SURNAME_LENGTH = 4
 # Load NLP models once at module level (avoids reloading on every cache miss)
 _nlp = None
 _sentiment_pipe = None
+# ---------------------------------------------------------------------------
 
 try:
     import spacy
@@ -77,6 +79,7 @@ except Exception:
 
 
 def _html_to_text(html):
+    """Strip tags from a Guardian article body."""
     if not html:
         return ""
     soup = BeautifulSoup(html, "html.parser")
@@ -87,6 +90,7 @@ def _html_to_text(html):
 
 
 def _extract_snippet(text, num_sentences=3):
+    """The first couple of sentences, for the card on the news page."""
     if not text:
         return ""
     sentences = re.split(r"(?<=[.!?])\s+", text)
@@ -94,12 +98,17 @@ def _extract_snippet(text, num_sentences=3):
 
 
 def _is_pl_relevant(title, body):
+    """Whether an article is about the Premier League at all."""
     combined = f"{title} {body[:500]}"
     return not bool(EXCLUDE_PATTERNS.search(combined))
 
 
 def _fetch_guardian_articles(days=7):
-    # Fetch recent Guardian PL articles.
+    """Recent Premier League articles from the Guardian's open platform.
+
+    Returns an empty list rather than raising when no key is configured, so
+    the news page degrades to empty instead of failing the whole response.
+    """
     if not GUARDIAN_API_KEY:
         logger.warning("GUARDIAN_API_KEY not set, returning empty articles")
         return []
@@ -170,8 +179,11 @@ def _fetch_guardian_articles(days=7):
 
 
 def _build_player_lookup(bootstrap_data):
-    # Build name variant -> player info lookup from FPL bootstrap data.
-    # Uses live API data instead of extended_features.csv.
+    """Map every spelling of a player's name to that player.
+
+    Built from the live bootstrap rather than the training features, so a
+    player who signed this week is still recognised in a headline.
+    """
     teams = {t["id"]: t["short_name"] for t in bootstrap_data["teams"]}
     position_map = {1: "GK", 2: "DEF", 3: "MID", 4: "FWD"}
 
@@ -195,7 +207,8 @@ def _build_player_lookup(bootstrap_data):
             "position": position,
         }
 
-        # generate name variants
+        # A headline may use any of these, so each one claims the player.
+        # "Mohamed Salah", "Salah", "M. Salah" and "M Salah" are all him.
         variants = [full_name]
         parts = full_name.split()
         if len(parts) >= 2:
@@ -204,7 +217,7 @@ def _build_player_lookup(bootstrap_data):
                 variants.append(surname)
                 variants.append(f"{parts[0][0]}. {surname}")
                 variants.append(f"{parts[0][0]} {surname}")
-        # also match web_name (e.g. "Salah", "Palmer")
+        # FPL's own display name, which is often but not always the surname.
         wn_lower = web_name.lower()
         if len(wn_lower) >= MIN_SURNAME_LENGTH:
             variants.append(wn_lower)
@@ -217,10 +230,13 @@ def _build_player_lookup(bootstrap_data):
 
 
 def _link_articles_to_players(articles, lookup, nlp=None):
-    # Link articles to players using regex matching.
-    # Optionally uses spaCy NER if nlp model is provided.
+    """Mark which players each article is about.
 
-    # pre-compile regex patterns once (avoids re-compiling per article)
+    Regex is the primary pass. spaCy, when installed, adds the spellings a
+    fixed pattern cannot anticipate, and the project runs without it.
+    """
+    # Compiled once for all 2000 variants rather than per article, which is
+    # the difference between one pass and two thousand.
     compiled = {variant: re.compile(r"\b" + re.escape(variant) + r"\b", re.IGNORECASE) for variant in lookup}
 
     # Longest variant first. One player's web_name can be another's first name:
@@ -234,7 +250,8 @@ def _link_articles_to_players(articles, lookup, nlp=None):
         body_lower = body.lower()
         found = {}
 
-        # regex on title (all variants, low FP risk)
+        # The title gets every variant, including bare surnames: a headline
+        # naming one word is naming that player.
         claimed: list[tuple[int, int]] = []
         for variant in by_length:
             for m in compiled[variant].finditer(title):
@@ -245,7 +262,6 @@ def _link_articles_to_players(articles, lookup, nlp=None):
 
         # Body uses full names only, so the nesting problem above cannot occur
         # here: no single-token web_name is ever tested against the body.
-        # regex on body for full names only (2+ words)
         # Two thousand full names against every body is the whole cost of this
         # endpoint. Variants are already lowercase and the pattern is a plain
         # \bvariant\b, so a name absent as a substring cannot match the regex
@@ -263,7 +279,8 @@ def _link_articles_to_players(articles, lookup, nlp=None):
             if compiled[variant].search(body):
                 found[element] = True
 
-        # spaCy NER if available (better recall for unusual name forms)
+        # Catches spellings the variant list does not hold, such as a name
+        # written with an accent the lookup stripped.
         if nlp is not None:
             try:
                 doc = nlp(f"{title}. {body}")
@@ -273,7 +290,8 @@ def _link_articles_to_players(articles, lookup, nlp=None):
                     normalized = ent.text.lower().strip()
                     if normalized in lookup:
                         found[lookup[normalized]] = True
-                    # try surname
+                    # The entity may be the full name where the lookup only
+                    # knows the surname, or the other way round.
                     parts = normalized.split()
                     if len(parts) >= 2:
                         surname = parts[-1]
@@ -296,8 +314,12 @@ def _link_articles_to_players(articles, lookup, nlp=None):
 
 
 def _compute_sentiment(articles, sentiment_pipe=None):
-    # Compute sentiment for each article.
-    # Uses RoBERTa if available, falls back to keyword heuristic.
+    """Score each article from -1 to +1.
+
+    RoBERTa when the transformer stack is installed, keyword counting when it
+    is not. The fallback is crude but keeps the news page working without
+    ~400MB of wheels on the serving image.
+    """
     for article in articles:
         if sentiment_pipe is not None:
             try:
@@ -306,12 +328,14 @@ def _compute_sentiment(articles, sentiment_pipe=None):
                 scores = {r["label"].lower(): r["score"] for r in results}
                 pos = scores.get("positive", 0.0)
                 neg = scores.get("negative", 0.0)
-                # map to -1..1 scale: positive high = positive, negative high = negative
+                # One number from the model's two: -1 is wholly negative and
+                # +1 wholly positive, so a mixed article lands near zero.
                 article["sentiment"] = round(pos - neg, 4)
             except Exception:
                 article["sentiment"] = 0.0
         else:
-            # keyword heuristic fallback
+            # No transformer installed. Counting words is crude, but it keeps
+            # the news page working without 400MB of wheels.
             text = f"{article['title']} {article['snippet']}".lower()
             pos_words = len(re.findall(r"\b(scores?|goals?|wins?|brilliant|superb|dominant|impressive)\b", text))
             neg_words = len(re.findall(r"\b(injur\w+|doubt|miss\w*|blow|worry|concern|ruled out|sidelined)\b", text))
@@ -325,9 +349,12 @@ def _compute_sentiment(articles, sentiment_pipe=None):
 
 
 def fetch_recent_news(bootstrap_data, days=7):
-    # Main entry point: fetch, link, score, and format recent news.
-    # Returns dict matching frontend expected shape.
+    """Fetch Guardian articles, link them to players, score them, format them.
 
+    The entry point the API calls. Nothing here is cached to disk: the
+    Guardian's licence forbids retaining content beyond 24 hours, which is
+    why this is the one endpoint that fetches live.
+    """
     articles = _fetch_guardian_articles(days=days)
     if not articles:
         return {"articles": [], "trending": []}
@@ -337,7 +364,6 @@ def fetch_recent_news(bootstrap_data, days=7):
     articles = _link_articles_to_players(articles, lookup, _nlp)
     articles = _compute_sentiment(articles, _sentiment_pipe)
 
-    # format articles for frontend
     formatted = []
     for i, article in enumerate(articles):
         players = []
@@ -362,7 +388,8 @@ def fetch_recent_news(bootstrap_data, days=7):
             }
         )
 
-    # compute trending players (sorted by mention frequency)
+    # Mention counts are a derived aggregate, not Guardian content, so unlike
+    # the articles themselves these are free to persist.
     mention_counts = {}
     for article in formatted:
         for p in article["players"]:

@@ -1,4 +1,9 @@
-# ml/pipelines/train/train_baseline_model.py
+"""Train the plain LightGBM baseline on the extended feature set.
+
+The control every other experiment is measured against. No ensembling, no
+per-position models, no custom loss: whatever the more elaborate configs gain
+has to be gained over this.
+"""
 
 import json
 from pathlib import Path
@@ -21,11 +26,14 @@ from ml.utils.eval_metrics import (
     print_final_summary,
 )
 
+# ---------------------------------------------------------------------------
 IN_PATH = Path("data/features/baseline_features.csv")
 OUT_DIR = Path("outputs/experiments/baseline")
+# ---------------------------------------------------------------------------
 
 
 def build_model() -> LGBMRegressor:
+    """The baseline LightGBM. Default-ish settings, deliberately unturned."""
     return LGBMRegressor(
         n_estimators=800,
         learning_rate=0.05,
@@ -46,6 +54,10 @@ def prepare_xy(df: pd.DataFrame):
 
 
 def rolling_season_cv(df: pd.DataFrame, seasons: list[str]) -> pd.DataFrame:
+    """Chronological cross-validation: train on past seasons, score the next.
+
+    A random split would let the model train on April to predict September of
+    the same season, which is not a question anyone ever has to answer."""
     rows = []
     for i in range(MIN_TRAIN_SEASONS, len(seasons)):
         test_season = seasons[i]
@@ -85,6 +97,7 @@ def rolling_season_cv(df: pd.DataFrame, seasons: list[str]) -> pd.DataFrame:
 
 
 def run() -> None:
+    """Train the baseline, score it on the holdout, write model and metrics."""
     print("=" * 60)
     print("BASELINE MODEL TRAINING")
     print("=" * 60)

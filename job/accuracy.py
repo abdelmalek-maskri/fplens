@@ -17,19 +17,17 @@ import requests
 from job.fetch_live_data import FPL_BASE_URL, current_season, get_bootstrap_data
 from job.models import DEFAULT_MODEL_ID
 
+# ---------------------------------------------------------------------------
+# OUT and HISTORY sit outside app/public/data on purpose: the snapshot replaces
+# that whole directory every run, so anything else written there is wiped the
+# next morning. OUT holds one gameweek in full and is overwritten weekly, so
+# HISTORY keeps the season's record at ~700 bytes a gameweek, 26 KB a season.
 LOG = Path("data/predictions_log.csv")
 XI_LOG = Path("data/xi_log.csv")
-
-# Outside app/public/data on purpose: the snapshot replaces that whole directory
-# every run, so anything else written there is wiped the next morning.
 OUT = Path("app/public/accuracy.json")
-
-# One small entry per scored gameweek, so the season's record survives. OUT holds
-# a single gameweek in full and is overwritten weekly; without this the history
-# would be thrown away every run. Roughly 700 bytes a gameweek, 26 KB a season.
 HISTORY = Path("app/public/accuracy_history.json")
-
 POSITIONS = {1: "GK", 2: "DEF", 3: "MID", 4: "FWD"}
+# ---------------------------------------------------------------------------
 
 
 def fetch_actuals(gw: int) -> dict:
@@ -114,6 +112,7 @@ def score_xi(xi: pd.DataFrame, actuals: dict, players: dict, event: dict) -> dic
 
 
 def score(forecast: pd.DataFrame, actuals: dict, players: dict) -> dict:
+    """Compare a gameweek's predictions against what players actually scored."""
     rows = []
     for r in forecast.itertuples():
         eid = int(r.element)
@@ -184,6 +183,7 @@ def build(
     out_path: Path = OUT,
     history_path: Path = HISTORY,
 ) -> dict | None:
+    """Build the accuracy file the site reads, for one scored gameweek."""
     if not log_path.exists():
         print(f"No prediction log at {log_path}; nothing to score yet")
         return None

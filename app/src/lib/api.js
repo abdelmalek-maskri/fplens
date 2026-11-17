@@ -181,8 +181,8 @@ export function getBestSquad() {
 /**
  * Team x gameweek fixture grid with difficulty ratings.
  *
- * The snapshot holds the maximum window the API used to allow, so narrowing it
- * is a slice here rather than a different request.
+ * The snapshot holds the full window, so asking for fewer gameweeks is a
+ * slice here rather than a different request.
  */
 export async function getFixtures(numGws = 6) {
   const data = await snapshotFetch("/fixtures.json");

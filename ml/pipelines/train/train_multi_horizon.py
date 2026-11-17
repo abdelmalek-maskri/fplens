@@ -1,6 +1,4 @@
-# ml/pipelines/train/train_multi_horizon.py
-"""
-Multi-Horizon Model Experiments
+"""Multi-horizon model experiments.
 
 Tests whether we can predict GW+2 and GW+3, not just GW+1.
 Trains 8 model configs across 3 horizons (~26 runs total).
@@ -40,16 +38,8 @@ from ml.config.eval_config import (
 )
 from ml.utils.eval_metrics import full_evaluation
 
-# ---------------------------------------------------------------------------
-# Paths
-# ---------------------------------------------------------------------------
 IN_PATH = Path("data/features/extended_features.csv")
 OUT_ROOT = Path("outputs/experiments/multi_horizon")
-
-
-# ===========================================================================
-# Shared utilities
-# ===========================================================================
 
 
 def load_data() -> pd.DataFrame:
@@ -82,15 +72,21 @@ def split_data(df: pd.DataFrame):
 
 
 def extended_metrics(y_true: np.ndarray, y_pred: np.ndarray, y_train: np.ndarray) -> dict:
-    """Full evaluation + Spearman rho + haul MAE."""
+    """Standard evaluation plus the two metrics FPL actually turns on.
+
+    Spearman because picking a squad is a ranking problem: ordering players
+    correctly matters more than predicting any single score, and the target is
+    zero-inflated enough that MAE rewards predicting low for everyone.
+
+    Haul MAE because a model can look accurate overall while missing every
+    double-digit week, and those are the weeks that decide a gameweek.
+    """
     base = full_evaluation(y_true, y_pred, y_train)
 
-    # Spearman rank correlation
     rho, p_val = spearmanr(y_true, y_pred)
     base["model"]["spearman_rho"] = float(rho)
     base["model"]["spearman_p"] = float(p_val)
 
-    # Haul MAE (players scoring > 6 pts)
     haul_mask = y_true > 6
     if haul_mask.sum() > 0:
         haul_mae = float(np.mean(np.abs(y_true[haul_mask] - y_pred[haul_mask])))
@@ -134,7 +130,8 @@ def save_experiment(
 ):
     """Save metrics JSON, optionally a model joblib and holdout predictions."""
     out_dir.mkdir(parents=True, exist_ok=True)
-    # Sanitize non-finite floats (NaN/Inf) to null for valid JSON
+    # json.dumps emits bare NaN and Infinity, which no JSON parser accepts, so
+    # a metrics file with one non-finite value is unreadable in full.
     (out_dir / "metrics.json").write_text(
         json.dumps(metrics, indent=2, default=str, allow_nan=False)
         if not _has_nan(metrics)
@@ -161,13 +158,12 @@ def print_horizon_result(experiment: str, horizon: int, metrics: dict):
     )
 
 
-# ===========================================================================
-# Experiment 1: Single LightGBM baseline (fast, per horizon)
-# ===========================================================================
-
-
 def build_lgbm_baseline() -> LGBMRegressor:
-    """LightGBM v2 config — fast to train, good baseline."""
+    """Experiment 1: the control.
+
+    The same model at every horizon, so anything a later experiment gains can
+    be attributed to the change rather than to the horizon being easier.
+    """
     return LGBMRegressor(
         n_estimators=600,
         learning_rate=0.03,
@@ -212,7 +208,6 @@ def run_experiment_1(df: pd.DataFrame, horizons: list[int]) -> list[dict]:
 
         eval_result = extended_metrics(y_test, preds, y_train)
 
-        # Feature importance (top 20)
         imp = pd.DataFrame(
             {
                 "feature": X_train.columns,
@@ -249,15 +244,15 @@ def run_experiment_1(df: pd.DataFrame, horizons: list[int]) -> list[dict]:
     return results
 
 
-# ===========================================================================
-# Experiment 2: Regularized LightGBM with reduced features per horizon
-# ===========================================================================
-
-# Features to drop at each horizon (cumulative: GW+2 drops apply to GW+3 too)
+# ---------------------------------------------------------------------------
+# Experiment 2 drops the features whose signal has decayed by the time the
+# gameweek being predicted arrives. Cumulative: everything GW+2 drops, GW+3
+# drops too, because three weeks out is strictly less informed than two.
 DROP_GW2 = [
     c
     for c in [
-        # lag-1 features (too noisy 2 weeks out)
+        # What a player did last week says little about two weeks from now,
+        # and a single gameweek is noisy enough that the model overfits it.
         "played_lag1",
         "total_points_lag1",
         "minutes_lag1",
@@ -280,7 +275,8 @@ DROP_GW2 = [
         "us_shots_lag1",
         "us_key_passes_lag1",
         "us_time_lag1",
-        # momentum (derived from short-term, noisy at distance)
+        # Momentum is derived from those same short windows, so it inherits
+        # their noise rather than adding anything at this distance.
         "points_momentum",
         "bps_momentum",
         "xg_momentum",
@@ -290,7 +286,8 @@ DROP_GW2 = [
 DROP_GW3 = DROP_GW2 + [
     c
     for c in [
-        # roll3 features (3-game window too short for 3 weeks out)
+        # A three-game window is a short enough memory that by GW+3 it is
+        # describing form the player has had time to lose.
         "total_points_roll3",
         "minutes_roll3",
         "starts_roll3",
@@ -316,6 +313,7 @@ DROP_GW3 = DROP_GW2 + [
 ]
 
 HORIZON_DROP_FEATURES = {1: [], 2: DROP_GW2, 3: DROP_GW3}
+# ---------------------------------------------------------------------------
 
 
 def build_lgbm_regularized(horizon: int) -> LGBMRegressor:
@@ -373,7 +371,6 @@ def run_experiment_2(df: pd.DataFrame, horizons: list[int]) -> list[dict]:
         X_test, y_test = prepare_xy(test_df, target_col)
         X_test = X_test[X_train.columns]
 
-        # Drop horizon-specific noisy features
         cols_to_drop = [c for c in drop_feats if c in X_train.columns]
         X_train = X_train.drop(columns=cols_to_drop)
         X_test = X_test.drop(columns=cols_to_drop)
@@ -393,7 +390,6 @@ def run_experiment_2(df: pd.DataFrame, horizons: list[int]) -> list[dict]:
 
         eval_result = extended_metrics(y_test, preds, y_train)
 
-        # Feature importance
         imp = pd.DataFrame(
             {
                 "feature": X_train.columns,
@@ -419,7 +415,8 @@ def run_experiment_2(df: pd.DataFrame, horizons: list[int]) -> list[dict]:
         out_dir = OUT_ROOT / f"gw{h}" / "lgbm_reduced"
         save_experiment(out_dir, metrics, model=model)
         imp.to_csv(out_dir / "feature_importance.csv", index=False)
-        # Save features list for reproducibility
+        # Which features survived the drop, recorded so a later run can be
+        # compared against this one rather than guessed at.
         (out_dir / "features_used.json").write_text(
             json.dumps({"used": list(X_train.columns), "dropped": cols_to_drop}, indent=2)
         )
@@ -434,11 +431,6 @@ def run_experiment_2(df: pd.DataFrame, horizons: list[int]) -> list[dict]:
         )
 
     return results
-
-
-# ===========================================================================
-# Experiment 4: Two-Stage Hurdle Model
-# ===========================================================================
 
 
 def run_experiment_4(df: pd.DataFrame, horizons: list[int]) -> list[dict]:
@@ -465,14 +457,18 @@ def run_experiment_4(df: pd.DataFrame, horizons: list[int]) -> list[dict]:
 
         cat_cols = [c for c in CAT_COLS if c in X_train.columns]
 
-        # In FPL, points > 0 ⟺ played (minutes > 0 guarantees ≥1 appearance point)
+        # Scoring any points at all is the same event as appearing: FPL awards
+        # an appearance point for a single minute, so points > 0 is an exact
+        # stand-in for played, and no separate minutes column is needed.
         y_played_train = (y_train > 0).astype(int)
         played_mask = y_train > 0
 
         print(f"  Train: {len(X_train):,} rows ({played_mask.sum():,} played)")
         print(f"  Test:  {len(X_test):,} rows")
 
-        # Stage 1: Classifier — P(will score > 0)
+        # Two stages because the target is mostly zeros, and one regressor
+        # asked to fit both "did not play" and "scored 12" splits the
+        # difference on everyone. Stage one answers whether they play at all.
         classifier = LGBMClassifier(
             n_estimators=500,
             learning_rate=0.05,
@@ -485,7 +481,8 @@ def run_experiment_4(df: pd.DataFrame, horizons: list[int]) -> list[dict]:
         )
         classifier.fit(X_train, y_played_train, categorical_feature=cat_cols)
 
-        # Stage 2: Regressor — E[points | played], trained only on played samples
+        # Stage two answers how many points, given that they do. Fitting it
+        # on played rows only keeps the zeros from dragging it down.
         regressor = LGBMRegressor(
             n_estimators=600,
             learning_rate=0.03,
@@ -498,15 +495,16 @@ def run_experiment_4(df: pd.DataFrame, horizons: list[int]) -> list[dict]:
         )
         regressor.fit(X_train[played_mask], y_train[played_mask], categorical_feature=cat_cols)
 
-        # Predict
         play_prob = classifier.predict_proba(X_test)[:, 1]
         points_if_play = regressor.predict(X_test)
 
-        # Two combination strategies
-        preds_soft = play_prob * points_if_play  # smooth
-        preds_hard = np.where(play_prob > 0.5, points_if_play, 0.0)  # threshold
+        # Soft keeps the probability as a weight, so a doubtful starter is
+        # scored down rather than out. Hard commits to a yes or no at 0.5,
+        # which is what a manager actually has to do. Both are evaluated
+        # because the better one is not obvious in advance.
+        preds_soft = play_prob * points_if_play
+        preds_hard = np.where(play_prob > 0.5, points_if_play, 0.0)
 
-        # Classifier AUC
         y_played_test = (y_test > 0).astype(int)
         try:
             auc = float(roc_auc_score(y_played_test, play_prob))
@@ -515,7 +513,6 @@ def run_experiment_4(df: pd.DataFrame, horizons: list[int]) -> list[dict]:
 
         print(f"  Classifier AUC: {auc:.4f}")
 
-        # Evaluate both variants
         for variant_name, preds in [("hurdle_soft", preds_soft), ("hurdle_hard", preds_hard)]:
             eval_result = extended_metrics(y_test, preds, y_train)
 
@@ -545,19 +542,13 @@ def run_experiment_4(df: pd.DataFrame, horizons: list[int]) -> list[dict]:
                 }
             )
 
-        # Save models (once per horizon, under hurdle_soft dir)
+        # Both variants share these two models and differ only in how their
+        # outputs are combined, so they are stored once under the soft name.
         out_dir = OUT_ROOT / f"gw{h}" / "hurdle_soft"
         joblib.dump(classifier, out_dir / "classifier.joblib")
         joblib.dump(regressor, out_dir / "regressor.joblib")
 
     return results
-
-
-# ===========================================================================
-# Experiment 5: Horizon-Specific Architectures
-#   5a: CatBoost with Tweedie loss (variance_power 1.2, 1.5, 1.8)
-#   5b: Simple GBM Average (3 LightGBMs, different seeds, averaged)
-# ===========================================================================
 
 
 def run_experiment_5(df: pd.DataFrame, horizons: list[int]) -> list[dict]:
@@ -587,7 +578,6 @@ def run_experiment_5(df: pd.DataFrame, horizons: list[int]) -> list[dict]:
 
         print(f"  Train: {len(X_train):,} rows | Test: {len(X_test):,} rows | Features: {len(X_train.columns)}")
 
-        # ----- 5a: CatBoost Tweedie -----
         for vp in [1.2, 1.5, 1.8]:
             exp_name = f"catboost_tweedie_vp{vp}"
             print(f"\n  --- {exp_name} ---")
@@ -601,13 +591,14 @@ def run_experiment_5(df: pd.DataFrame, horizons: list[int]) -> list[dict]:
                 random_seed=123,
                 verbose=0,
             )
-            # CatBoost needs string cat indices, not LightGBM-style
+            # CatBoost wants positional indices for categoricals where
+            # LightGBM wants column names, which is why cat_indices exists
+            # alongside the cat_cols the other experiments pass.
             model.fit(X_train, y_train, cat_features=cat_indices)
             preds = model.predict(X_test)
 
             eval_result = extended_metrics(y_test, preds, y_train)
 
-            # Feature importance
             imp = pd.DataFrame(
                 {
                     "feature": list(X_train.columns),
@@ -642,7 +633,6 @@ def run_experiment_5(df: pd.DataFrame, horizons: list[int]) -> list[dict]:
                 }
             )
 
-        # ----- 5b: Simple GBM Average (3 seeds) -----
         exp_name = "gbm_avg_3seeds"
         print(f"\n  --- {exp_name} ---")
 
@@ -668,7 +658,8 @@ def run_experiment_5(df: pd.DataFrame, horizons: list[int]) -> list[dict]:
         preds_avg = np.mean(individual_preds, axis=0)
         eval_result = extended_metrics(y_test, preds_avg, y_train)
 
-        # Average feature importance across the 3 models
+        # Averaged across seeds, so a feature that only one model happened to
+        # favour does not look important.
         avg_imp = np.mean([m.feature_importances_ for m in models_to_save], axis=0)
         imp = pd.DataFrame(
             {
@@ -677,7 +668,8 @@ def run_experiment_5(df: pd.DataFrame, horizons: list[int]) -> list[dict]:
             }
         ).sort_values("importance", ascending=False)
 
-        # Also compute std of predictions across seeds (diversity measure)
+        # How far the three seeds disagree. Near zero means averaging them
+        # bought nothing, because they learned the same model three times.
         pred_std = float(np.mean(np.std(individual_preds, axis=0)))
 
         metrics = {
@@ -697,7 +689,6 @@ def run_experiment_5(df: pd.DataFrame, horizons: list[int]) -> list[dict]:
 
         out_dir = OUT_ROOT / f"gw{h}" / exp_name
         save_experiment(out_dir, metrics)
-        # Save all 3 models
         for i, m in enumerate(models_to_save):
             joblib.dump(m, out_dir / f"model_seed{seeds[i]}.joblib")
         imp.to_csv(out_dir / "feature_importance.csv", index=False)
@@ -712,11 +703,6 @@ def run_experiment_5(df: pd.DataFrame, horizons: list[int]) -> list[dict]:
         )
 
     return results
-
-
-# ===========================================================================
-# Final Summary & Multi-Criteria Ranking
-# ===========================================================================
 
 
 def generate_final_summary():
@@ -756,36 +742,34 @@ def generate_final_summary():
 
     df = pd.DataFrame(rows)
 
-    # Exclude unstable configs (MAE > 3 = clearly broken)
+    # An MAE above 3 on a target whose mean is 1.2 means the run diverged
+    # rather than that the model is weak. Leaving those in would stretch the
+    # min-max normalisation below and flatten every real difference.
     df_stable = df[df["mae"] < 3.0].copy()
 
-    # ------------------------------------------------------------------
-    # Multi-criteria composite score (lower = better)
-    # Weights reflect FPL product priorities:
-    #   MAE (40%) — overall accuracy
-    #   Spearman (25%) — ranking for captain/squad selection
-    #   Haul MAE (20%) — accuracy on high-value players (>6 pts)
-    #   R² (15%) — explained variance
-    # ------------------------------------------------------------------
+    # No single metric picks a model here, so the four are weighted by what
+    # the product needs: overall accuracy 40%, ranking for captain and squad
+    # choices 25%, accuracy on the double-digit weeks that decide a gameweek
+    # 20%, explained variance 15%. Lower composite is better throughout.
     for h in [1, 2, 3]:
         mask = df_stable["horizon"] == h
         subset = df_stable.loc[mask]
         if len(subset) == 0:
             continue
 
-        # Normalize each metric to [0, 1] within horizon (min-max)
+        # Normalised within the horizon, not across all three, because GW+3
+        # is harder than GW+1 and a shared scale would rank by horizon.
         for col, ascending in [("mae", True), ("haul_mae", True), ("spearman_rho", False), ("r2", False)]:
             vals = subset[col].fillna(subset[col].median())
             mn, mx = vals.min(), vals.max()
             if mx - mn > 0:
-                if ascending:  # lower is better → 0=best, 1=worst
+                if ascending:
                     df_stable.loc[mask, f"{col}_norm"] = (vals - mn) / (mx - mn)
-                else:  # higher is better → flip
+                else:
                     df_stable.loc[mask, f"{col}_norm"] = 1 - (vals - mn) / (mx - mn)
             else:
                 df_stable.loc[mask, f"{col}_norm"] = 0.0
 
-        # Composite (lower = better)
         df_stable.loc[mask, "composite"] = (
             0.40 * df_stable.loc[mask, "mae_norm"]
             + 0.25 * df_stable.loc[mask, "spearman_rho_norm"]
@@ -793,11 +777,9 @@ def generate_final_summary():
             + 0.15 * df_stable.loc[mask, "r2_norm"]
         )
 
-    # Rank within each horizon
     df_stable["rank"] = df_stable.groupby("horizon")["composite"].rank(method="min").astype(int)
     df_stable = df_stable.sort_values(["horizon", "rank"])
 
-    # Save full comparison
     out_cols = [
         "horizon",
         "rank",
@@ -814,9 +796,6 @@ def generate_final_summary():
     ]
     df_stable[out_cols].to_csv(root / "comparison_summary.csv", index=False)
 
-    # ------------------------------------------------------------------
-    # Best per horizon (pick rank=1)
-    # ------------------------------------------------------------------
     best = {}
     for h in [1, 2, 3]:
         horizon_df = df_stable[df_stable["horizon"] == h].sort_values("composite")
@@ -843,9 +822,6 @@ def generate_final_summary():
 
     (root / "best_per_horizon.json").write_text(json.dumps(best, indent=2))
 
-    # ------------------------------------------------------------------
-    # Print comprehensive analysis
-    # ------------------------------------------------------------------
     print("\n")
     print("=" * 75)
     print("  MULTI-HORIZON EXPERIMENT SUMMARY")
@@ -868,7 +844,7 @@ def generate_final_summary():
                 f"{row['haul_mae']:<8.4f} {row['r2']:<8.4f} {row['composite']:<6.3f}"
             )
 
-    # Signal decay analysis
+    # How much accuracy is lost per extra week of lead time.
     print(f"\n  {'─' * 71}")
     print("  SIGNAL DECAY ANALYSIS")
     print(f"  {'─' * 71}")
@@ -881,30 +857,25 @@ def generate_final_summary():
             delta_mae = top["mae"] - bl["mae"]
             print(f"  GW+{h}: Best={top['experiment']:<28s} MAE={top['mae']:.4f} (Δ vs baseline: {delta_mae:+.4f})")
 
-    # Key insights
     print(f"\n  {'─' * 71}")
     print("  KEY INSIGHTS")
     print(f"  {'─' * 71}")
 
-    # Check if same model wins all horizons
     winners = [df_stable[df_stable["horizon"] == h].iloc[0]["experiment"] for h in [1, 2, 3]]
     if len(set(winners)) == 1:
         print(f"  • Single winner across all horizons: {winners[0]}")
     else:
         print(f"  • Different winners per horizon: GW+1={winners[0]}, GW+2={winners[1]}, GW+3={winners[2]}")
 
-    # MAE degradation from GW+1 to GW+3
     best_1 = df_stable[df_stable["horizon"] == 1].iloc[0]["mae"]
     best_3 = df_stable[df_stable["horizon"] == 3].iloc[0]["mae"]
     pct_degrade = (best_3 - best_1) / best_1 * 100
     print(f"  • MAE degradation GW+1→GW+3: {best_1:.4f} → {best_3:.4f} ({pct_degrade:+.1f}%)")
 
-    # Spearman degradation
     rho_1 = df_stable[df_stable["horizon"] == 1].iloc[0]["spearman_rho"]
     rho_3 = df_stable[df_stable["horizon"] == 3].iloc[0]["spearman_rho"]
     print(f"  • Ranking accuracy GW+1→GW+3: ρ={rho_1:.4f} → ρ={rho_3:.4f}")
 
-    # Count how many configs beat mean baseline
     for h in [1, 2, 3]:
         n_beat = (df_stable[(df_stable["horizon"] == h)]["mae_vs_mean"] > 0).sum()
         n_total = len(df_stable[df_stable["horizon"] == h])
@@ -923,11 +894,6 @@ def generate_final_summary():
     print("=" * 75)
 
 
-# ===========================================================================
-# CLI entry point
-# ===========================================================================
-
-
 EXPERIMENT_RUNNERS = {
     1: run_experiment_1,
     2: run_experiment_2,
@@ -937,6 +903,7 @@ EXPERIMENT_RUNNERS = {
 
 
 def run(experiment: int | None = None, horizon: int | None = None):
+    """Run the selected experiments across the selected horizons."""
     print("Loading data...")
     df = load_data()
 
@@ -954,7 +921,6 @@ def run(experiment: int | None = None, horizon: int | None = None):
         for _exp_num, runner in sorted(EXPERIMENT_RUNNERS.items()):
             all_results.extend(runner(df, horizons))
 
-    # Save comparison summary
     if all_results:
         summary_df = pd.DataFrame(all_results)
         OUT_ROOT.mkdir(parents=True, exist_ok=True)
@@ -967,6 +933,7 @@ def run(experiment: int | None = None, horizon: int | None = None):
 
 
 def main():
+    """Parse arguments and run the multi-horizon experiments."""
     parser = argparse.ArgumentParser(description="Multi-horizon model experiments (FF-9b)")
     parser.add_argument("--experiment", type=int, default=None, help="Run a single experiment (1-5)")
     parser.add_argument("--horizon", type=int, default=None, choices=[1, 2, 3], help="Run a single horizon")

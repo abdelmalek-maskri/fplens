@@ -16,16 +16,15 @@ import os
 
 from fastapi import FastAPI
 
-# How long the stand-in takes to answer. The default is close to what the real
-# API does; raise it to model FPL under strain.
-LATENCY_SECONDS = float(os.environ.get("FAKE_FPL_LATENCY", "0.3"))
-
+# ---------------------------------------------------------------------------
+LATENCY_SECONDS = float(os.environ.get("FAKE_FPL_LATENCY", "0.3"))  # raise to model FPL under strain
 app = FastAPI(title="Fake FPL")
-
 _hits: dict[str, int] = {}
+# ---------------------------------------------------------------------------
 
 
 def _count(name: str) -> None:
+    """Record that an endpoint was hit, so /_hits can report upstream load."""
     _hits[name] = _hits.get(name, 0) + 1
 
 
@@ -54,6 +53,7 @@ _BOOTSTRAP = {
 
 @app.get("/bootstrap-static/")
 async def bootstrap():
+    """The ~1.8MB payload, padded, because its size is what is being measured."""
     _count("bootstrap")
     await asyncio.sleep(LATENCY_SECONDS)
     return _BOOTSTRAP
@@ -61,6 +61,7 @@ async def bootstrap():
 
 @app.get("/entry/{fpl_id}/")
 async def entry(fpl_id: int):
+    """A manager's metadata. Any id is valid here, so every caller gets a hit."""
     _count("entry")
     await asyncio.sleep(LATENCY_SECONDS)
     return {
@@ -74,6 +75,7 @@ async def entry(fpl_id: int):
 
 @app.get("/entry/{fpl_id}/event/{gw}/picks/")
 async def picks(fpl_id: int, gw: int):
+    """A fixed 15-player squad. The contents do not matter, the round trip does."""
     _count("picks")
     await asyncio.sleep(LATENCY_SECONDS)
     return {
@@ -94,12 +96,16 @@ async def picks(fpl_id: int, gw: int):
 
 @app.get("/_hits")
 async def hits():
-    """What the stand-in was actually asked for, which is the number that says
-    whether caching upstream of it is working."""
+    """What the stand-in was actually asked for.
+
+    The number that says whether caching upstream of it is working: a run of
+    300 requests that reaches here 300 times means the cache did nothing.
+    """
     return _hits
 
 
 @app.post("/_reset")
 async def reset():
+    """Zero the counters, so a run's _hits describes that run alone."""
     _hits.clear()
     return {"status": "reset"}

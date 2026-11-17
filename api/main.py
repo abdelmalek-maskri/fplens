@@ -27,21 +27,21 @@ from api.cache import FPLDataCache
 from api.ratelimit import UpstreamGuard
 from api.routers import news, team
 
-# Before any os.environ read below. Previously only the news modules called this,
-# and they import lazily, so API settings placed in .env were ignored at startup.
+# Before the os.environ reads below, which happen at import. A module that
+# calls load_dotenv itself is too late if it is imported lazily, so this has
+# to be the process's first call rather than any one feature's.
 load_dotenv()
 
-# No default. A shared fallback in a public repo is a published credential, so an
-# unset secret disables the endpoint rather than leaving a guessable one in place.
+# ---------------------------------------------------------------------------
+# No default on the secret. A shared fallback in a public repo is a published
+# credential, so an unset secret disables the endpoint rather than leaving a
+# guessable one in place. A manager's FPL ID is in the path of every /team
+# request, and an ID plus a squad is enough to name the person, so the pattern
+# below strips it from Sentry events before they leave the process.
 REFRESH_SECRET = os.environ.get("REFRESH_SECRET", "")
-
-
 SENTRY_DSN = os.environ.get("SENTRY_DSN", "")
-
-# A manager's FPL ID is in the path of every /team request, and an ID plus a
-# squad is enough to name the person. Sentry stores the request URL on every
-# event, so it has to come back out before the event leaves the process.
 _FPL_ID_IN_PATH = re.compile(r"(/api/team/)\d+")
+# ---------------------------------------------------------------------------
 
 
 def scrub_fpl_id(event, hint):

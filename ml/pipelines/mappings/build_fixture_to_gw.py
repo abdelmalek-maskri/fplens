@@ -1,4 +1,9 @@
-# ml/pipelines/mappings/build_fixture_to_gw.py
+"""Map each FPL fixture id to the gameweek it was played in.
+
+Understat records matches by date, not gameweek, so this is the lookup that
+lets its rows be attached to an FPL gameweek later in the pipeline.
+"""
+
 from pathlib import Path
 
 import pandas as pd
@@ -8,6 +13,7 @@ from ml.utils.io import find_latest_snapshot, safe_read_csv
 
 
 def run_one(season: str) -> Path:
+    """Build one season's fixture-to-gameweek lookup."""
     snap = find_latest_snapshot(Path("data/raw/fpl"))
     gws_dir = snap / season / "gws"
     if not gws_dir.exists():
@@ -15,7 +21,8 @@ def run_one(season: str) -> Path:
 
     rows = []
 
-    # Extract fixture -> GW mapping from each gameweek file
+    # The gameweek is the filename, not a column, so each file is read for
+    # the fixture ids it mentions and labelled with its own number.
     for f in sorted(gws_dir.glob("gw*.csv")):
         gw = int(f.stem.replace("gw", ""))
         df = safe_read_csv(f)
@@ -26,7 +33,8 @@ def run_one(season: str) -> Path:
         fx = pd.to_numeric(df["fixture"], errors="coerce").dropna().astype(int)
         rows.append(pd.DataFrame({"fixture": fx.unique(), "GW": gw}))
 
-    # one row per fixture
+    # A fixture appears once per player who played in it, so the same pair
+    # repeats across hundreds of rows.
     m = pd.concat(rows, ignore_index=True).drop_duplicates("fixture")
 
     out = Path(f"data/processed/mappings/fixture_to_gw_{season}.csv")
@@ -38,6 +46,7 @@ def run_one(season: str) -> Path:
 
 
 def main():
+    """Build the fixture-to-gameweek lookup for every season."""
     for season in SEASONS_ALL:
         run_one(season)
 

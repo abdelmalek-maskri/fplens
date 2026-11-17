@@ -19,6 +19,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+# ---------------------------------------------------------------------------
 INPUT_PATH = Path("data/processed/injury/fpl_with_injury.csv")
 EXTENDED_FEATURES = Path("data/features/extended_features.csv")
 OUTPUT_DIR = Path("data/features")
@@ -122,10 +123,12 @@ FILL_DEFAULTS = {
     "expected_return_weeks": 0,
     "news_sentiment": 0,
 }
+# ---------------------------------------------------------------------------
 
 
 # Structured features (13 cols: status encoding, chance fields, binary flags)
 def add_structured_features(df: pd.DataFrame) -> pd.DataFrame:
+    """Features read straight off the injury snapshot: status, chance of playing."""
     print("Adding structured features...")
     df = df.copy()
 
@@ -144,6 +147,7 @@ def add_structured_features(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def add_temporal_features(df: pd.DataFrame) -> pd.DataFrame:
+    """Features that need history: how long out, how often, how recently."""
     print("Adding temporal features...")
     df = df.copy()
     df = df.sort_values(["season", "element", "GW"])
@@ -160,6 +164,7 @@ def add_temporal_features(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _consecutive_unavailable(status: pd.Series) -> pd.Series:
+    """Gameweeks unavailable in an unbroken run ending at each row."""
     counts = []
     streak = 0
     for s in status:
@@ -169,6 +174,7 @@ def _consecutive_unavailable(status: pd.Series) -> pd.Series:
 
 
 def _gws_since_injury(status: pd.Series) -> pd.Series:
+    """Gameweeks since this player was last unavailable."""
     result = []
     last_injured = None
     for i, s in enumerate(status):
@@ -183,6 +189,10 @@ def _gws_since_injury(status: pd.Series) -> pd.Series:
 
 
 def _injury_episode_count(status: pd.Series) -> pd.Series:
+    """Separate injuries this season, counted as transitions.
+
+    Transitions, not weeks: a six-week absence is one injury, and counting
+    weeks would make a single long layoff look like chronic fragility."""
     result = []
     count = 0
     prev = "a"
@@ -196,6 +206,7 @@ def _injury_episode_count(status: pd.Series) -> pd.Series:
 
 # NLP features (15 cols: injury type dummies, return timeline, sentiment)
 def extract_injury_type(news: str) -> str:
+    """Body part or injury kind, pulled out of the free-text news string."""
     if pd.isna(news) or news == "":
         return "none"
 
@@ -212,6 +223,7 @@ def extract_injury_type(news: str) -> str:
 
 
 def extract_return_weeks(news: str, snapshot_date=None) -> float:
+    """Weeks until expected return, parsed from text like "Expected back 15 Dec"."""
     if pd.isna(news) or news == "":
         return 0.0
 
@@ -278,6 +290,7 @@ def news_sentiment(news: str) -> float:
 
 
 def add_nlp_features(df: pd.DataFrame) -> pd.DataFrame:
+    """Features derived from the injury news text rather than the status flag."""
     print("adding NLP features...")
     df = df.copy()
 
@@ -300,6 +313,7 @@ def add_nlp_features(df: pd.DataFrame) -> pd.DataFrame:
 
 # Merge with extended features
 def _merge_with_extended(df: pd.DataFrame) -> pd.DataFrame:
+    """Join the injury features onto the extended feature table."""
     from ml.pipelines.injury.download_historical import SEASONS as INJURY_SEASONS
 
     print("\nmerging with extended features...")
@@ -362,6 +376,7 @@ def _merge_with_extended(df: pd.DataFrame) -> pd.DataFrame:
 
 # Main
 def run() -> None:
+    """Build the injury feature table from the scraped snapshots."""
     print("=" * 60)
     print("BUILD INJURY FEATURES")
     print("=" * 60)

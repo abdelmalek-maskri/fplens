@@ -1,4 +1,3 @@
-# ml/analysis/shap_analysis.py
 """
 SHAP feature importance analysis for trained FPL prediction models.
 
@@ -67,12 +66,15 @@ except Exception:
         pass
 
 
+# ---------------------------------------------------------------------------
 OUT_DIR = Path("outputs/evaluation/shap")
 FEATURES_PATH = Path("data/features/extended_features.csv")
 SAMPLE_SIZE = 10000
+# ---------------------------------------------------------------------------
 
 
 def load_data(features_path: Path):
+    """The holdout rows SHAP is computed over."""
     df = pd.read_csv(features_path, low_memory=False)
     for c in CAT_COLS:
         if c in df.columns:
@@ -88,6 +90,7 @@ def load_data(features_path: Path):
 
 
 def load_model(model_path: Path):
+    """Unpickle a trained model for explanation."""
     if not model_path.exists():
         raise FileNotFoundError(f"Model not found at {model_path}.")
     return joblib.load(model_path)
@@ -131,7 +134,11 @@ def get_interpretable_model(model, positions: np.ndarray | None = None):
 
 
 def compute_shap_values(model, X: pd.DataFrame, positions: np.ndarray, sample_size: int = SAMPLE_SIZE):
-    # SHAP on 230K rows is too slow; random sample gives stable top-15 importance
+    """Feature attributions, from a fixed random sample of the rows.
+
+    SHAP over all 230K rows takes hours. The sample is seeded, so the top-15
+    importances are both stable across runs and reproducible.
+    """
     if len(X) > sample_size:
         idx = np.random.RandomState(42).choice(len(X), sample_size, replace=False)
         X_sample = X.iloc[idx].reset_index(drop=True)
@@ -147,6 +154,7 @@ def compute_shap_values(model, X: pd.DataFrame, positions: np.ndarray, sample_si
 
 
 def global_importance(shap_values: np.ndarray, X_sample: pd.DataFrame) -> pd.DataFrame:
+    """Mean absolute SHAP per feature, across all sampled rows."""
     imp = np.abs(shap_values).mean(axis=0)
     return pd.DataFrame(
         {
@@ -158,6 +166,10 @@ def global_importance(shap_values: np.ndarray, X_sample: pd.DataFrame) -> pd.Dat
 
 
 def position_importance(shap_values: np.ndarray, X_sample: pd.DataFrame, positions: np.ndarray) -> dict:
+    """The same ranking computed separately per position.
+
+    Which features matter is not the same question for a goalkeeper as for a
+    forward, and the global ranking averages that difference away."""
     if positions is None:
         return {}
 
@@ -191,6 +203,7 @@ def feature_interactions(shap_values: np.ndarray, X_sample: pd.DataFrame, top_n:
 
 
 def explain_predictions(model, X, y, test_df, n_examples: int = 5) -> list:
+    """Per-player SHAP breakdowns, the ones the player page shows."""
     preds = model.predict(X)
     errors = np.abs(y - preds)
     examples = []
@@ -218,6 +231,7 @@ def explain_predictions(model, X, y, test_df, n_examples: int = 5) -> list:
 
 
 def build_report(global_imp, pos_imp, interactions, examples, model_name):
+    """Assemble the global, per-position and per-player views into one file."""
     report = {
         "model": model_name,
         "holdout_season": HOLDOUT_SEASON,
@@ -271,6 +285,7 @@ def build_report(global_imp, pos_imp, interactions, examples, model_name):
 
 
 def run() -> None:
+    """Compute SHAP for a model and write the report."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--model-path", required=True)
     parser.add_argument("--features-path", default=str(FEATURES_PATH))

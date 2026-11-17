@@ -1,4 +1,3 @@
-# ml/pipelines/train/train_catboost_twohead.py
 """
 CatBoost two-head hurdle model for zero-inflated FPL points.
 
@@ -24,11 +23,14 @@ from ml.config.eval_config import CAT_COLS, CV_SEASONS, DROP_COLS, HOLDOUT_SEASO
 from ml.evaluation.comprehensive_metrics import ComprehensiveEvaluator
 from ml.utils.eval_metrics import full_evaluation, print_final_summary
 
+# ---------------------------------------------------------------------------
 IN_PATH = Path("data/features/extended_features.csv")
 OUT_DIR = Path("outputs/experiments/catboost_twohead")
+# ---------------------------------------------------------------------------
 
 
 def prepare_xy(df):
+    """Features and target, with identifier and target columns dropped."""
     y = df[TARGET_COL].values
     drop = set([TARGET_COL] + DROP_COLS)
     X = df.drop(columns=[c for c in drop if c in df.columns])
@@ -109,6 +111,7 @@ class CatBoostTwoHead:
 
 
 def run():
+    """Train the CatBoost two-head model and score every combination rule."""
     print("=" * 60)
     print("CATBOOST TWO-HEAD (HURDLE)")
     print("=" * 60)
@@ -136,11 +139,13 @@ def run():
 
     predictions = model.predict(X_test)
 
-    # evaluate classifier
+    # AUC on the play-or-not head alone, separately from the points it
+    # feeds, because a weak classifier spoils every combination below.
     test_auc = roc_auc_score(y_test > 0, predictions["play_prob"])
     print(f"  classifier test AUC: {test_auc:.4f}")
 
-    # evaluate all combination methods
+    # The two heads can be combined three ways and the best one is not
+    # obvious in advance, so all three are scored.
     methods = ["soft", "hard", "weighted"]
     results = {}
     print(f"\n  {'method':<12} {'MAE':<10} {'RMSE':<10} {'R²':<10}")

@@ -20,13 +20,10 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any
 
-# A cached value may legitimately be None or empty, so absence needs its own
-# marker rather than relying on falsiness.
-_MISS = object()
-
-# ~1000 squads at roughly 20KB each once parsed, so tens of MB at worst. Chosen
-# to fit a small instance with room to spare, not to hold every manager.
-DEFAULT_MAXSIZE = 1000
+# ---------------------------------------------------------------------------
+_MISS = object()  # a cached value may be None, so absence needs its own marker
+DEFAULT_MAXSIZE = 1000  # ~20KB per parsed squad, so tens of MB at worst
+# ---------------------------------------------------------------------------
 
 
 @dataclass

@@ -12,6 +12,7 @@ import pandas as pd
 
 from ml.pipelines.news.build_news_features import NEWS_FEATURE_COLS, NEWS_SEASONS
 
+# ---------------------------------------------------------------------------
 EXTENDED_PATH = Path("data/features/extended_features.csv")
 INJURY_PATH = Path("data/features/extended_with_injury.csv")
 NEWS_PATH = Path("data/features/news_features.csv")
@@ -20,6 +21,7 @@ OUTPUT_C = Path("data/features/extended_with_news.csv")
 OUTPUT_D = Path("data/features/extended_with_injury_and_news.csv")
 
 MERGE_KEYS = ["season", "GW", "element"]
+# ---------------------------------------------------------------------------
 
 
 def merge_news(base_df: pd.DataFrame, news_df: pd.DataFrame) -> pd.DataFrame:

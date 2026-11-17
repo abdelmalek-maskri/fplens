@@ -10,6 +10,7 @@ from pathlib import Path
 
 import pandas as pd
 
+# ---------------------------------------------------------------------------
 INJURY_DATA = Path("data/processed/injury/injury_states.csv")
 FPL_BASE = Path("data/processed/merged/fpl_understat_merged.csv")
 OUTPUT_PATH = Path("data/processed/injury/fpl_with_injury.csv")
@@ -27,6 +28,7 @@ _INJURY_COLS = [
     "news_added",
     "snapshot_date",
 ]
+# ---------------------------------------------------------------------------
 
 
 def analyse_status_churn(injury_df: pd.DataFrame) -> None:

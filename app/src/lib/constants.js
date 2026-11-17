@@ -1,3 +1,5 @@
+// --------------------------------------------------------------------------
+// fixture difficulty, 1 easiest to 5 hardest
 export const FDR_COLORS = {
   1: { bg: "bg-success-700", text: "text-white", label: "Very Easy" },
   2: { bg: "bg-success-200", text: "text-success-700", label: "Easy" },
@@ -87,3 +89,4 @@ export const DEFAULT_SHAP = [
   { feature: "opponent_strength", value: "FDR 3", impact: -0.1 },
   { feature: "was_home", value: "No", impact: -0.2 },
 ];
+// --------------------------------------------------------------------------

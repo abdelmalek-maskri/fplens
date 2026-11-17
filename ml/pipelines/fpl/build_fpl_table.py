@@ -1,24 +1,31 @@
-# ml/pipelines/fpl/build_fpl_table.py
+"""Stack every season's FPL gameweek data into one table.
+
+The vaastav archive stores a directory per season with its own column set,
+and the columns change across the nine years. This produces one frame with
+the same columns throughout, filling absent ones with NA rather than zero.
+"""
+
 from pathlib import Path
 
 import pandas as pd
 
 from ml.utils.io import find_latest_snapshot, safe_read_csv
 
+# ---------------------------------------------------------------------------
 SNAPSHOT_ROOT = Path("data/raw/fpl")
 OUT_PATH = Path("data/processed/fpl/fpl_base.csv")
 
 KEEP_COLS = [
-    # identifiers
+    # Identifiers
     "season",
     "GW",
     "element",
     "name",
     "position",
     "team",
-    # target base (will be shifted later)
+    # What create_target.py shifts to build the targets
     "total_points",
-    # core minutes + basic stats
+    # Minutes and basic match stats
     "minutes",
     "starts",
     "goals_scored",
@@ -31,34 +38,36 @@ KEEP_COLS = [
     "own_goals",
     "penalties_missed",
     "penalties_saved",
-    # fpl indices
+    # FPL's own derived indices
     "influence",
     "creativity",
     "threat",
     "ict_index",
     "bps",
     "bonus",
-    # fixture/context
+    # Fixture context
     "was_home",
     "opponent_team",
     "team_h_score",
     "team_a_score",
-    # market
+    # Price and ownership
     "value",
     "selected",
     "transfers_in",
     "transfers_out",
     "transfers_balance",
-    # expected stats (already inside vaastav merged_gw)
+    # Expected stats, present in vaastav's merged_gw from 2022-23 on
     "xP",
     "expected_goals",
     "expected_assists",
     "expected_goal_involvements",
     "expected_goals_conceded",
 ]
+# ---------------------------------------------------------------------------
 
 
 def run():
+    """Stack every season's gameweek files into one table."""
     snapshot = find_latest_snapshot(SNAPSHOT_ROOT)
     print("using snapshot:", snapshot)
 
@@ -76,10 +85,11 @@ def run():
         before_rows = len(df)
         print(f"{season}: loaded {before_rows} rows")
 
-        # add season column (not present in merged_gw.csv)
+        # The file is per season but does not say which one it is.
         df["season"] = season
 
-        # if position/team missing, merge from players_raw.csv
+        # Older seasons put position and team in players_raw.csv rather than
+        # in the gameweek rows, so they are merged back in per player.
         if (
             ("position" not in df.columns)
             or ("team" not in df.columns)
@@ -90,7 +100,6 @@ def run():
             if players_path.exists():
                 players = safe_read_csv(players_path)
 
-                # rename columns if needed
                 if "id" in players.columns:
                     players = players.rename(columns={"id": "element"})
 
@@ -98,16 +107,16 @@ def run():
                     pos_map = {1: "GK", 2: "DEF", 3: "MID", 4: "FWD"}
                     players["position"] = players["element_type"].map(pos_map)
 
-                # team might be numeric
+                # Some seasons publish the club only as a numeric code.
                 if "team" not in players.columns and "team_code" in players.columns:
                     players = players.rename(columns={"team_code": "team"})
 
-                # use only needed columns
                 players_small = players[["element", "position", "team"]].drop_duplicates()
 
                 df = df.merge(players_small, on="element", how="left", suffixes=("", "_from_players"))
 
-                # if df already had columns but empty, fill them
+                # The column existed but was empty, so the merge suffixed the
+                # real values. Fill from the suffixed copy and drop it.
                 if "position_from_players" in df.columns:
                     df["position"] = df["position"].fillna(df["position_from_players"])
                     df.drop(columns=["position_from_players"], inplace=True)
@@ -116,7 +125,8 @@ def run():
                     df["team"] = df["team"].fillna(df["team_from_players"])
                     df.drop(columns=["team_from_players"], inplace=True)
 
-        # keep only columns that exist (some seasons may miss a few)
+        # A column absent for a season is filled with NA, not zero. The model
+        # can learn that the value is unknown; it cannot unlearn a fake zero.
         existing = [c for c in KEEP_COLS if c in df.columns]
         missing = [c for c in KEEP_COLS if c not in df.columns]
         if missing:
@@ -130,12 +140,12 @@ def run():
 
     full = pd.concat(rows, ignore_index=True)
 
-    # clean types
     full["GW"] = pd.to_numeric(full["GW"], errors="coerce").astype("Int64")
     full["element"] = pd.to_numeric(full["element"], errors="coerce").astype("Int64")
     full["total_points"] = pd.to_numeric(full["total_points"], errors="coerce")
 
-    # sort for downstream target shifting and rolling features
+    # Sorted here so every stage downstream can rely on it, since all of them
+    # build features by shifting rows and none re-sorts.
     full = full.sort_values(["season", "element", "GW"]).reset_index(drop=True)
 
     OUT_PATH.parent.mkdir(parents=True, exist_ok=True)

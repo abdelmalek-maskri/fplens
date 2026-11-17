@@ -1,4 +1,3 @@
-# ml/pipelines/understat/fetch_understat.py
 """Scrape per-player match data from Understat for all EPL seasons.
 
 Writes to data/raw/understat/:
@@ -19,21 +18,25 @@ from understat import Understat
 
 from ml.config.seasons import SEASONS_ALL
 
+# ---------------------------------------------------------------------------
 OUT_DIR = Path("data/raw/understat")
 
 LEAGUE = "EPL"
+# ---------------------------------------------------------------------------
 
 
-# fetch all league players for one season.
 async def _get_league_players(understat: Understat, league: str, year: int) -> list[dict[str, Any]]:
+    """Every player Understat lists for one league-season."""
     return await understat.get_league_players(league, year)
 
 
-# fetch the set of valid team names for one league-season.
 async def _get_teams(understat: Understat, league: str, year: int) -> set[str]:
+    """The club names Understat uses for one league-season."""
     teams = await understat.get_teams(league, year)
 
-    # Understat commonly uses "title" for team name; fallback to "name" if ever present.
+    # Understat names the field "title", but has used "name" in older
+    # seasons, and a season that returns neither would silently filter out
+    # every match below.
     out = set()
     for t in teams:
         if "title" in t and t["title"]:
@@ -43,8 +46,8 @@ async def _get_teams(understat: Understat, league: str, year: int) -> set[str]:
     return out
 
 
-# fetch all match rows for one Understat player.
 async def _get_player_matches(understat: Understat, player_id: int) -> list[dict[str, Any]]:
+    """One player's full match history, across all competitions."""
     return await understat.get_player_matches(player_id)
 
 
@@ -56,29 +59,32 @@ def _filter_matches(
     team_names: set[str],
     player_id: int,
 ) -> list[dict[str, Any]]:
-    """
-    keep only:
-    - season == year
-    - both h_team and a_team are in EPL team list for that year
+    """Keep only this season's Premier League matches for one player.
+
+    A player's Understat history spans every competition and club they have
+    ever played for, so most of what comes back belongs to another league or
+    another year.
     """
     filtered: list[dict[str, Any]] = []
 
     for r in matches:
-        # keep only rows from the requested Understat season.
         try:
             if int(r.get("season", -1)) != year:
                 continue
         except Exception:
-            # skip rows with missing or invalid season values.
+            # A row with no usable season cannot be placed, and one bad row
+            # should not end the player.
             continue
 
-        # keep only matches where both teams belong to this league-season.
+        # Both clubs, not either: a cup tie against a Premier League side is
+        # not a Premier League match.
         if r.get("h_team") not in team_names:
             continue
         if r.get("a_team") not in team_names:
             continue
 
-        # copy the row and attach metadata needed downstream.
+        # Copied rather than mutated, because the caller still holds the
+        # original list.
         rr = dict(r)
         rr["us_player_id"] = player_id
         rr["league"] = league
@@ -94,14 +100,15 @@ async def fetch_all(
     max_players: int | None,
     concurrency: int,
 ) -> None:
-
+    """Scrape one season's players and their match histories."""
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    # limit open connections and use generous timeouts for slower responses.
+    # No total timeout: a season is hundreds of requests and the whole run
+    # legitimately takes minutes. The per-socket limits are what catch a
+    # connection that has actually stalled.
     connector = aiohttp.TCPConnector(limit=concurrency)
     timeout = aiohttp.ClientTimeout(total=None, sock_connect=30, sock_read=120)
 
-    # reuse one HTTP session for the whole season fetch.
     async with aiohttp.ClientSession(connector=connector, timeout=timeout) as session:
         understat = Understat(session)
 
@@ -109,7 +116,8 @@ async def fetch_all(
         players = await _get_league_players(understat, league, year)
         players_df = pd.DataFrame(players)
 
-        # save the raw league player table for this season.
+        # Written before the matches, so a run that fails partway still
+        # leaves the player table and does not have to re-fetch it.
         players_path = OUT_DIR / f"players_{league}_{year}.csv"
         players_df.to_csv(players_path, index=False)
         print(f"saved: {players_path} rows: {len(players_df)}")
@@ -118,25 +126,25 @@ async def fetch_all(
         team_names = await _get_teams(understat, league, year)
         print("teams (sample):", sorted(team_names)[:5], "... total:", len(team_names))
 
-        # we need player ids to fetch player-level match histories.
+        # Without ids there is nothing to fetch matches for, so this fails
+        # loudly rather than writing an empty match file.
         if players_df.empty or "id" not in players_df.columns:
             raise ValueError("Understat league players response missing 'id' column or is empty.")
 
-        # minutes may arrive as strings, so convert first.
-        # if we later limit players, this lets us prioritise the most active ones.
+        # Sorted by minutes so that --max-players takes the players who
+        # actually played rather than whoever Understat listed first.
         if "minutes" in players_df.columns:
             players_df["minutes"] = pd.to_numeric(players_df["minutes"], errors="coerce")
             players_df = players_df.sort_values("minutes", ascending=False, na_position="last")
 
-        # optional debug: only fetch the top N players.
         if max_players is not None:
             players_df = players_df.head(max_players).copy()
 
-        # build the list of valid Understat player ids.
         player_ids = [int(x) for x in players_df["id"].tolist() if pd.notna(x)]
         print(f"fetching matches for {len(player_ids)} players... (concurrency={concurrency})")
 
-        # limit how many player match requests run at the same time.
+        # Understat is a free site nobody here pays for, so the request rate
+        # is capped rather than left to asyncio.gather below.
         sem = asyncio.Semaphore(concurrency)
 
         async def fetch_one(pid: int) -> list[dict[str, Any]]:
@@ -151,19 +159,17 @@ async def fetch_all(
                         player_id=pid,
                     )
                 except Exception as e:
-                    # do not crash the whole season because one player failed.
+                    # One unreachable player costs that player's rows, not
+                    # the other 500 already fetched.
                     print(f"failed player_id={pid}: {e}")
                     return []
 
-        # run many player requests concurrently.
         chunks: list[list[dict[str, Any]]] = await asyncio.gather(*(fetch_one(pid) for pid in player_ids))
 
-        # flatten the nested list: one list per player -> one combined list of rows.
         all_rows: list[dict[str, Any]] = [r for chunk in chunks for r in chunk]
 
         matches_df = pd.DataFrame(all_rows)
 
-        # save the filtered player-match table for this season.
         matches_path = OUT_DIR / f"player_matches_{league}_{year}_all_filtered.csv"
         matches_df.to_csv(matches_path, index=False)
 
@@ -175,6 +181,7 @@ async def fetch_all(
 
 
 def parse_args() -> argparse.Namespace:
+    """Command-line options, mainly for limiting a debug run."""
     ap = argparse.ArgumentParser()
     ap.add_argument("--league", default=LEAGUE, help='Understat league code (default: "EPL")')
 
@@ -196,6 +203,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    """Scrape Understat for every season."""
     args = parse_args()
 
     for season in SEASONS_ALL:

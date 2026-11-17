@@ -1,3 +1,11 @@
+"""Reconstruct the fixture list from the per-gameweek player files.
+
+The vaastav archive has no fixtures file for the older seasons, but every
+player row names its fixture, its opponent and whether it was at home. One
+fixture therefore appears on both sides, once per player, and this reduces
+that back to a single row per match.
+"""
+
 from pathlib import Path
 
 import pandas as pd
@@ -9,7 +17,7 @@ SNAPSHOT_ROOT = Path("data/raw/fpl")
 
 
 def build_element_to_team_map(season_dir: Path) -> pd.Series:
-    # build mapping: element_id -> team_id
+    """Player id to club id, read from players_raw.csv."""
     players_path = season_dir / "players_raw.csv"
     players = safe_read_csv(players_path)
 
@@ -39,7 +47,11 @@ def build_element_to_team_map(season_dir: Path) -> pd.Series:
 
 
 def convert_was_home_to_boolean(s: pd.Series) -> pd.Series:
-    # Vaastav gw files store was_home inconsistently across seasons,normalize to boolean.
+    """Read was_home as a boolean whichever way the season spelled it.
+
+    The archive stores it as True, as 1, and as the string "True" depending on
+    the season, and a string column would make every row look like a home game.
+    """
     if s.dtype == bool:
         return s.fillna(False)
 
@@ -52,6 +64,7 @@ def convert_was_home_to_boolean(s: pd.Series) -> pd.Series:
 
 
 def run_one(season: str, snapshot: Path) -> Path:
+    """Rebuild one season's fixture list from its gameweek files."""
     season_dir = snapshot / season
     gws_dir = season_dir / "gws"
     if not gws_dir.exists():
@@ -64,7 +77,8 @@ def run_one(season: str, snapshot: Path) -> Path:
     if not gw_files:
         raise FileNotFoundError(f"no gw*.csv files found in {gws_dir}")
 
-    # always build element->team from players_raw
+    # Built even when the gameweek files have a team column, because for
+    # several seasons that column is largely empty.
     element_to_team = build_element_to_team_map(season_dir)
 
     rows = []
@@ -84,7 +98,6 @@ def run_one(season: str, snapshot: Path) -> Path:
         df["element"] = pd.to_numeric(df["element"], errors="coerce")
         df["opponent_team"] = pd.to_numeric(df["opponent_team"], errors="coerce")
 
-        # fill team using element_to_team
         team_from_map = df["element"].map(element_to_team)
 
         if "team" not in df.columns:
@@ -92,15 +105,16 @@ def run_one(season: str, snapshot: Path) -> Path:
         else:
             df["team"] = pd.to_numeric(df["team"], errors="coerce")
 
-            # if team is mostly missing, replace it entirely
+            # Mostly empty means the column is not usable, and filling it
+            # row by row would leave a mix of two sources.
             if df["team"].isna().mean() > 0.50:
                 df["team"] = team_from_map
             else:
-                # otherwise just fill missing
                 df["team"] = df["team"].fillna(team_from_map)
 
         df["team"] = pd.to_numeric(df["team"], errors="coerce")
-        # keep only usable rows
+        # A row missing any of these cannot identify a match, and keeping it
+        # would produce a fixture with no teams or no date.
         dfx = df.dropna(subset=["fixture", "kickoff_time", "team", "opponent_team"]).copy()
 
         if dfx.empty:
@@ -116,13 +130,16 @@ def run_one(season: str, snapshot: Path) -> Path:
         dfx["team"] = dfx["team"].astype(int)
         dfx["opponent_team"] = dfx["opponent_team"].astype(int)
 
-        # choose one home-side record per fixture
+        # The home side's row names the teams the right way round, so one of
+        # its players is enough to describe the whole fixture.
         home_side = dfx[dfx["was_home"]][
             ["fixture", "kickoff_time", "team", "opponent_team", "team_h_score", "team_a_score"]
         ].copy()
 
         if home_side.empty:
-            # fallback: use away-side rows and swap ids
+            # No home player has a row for this fixture, which happens when
+            # the gameweek file is partial. The away rows hold the same
+            # match with team and opponent reversed.
             away_side = dfx[~dfx["was_home"]][
                 ["fixture", "kickoff_time", "team", "opponent_team", "team_h_score", "team_a_score"]
             ].copy()
@@ -142,7 +159,8 @@ def run_one(season: str, snapshot: Path) -> Path:
         rows.append(one_per_fixture)
 
     if not rows:
-        # hard fail if no fixture rows produced
+        # Silently writing an empty fixtures file would break the Understat
+        # mapping three stages later, where the cause is much harder to see.
         raise RuntimeError(
             f"{season}: produced 0 fixture rows from gw files. "
             f"Check that gw*.csv contain element ids matching players_raw and valid kickoff_time."
@@ -150,7 +168,8 @@ def run_one(season: str, snapshot: Path) -> Path:
 
     fx = pd.concat(rows, ignore_index=True)
 
-    # one row per fixture
+    # Both clubs' gameweek files describe the same match, so the same fixture
+    # arrives twice.
     fx = fx.sort_values(["fixture", "kickoff_time"]).drop_duplicates(subset=["fixture"], keep="first")
     fx = fx.sort_values(["kickoff_time", "fixture"]).reset_index(drop=True)
     fx.to_csv(out, index=False)
@@ -161,6 +180,7 @@ def run_one(season: str, snapshot: Path) -> Path:
 
 
 def main():
+    """Rebuild the fixture list for every season."""
     snap = find_latest_snapshot(SNAPSHOT_ROOT)
     for season in SEASONS_ALL:
         run_one(season, snap)

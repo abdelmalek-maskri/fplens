@@ -1,4 +1,3 @@
-# ml/pipelines/runners/run_data_pipeline.py
 """
 Runs the full data pipeline: FPL processing, Understat scraping,
 cross-source mapping, and merge. Steps 1-10 in the pipeline.
@@ -9,15 +8,18 @@ import sys
 
 
 def sh(cmd):
+    """Run a command, echoing it first so the log shows the pipeline's shape."""
     print("\n", " ".join(cmd))
     subprocess.check_call(cmd)
 
 
 def run_module(module: str):
+    """Run one pipeline stage as a module, from the repo root."""
     sh([sys.executable, "-m", module])
 
 
 def main():
+    """Run every data stage in order. Each reads the previous one's output."""
     # 1) FPL base data
     run_module("ml.pipelines.fpl.build_gw_windows")
     run_module("ml.pipelines.fpl.build_fpl_table")

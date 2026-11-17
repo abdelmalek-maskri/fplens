@@ -1,6 +1,8 @@
-/* =========================================
-   FPLENS — DESIGN SYSTEM
-   ========================================= */
+/* The design system: colour tokens, then the component classes built on them.
+   Two rules decide most of what is here. Every step that carries text has a
+   measured contrast floor against its background, recorded beside it. And
+   nothing puts text on an alpha tint over a parent the component does not
+   control, which is what made the old fixture-difficulty badges unreadable. */
 
 @import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap");
 
@@ -8,20 +10,16 @@
 @tailwind components;
 @tailwind utilities;
 
-/* =========================================
-   TOKENS
-   ========================================= */
-
 :root {
-  /* Surface — warm light editorial, no blue tint.
-     50 is the lightest and 950 the darkest, as in every Tailwind-shaped
-     scale. These ran the other way round, so bg-surface-800 named a
-     near-white and no one could read a class name and predict the colour.
+  /* Surface — warm light editorial, no blue tint. 50 is the lightest and
+     950 the darkest, as in every Tailwind-shaped scale, so a class name
+     predicts its colour.
 
-     600/500/400 carry text in ~210 places, so each has a contrast floor
-     against --surface-100: 6.95:1, 5.61:1 and 4.63:1. Those floors leave a
-     gap between 300 and 400 that the even spacing elsewhere does not have.
-     300 and lighter are backgrounds and borders, too pale to put text on. */
+     600/500/400 carry text in ~210 places and each has a measured contrast
+     floor against --surface-100: 6.95:1, 5.61:1 and 4.63:1. Meeting those
+     floors is why the gap between 300 and 400 is wider than the even spacing
+     elsewhere. 300 and lighter are backgrounds and borders only, too pale to
+     put text on. */
   --surface-50: 255 255 255;
   --surface-100: 250 249 246;
   --surface-200: 235 234 231;
@@ -34,10 +32,10 @@
   --surface-900: 30 29 27;
   --surface-950: 15 15 17;
 
-  /* Brand — Tailwind emerald, unmodified. Four steps used to be relabelled
-     to darken the accent for a light background, which left 500 lighter than
-     400 and 400 identical to 600, so "one step darker" was not expressible.
-     The darkening now lives at the point of use: brand-700 is the accent. */
+  /* Brand — Tailwind emerald, unmodified, so each step is one step from its
+     neighbours and "slightly darker" is expressible. The darkening a light
+     background needs happens at the point of use instead: brand-700 is the
+     usable accent, and #10B981 survives as brand-300, too light for text. */
   --brand-50: 236 253 245;
   --brand-100: 209 250 229;
   --brand-200: 167 243 208;
@@ -82,10 +80,6 @@
   --sidebar-width: 200px;
 }
 
-/* =========================================
-   BASE
-   ========================================= */
-
 @layer base {
   html {
     @apply antialiased;
@@ -127,10 +121,6 @@
     @apply outline-none ring-2 ring-brand-700 ring-offset-2 ring-offset-surface-100;
   }
 }
-
-/* =========================================
-   COMPONENTS
-   ========================================= */
 
 @layer components {
   /* Cards */
@@ -332,10 +322,6 @@
     animation: shimmer 1.5s ease-in-out infinite;
   }
 }
-
-/* =========================================
-   ANIMATIONS
-   ========================================= */
 
 @keyframes shimmer {
   0% {

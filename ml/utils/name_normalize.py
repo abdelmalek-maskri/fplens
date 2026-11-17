@@ -1,4 +1,9 @@
-# ml/utils/name_normalize.py
+"""Reduce a club or player name to one canonical form.
+
+FPL, Understat and the Guardian each spell the same club three ways, and the
+only key they share is the name. Everything here exists to make those three
+spellings produce one string.
+"""
 
 from __future__ import annotations
 
@@ -6,6 +11,7 @@ import html
 import re
 import unicodedata
 
+# ---------------------------------------------------------------------------
 # Characters that NFKD does not decompose into ASCII base + combining mark.
 # Map them explicitly before running the standard accent-strip pass.
 _EXTRA_TRANSLITERATE = str.maketrans(
@@ -24,8 +30,9 @@ _EXTRA_TRANSLITERATE = str.maketrans(
     }
 )
 
-# Canonical aliases AFTER basic cleaning (lowercase, punctuation removed, etc.)
-# Keep keys in their "cleaned" form (spaces only, no punctuation).
+# Applied after _basic_clean, so the keys here must already be in cleaned
+# form: lowercase, no punctuation, single spaces. A key with an apostrophe
+# in it would never match anything.
 ALIASES = {
     "tottenham": "spurs",
     "tottenham hotspur": "spurs",
@@ -49,12 +56,14 @@ ALIASES = {
     "cardiff city": "cardiff",
 }
 
-# Words to drop when cleaning names
+# Dropped because one source includes them and another does not, so they
+# carry no information and only cause mismatches.
 STOPWORDS = {
     "fc",
     "afc",
     "the",
 }
+# ---------------------------------------------------------------------------
 
 
 def _strip_accents(s: str) -> str:
@@ -65,23 +74,19 @@ def _strip_accents(s: str) -> str:
 
 
 def _basic_clean(s: str) -> str:
-    """
-    Lowercase, remove accents, replace & with and,
-    drop punctuation, normalize spaces.
-    """
-    s = html.unescape(s)  # &#039; -> '
+    """Lowercase, strip accents, drop punctuation, collapse spaces."""
+    # Some sources double-encode, so a name can arrive as &#039; rather than
+    # an apostrophe, and the regex below would turn that into three words.
+    s = html.unescape(s)
     s = _strip_accents(s)
     s = s.lower().strip()
 
     s = s.replace("&", " and ")
 
-    # Replace any non-alphanumeric with spaces
     s = re.sub(r"[^a-z0-9]+", " ", s)
 
-    # Collapse whitespace
     s = re.sub(r"\s+", " ", s).strip()
 
-    # Drop stopwords
     if s:
         parts = [p for p in s.split(" ") if p and p not in STOPWORDS]
         s = " ".join(parts)
@@ -90,13 +95,11 @@ def _basic_clean(s: str) -> str:
 
 
 def norm(s: str) -> str:
-    """
-    Canonical normalization used across the pipeline to join team/player names.
-    Example:
-      - "Tottenham" -> "spurs"
-      - "Wolverhampton Wanderers" -> "wolves"
-      - "Manchester United" -> "man utd"
-      - "N'Golo Kanté" -> "ngolo kante"
+    """The canonical form every name-based join in this project uses.
+
+    "Tottenham" and "Tottenham Hotspur" both become "spurs".
+    "Wolverhampton Wanderers" becomes "wolves".
+    "N'Golo Kanté" becomes "ngolo kante".
     """
     if s is None:
         return ""
@@ -104,5 +107,4 @@ def norm(s: str) -> str:
     s = str(s)
     s_clean = _basic_clean(s)
 
-    # Apply aliases (keys must match cleaned form)
     return ALIASES.get(s_clean, s_clean)

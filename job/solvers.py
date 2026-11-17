@@ -13,6 +13,7 @@ class SolverError(RuntimeError):
     """
 
 
+# ---------------------------------------------------------------------------
 FORMATIONS = [
     (3, 4, 3),
     (3, 5, 2),
@@ -39,6 +40,7 @@ OUTPUT_COLS = [
 POSITION_LIMITS = {"GK": 2, "DEF": 5, "MID": 5, "FWD": 3}
 MAX_PER_TEAM = 3
 DEFAULT_BUDGET = 100.0
+# ---------------------------------------------------------------------------
 
 
 def _available_players(df: pd.DataFrame) -> pd.DataFrame:
@@ -47,6 +49,7 @@ def _available_players(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _existing_cols(df: pd.DataFrame) -> list[str]:
+    """The subset of output columns this frame actually has."""
     return [c for c in OUTPUT_COLS if c in df.columns]
 
 
@@ -57,7 +60,9 @@ def _solve_best_xi(df: pd.DataFrame) -> dict:
     """
     available = _available_players(df)
 
-    # sort each position pool by predicted_points descending
+    # Sorted once, then every formation below reads from the top. Taking the
+    # best N per position is exact for an unconstrained XI, because no
+    # formation can prefer a lower-scoring player at the same position.
     gks = available[available["position"] == "GK"].sort_values("predicted_points", ascending=False)
     defs = available[available["position"] == "DEF"].sort_values("predicted_points", ascending=False)
     mids = available[available["position"] == "MID"].sort_values("predicted_points", ascending=False)
@@ -68,7 +73,8 @@ def _solve_best_xi(df: pd.DataFrame) -> dict:
     best_formation = None
 
     for n_def, n_mid, n_fwd in FORMATIONS:
-        # check we have enough players
+        # A formation nobody has the players for, which happens when enough
+        # of a squad is injured.
         if len(gks) < 1 or len(defs) < n_def or len(mids) < n_mid or len(fwds) < n_fwd:
             continue
 
@@ -83,12 +89,13 @@ def _solve_best_xi(df: pd.DataFrame) -> dict:
     if best_xi is None:
         raise SolverError("Not enough available players to form a valid XI")
 
-    # captain and vice: highest predicted_points
+    # The captain's points are doubled, so the highest predicted scorer takes
+    # the armband and the next one covers them not playing.
     sorted_xi = best_xi.sort_values("predicted_points", ascending=False)
     captain_id = int(sorted_xi.iloc[0]["element"])
     vice_id = int(sorted_xi.iloc[1]["element"])
 
-    # bench: best remaining players (1 GK + 3 outfield)
+    # FPL benches exactly four, one of whom must be the reserve keeper.
     xi_ids = set(best_xi["element"].tolist())
     bench_gk = gks[~gks["element"].isin(xi_ids)].head(1)
     bench_outfield = (
@@ -126,26 +133,28 @@ def solve_best_squad(df: pd.DataFrame, budget: float = DEFAULT_BUDGET) -> dict:
     # keeps it off the serving requirements.
     from scipy.optimize import Bounds, LinearConstraint, milp
 
-    # milp minimises, so negate for maximisation
+    # scipy's milp only minimises, so the objective is negated and the
+    # result is the squad with the most predicted points.
     c = -available["predicted_points"].values
 
     constraints_A = []
     lb = []
     ub = []
 
-    # budget: sum(value * x) <= budget
+    # The budget, as one row: the selected players' prices must not exceed it.
     constraints_A.append(available["value"].values.reshape(1, -1))
     lb.append(-np.inf)
     ub.append(budget)
 
-    # position constraints: exactly N per position
+    # Exactly, not at most. FPL squads are 2/5/5/3 with no flexibility.
     for pos, count in POSITION_LIMITS.items():
         row = (available["position"] == pos).astype(float).values.reshape(1, -1)
         constraints_A.append(row)
         lb.append(count)
         ub.append(count)
 
-    # team constraints: at most 3 per team
+    # At most three from any one club, which is the rule that stops the
+    # solver buying the whole of the best-performing team.
     for team in available["team_name"].unique():
         row = (available["team_name"] == team).astype(float).values.reshape(1, -1)
         constraints_A.append(row)
@@ -154,14 +163,17 @@ def solve_best_squad(df: pd.DataFrame, budget: float = DEFAULT_BUDGET) -> dict:
 
     A = np.vstack(constraints_A)
     constraints = LinearConstraint(A, lb, ub)
-    integrality = np.ones(n)  # 1 = integer variable
+    # Every variable is integer and bounded to [0, 1], which makes this a
+    # pick-or-not decision per player rather than a fractional share.
+    integrality = np.ones(n)
     bounds = Bounds(lb=0, ub=1)
 
     result = milp(c, constraints=constraints, integrality=integrality, bounds=bounds)
     if not result.success:
         raise SolverError(f"ILP solver failed: {result.message}")
 
-    # extract selected players (binary, but solver returns floats)
+    # The solver returns floats even for integer variables, so a selected
+    # player comes back as 0.9999999 rather than 1.
     squad = available[result.x > 0.5].copy()
     if len(squad) != 15:
         raise SolverError(f"Solver selected {len(squad)} players instead of 15")
@@ -193,7 +205,6 @@ def suggest_transfers(
     available = _available_players(all_predictions)
     squad_ids = {p["element"] for p in user_picks}
 
-    # count players per team for max 3/team rule
     team_counts: dict[str, int] = {}
     for p in user_picks:
         t = p.get("team_name", "")
@@ -209,17 +220,18 @@ def suggest_transfers(
         if not out_pos:
             continue
 
-        # budget available if we sell this player
+        # Selling frees their price as well as the bank, so a replacement can
+        # cost more than the bank alone would allow.
         budget_for_replacement = bank + out_value
 
-        # find same-position, affordable, not in squad
         candidates = available[
             (available["position"] == out_pos)
             & (~available["element"].isin(squad_ids))
             & (available["value"] <= budget_for_replacement)
         ].copy()
 
-        # enforce max 3/team — selling frees a slot on the outgoing player's team
+        # Clubs already at three are closed, except the one being sold from:
+        # that transfer frees a slot, so a same-club replacement is legal.
         teams_at_limit = {t for t, c in team_counts.items() if c >= MAX_PER_TEAM}
         out_team = pick.get("team_name", "")
         blocked_teams = teams_at_limit - {out_team}
@@ -258,7 +270,9 @@ def suggest_transfers(
             }
         )
 
-    # sort by gain, deduplicate by in-player
+    # Best gain first, then one suggestion per incoming player. The same
+    # target is usually the best replacement for several squad members, and
+    # a list repeating them reads as four transfers when it is one.
     suggestions.sort(key=lambda s: s["points_gain"], reverse=True)
     seen_in: set[int] = set()
     unique = []
