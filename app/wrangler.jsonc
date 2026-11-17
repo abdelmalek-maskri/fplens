@@ -13,8 +13,20 @@
 {
   "name": "fplens",
   "compatibility_date": "2026-09-15",
+  // html_handling decides how a bare /accuracy finds dist/accuracy/index.html,
+  // which the build now writes so each route has its own title and link
+  // preview. The default, auto-trailing-slash, answers /accuracy with a 307 to
+  // /accuracy/ and serves the file from there; drop-trailing-slash serves it
+  // directly with a 200. React Router links carry no trailing slash and the
+  // canonical URLs in those files do not either, so this is the mode that
+  // matches them and skips a redirect on every deep link.
+  //
+  // "none" would break it outright: a bare /accuracy would match no asset and
+  // fall through to the single-page-application handler, which is the generic
+  // index.html this change exists to stop serving.
   "assets": {
     "directory": "./dist",
+    "html_handling": "drop-trailing-slash",
     "not_found_handling": "single-page-application"
   }
 }
