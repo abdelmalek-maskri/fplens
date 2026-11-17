@@ -72,9 +72,7 @@ FIXTURES_URL = f"{FPL_BASE_URL}/fixtures/"
 # would add seconds to the API's "FPL ID not found" response for nothing.
 RETRY_STATUSES = (429, 500, 502, 503, 504)
 
-# Three attempts after the first, waiting 0.5s, 1s, 2s. The whole run has a
-# 30s-ish budget per call already, so this cannot turn a slow fetch into a
-# stuck one.
+# Three attempts after the first, waiting 0.5s, 1s, 2s.
 RETRY_TOTAL = 3
 RETRY_BACKOFF = 0.5
 
@@ -82,36 +80,56 @@ RETRY_BACKOFF = 0.5
 # retry in the same instant, rebuilding the spike that caused the failure.
 RETRY_JITTER = 0.3
 
-# One session per thread. requests.Session is not documented as thread-safe,
-# and fetch_all_player_histories runs twenty at once.
+# urllib3 obeys Retry-After, and its own cap on that is six hours: a 429 saying
+# "Retry-After: 3600" sleeps for an hour inside time.sleep(), which no request
+# timeout interrupts because the timeouts are per attempt. Capping the wait is
+# what keeps the worst case a number rather than whatever a third party asks
+# for. Three retries at this cap bounds all waiting for one call to 9 seconds.
+RETRY_AFTER_MAX = 3
+
+# The API does not retry at all. Its callers are anyio threadpool threads, and
+# the comment above FPL_TIMEOUT is about what happens when those stall: 40 of
+# them wedge every route in the process. Multiplying each squad lookup by four
+# attempts would rebuild that, so retries stay where the ~800 calls are and
+# where nobody is waiting on the result.
+INTERACTIVE_RETRY_TOTAL = 0
+
+# One session per thread per profile. requests.Session is not documented as
+# thread-safe, and fetch_all_player_histories runs twenty at once.
 _thread_local = threading.local()
 
 
-def fpl_session() -> requests.Session:
-    """A requests Session that retries transient failures with backoff.
+def fpl_session(interactive: bool = False) -> requests.Session:
+    """A requests Session for FPL, retrying transient failures with backoff.
 
     GET only: every call here is a read, so a repeat is free. A POST would
     need an idempotency key before it could be retried safely, and there are
     none in this module.
 
-    respect_retry_after_header is urllib3's default and is why 429 is in the
-    list: FPL tells us how long to wait and the session obeys it.
+    interactive=True is the profile for calls made while someone waits on an
+    HTTP response. It does no retrying, so a squad lookup takes exactly as
+    long to fail as it did before retries existed.
+
+    Worst case per call, batch profile: four attempts at FPL_TIMEOUT plus at
+    most RETRY_TOTAL * RETRY_AFTER_MAX seconds of waiting.
     """
-    session = getattr(_thread_local, "fpl_session", None)
+    attr = "fpl_session_interactive" if interactive else "fpl_session_batch"
+    session = getattr(_thread_local, attr, None)
     if session is None:
         retry = Retry(
-            total=RETRY_TOTAL,
+            total=INTERACTIVE_RETRY_TOTAL if interactive else RETRY_TOTAL,
             backoff_factor=RETRY_BACKOFF,
             backoff_jitter=RETRY_JITTER,
             status_forcelist=RETRY_STATUSES,
             allowed_methods=frozenset(["GET"]),
+            retry_after_max=RETRY_AFTER_MAX,
             raise_on_status=False,
         )
         session = requests.Session()
         adapter = HTTPAdapter(max_retries=retry)
         session.mount("https://", adapter)
         session.mount("http://", adapter)
-        _thread_local.fpl_session = session
+        setattr(_thread_local, attr, session)
     return session
 
 
@@ -144,12 +162,16 @@ SEASON_AVG_COLS = [
 ROLL_WINDOWS = [3, 5, 10]
 
 
-def get_bootstrap_data() -> dict:
+def get_bootstrap_data(interactive: bool = False) -> dict:
 
     # Fetch bootstrap-static data from FPL API.
     # Contains: all players, teams, gameweeks, game settings.
+    #
+    # The API calls this with interactive=True. It is behind a 60-minute cache
+    # there, so only one caller ever reaches here, but that caller is a request
+    # thread and must not be made to wait out a retry sequence.
     print("Fetching FPL bootstrap-static data...")
-    response = fpl_session().get(BOOTSTRAP_URL, timeout=FPL_TIMEOUT)
+    response = fpl_session(interactive=interactive).get(BOOTSTRAP_URL, timeout=FPL_TIMEOUT)
 
     if response.status_code != 200:
         raise RuntimeError(f"FPL API error: {response.status_code}")
@@ -1438,14 +1460,14 @@ def fetch_user_team(fpl_id: int, bootstrap: dict | None = None) -> dict:
 
     # fetch manager entry info
     entry_url = f"{FPL_BASE_URL}/entry/{fpl_id}/"
-    resp = fpl_session().get(entry_url, timeout=FPL_TIMEOUT)
+    resp = fpl_session(interactive=True).get(entry_url, timeout=FPL_TIMEOUT)
     if resp.status_code != 200:
         raise FPLAPIError(resp.status_code, entry_url)
     entry = resp.json()
 
     # fetch picks for latest finished GW (= user's current squad)
     picks_url = f"{FPL_BASE_URL}/entry/{fpl_id}/event/{picks_gw}/picks/"
-    resp = fpl_session().get(picks_url, timeout=FPL_TIMEOUT)
+    resp = fpl_session(interactive=True).get(picks_url, timeout=FPL_TIMEOUT)
     if resp.status_code != 200:
         raise FPLAPIError(resp.status_code, picks_url)
     picks_data = resp.json()

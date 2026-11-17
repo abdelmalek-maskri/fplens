@@ -6,15 +6,18 @@ assert that the configuration exists rather than that it works.
 """
 
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 import pytest
 
-from job.fetch_live_data import RETRY_TOTAL, fpl_session
+from job.fetch_live_data import RETRY_AFTER_MAX, RETRY_TOTAL, fpl_session
 
 # path -> list of statuses to return, one per request, last one repeating.
 SCRIPT: dict[str, list[int]] = {}
 HITS: dict[str, int] = {}
+# path -> Retry-After header value to send with every response.
+RETRY_AFTER: dict[str, str] = {}
 
 
 class _Handler(BaseHTTPRequestHandler):
@@ -27,6 +30,8 @@ class _Handler(BaseHTTPRequestHandler):
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
+        if path in RETRY_AFTER:
+            self.send_header("Retry-After", RETRY_AFTER[path])
         self.end_headers()
         self.wfile.write(body)
 
@@ -38,6 +43,7 @@ class _Handler(BaseHTTPRequestHandler):
 def server():
     SCRIPT.clear()
     HITS.clear()
+    RETRY_AFTER.clear()
     httpd = HTTPServer(("127.0.0.1", 0), _Handler)
     thread = threading.Thread(target=httpd.serve_forever, daemon=True)
     thread.start()
@@ -82,6 +88,66 @@ def test_a_healthy_call_is_made_exactly_once(server):
     SCRIPT["/fine"] = [200]
     assert fpl_session().get(f"{server}/fine", timeout=5).status_code == 200
     assert HITS["/fine"] == 1
+
+
+def test_an_outrageous_retry_after_is_capped_not_obeyed(server):
+    """urllib3 sleeps for whatever Retry-After asks, up to six hours by default.
+
+    Nothing interrupts that sleep: the request timeouts are per attempt and do
+    not cover the gaps between them. A third party would otherwise be choosing
+    how long this process blocks for.
+    """
+    SCRIPT["/throttled-hard"] = [429, 200]
+    RETRY_AFTER["/throttled-hard"] = "3600"
+
+    started = time.monotonic()
+    resp = fpl_session().get(f"{server}/throttled-hard", timeout=5)
+    elapsed = time.monotonic() - started
+
+    assert resp.status_code == 200
+    assert HITS["/throttled-hard"] == 2
+    # Uncapped this would be an hour. Generous upper bound so a slow CI box
+    # does not fail it, but far below 3600 either way.
+    assert elapsed < RETRY_AFTER_MAX + 5, f"slept {elapsed:.1f}s, cap is {RETRY_AFTER_MAX}s"
+
+
+def test_total_waiting_stays_bounded_when_every_attempt_is_throttled(server):
+    """The bound that matters is across all attempts, not per attempt."""
+    SCRIPT["/always-throttled"] = [429]
+    RETRY_AFTER["/always-throttled"] = "3600"
+
+    started = time.monotonic()
+    resp = fpl_session().get(f"{server}/always-throttled", timeout=5)
+    elapsed = time.monotonic() - started
+
+    assert resp.status_code == 429
+    assert HITS["/always-throttled"] == RETRY_TOTAL + 1
+    assert elapsed < RETRY_TOTAL * RETRY_AFTER_MAX + 5, f"slept {elapsed:.1f}s"
+
+
+def test_the_interactive_profile_does_not_retry(server):
+    """Someone is waiting on this one.
+
+    Four attempts on a request thread is the stall that FPL_TIMEOUT's comment
+    describes, so the API path answers as fast as it did before retries.
+    """
+    SCRIPT["/user-squad"] = [503, 200]
+    resp = fpl_session(interactive=True).get(f"{server}/user-squad", timeout=5)
+    assert resp.status_code == 503
+    assert HITS["/user-squad"] == 1
+
+
+def test_the_interactive_profile_never_waits_on_retry_after(server):
+    SCRIPT["/user-throttled"] = [429, 200]
+    RETRY_AFTER["/user-throttled"] = "3600"
+
+    started = time.monotonic()
+    fpl_session(interactive=True).get(f"{server}/user-throttled", timeout=5)
+    assert time.monotonic() - started < 5
+
+
+def test_the_two_profiles_are_different_sessions():
+    assert fpl_session() is not fpl_session(interactive=True)
 
 
 def test_each_thread_gets_its_own_session():
