@@ -15,6 +15,7 @@ import {
   health,
   clearSnapshotCache,
   ApiError,
+  SUPPORTED_SCHEMA_VERSION,
 } from "../../lib/api";
 
 // Mock global fetch
@@ -340,5 +341,56 @@ describe("ApiError carries the status", () => {
     const err = await getPlayer(999).catch((e) => e);
     expect(err).toBeInstanceOf(ApiError);
     expect(err.status).toBe(404);
+  });
+});
+
+describe("schema version", () => {
+  // The committed snapshot and the frontend reading it ship in the same
+  // commit, so a renamed key reaches every visitor at once. The version is
+  // how a stale build notices rather than rendering blank.
+  it("says nothing about a snapshot it understands", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    mockFetch.mockResolvedValue(jsonResponse({ schema_version: SUPPORTED_SCHEMA_VERSION }));
+    await getManifest();
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  it("treats a snapshot published before versioning as the oldest one", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    mockFetch.mockResolvedValue(jsonResponse({ gameweek: 11 }));
+    await expect(getManifest()).resolves.toMatchObject({ gameweek: 11 });
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  it("warns when the snapshot is newer than this build", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    mockFetch.mockResolvedValue(jsonResponse({ schema_version: SUPPORTED_SCHEMA_VERSION + 1 }));
+    await getManifest();
+    expect(warn).toHaveBeenCalledOnce();
+    expect(warn.mock.calls[0][0]).toContain(`v${SUPPORTED_SCHEMA_VERSION + 1}`);
+    warn.mockRestore();
+  });
+
+  it("still returns the manifest when the version is newer", async () => {
+    // Adding fields is the compatible change, so a bump alone must not stop
+    // the page rendering what it can already read.
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    mockFetch.mockResolvedValue(jsonResponse({ schema_version: 99, default_model: "config_d" }));
+    await expect(getManifest()).resolves.toMatchObject({ default_model: "config_d" });
+    warn.mockRestore();
+  });
+
+  it("matches the version the job writes", async () => {
+    // job/tests/test_snapshot.py asserts the other half of this: that the
+    // committed manifest carries snapshot.SCHEMA_VERSION. Together they fail
+    // if one side is bumped without the other.
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const committed = await import("../../../public/data/manifest.json");
+    mockFetch.mockResolvedValue(jsonResponse(committed.default));
+    await getManifest();
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
   });
 });

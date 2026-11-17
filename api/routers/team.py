@@ -53,7 +53,13 @@ def get_team(
         # Shared across every manager, so it is fetched once per TTL rather
         # than once per squad. One shared key with a TTL cannot be driven by a
         # caller, so it is not billed to anyone.
-        bootstrap = cache.get_or_fetch("bootstrap", get_bootstrap_data, ttl_minutes=BOOTSTRAP_CACHE_TTL)
+        # interactive=True: no retries. A request thread waiting out four
+        # attempts is the stall the FPL_TIMEOUT comment exists to prevent.
+        bootstrap = cache.get_or_fetch(
+            "bootstrap",
+            lambda: get_bootstrap_data(interactive=True),
+            ttl_minutes=BOOTSTRAP_CACHE_TTL,
+        )
 
         def fetch():
             # Billed inside the fetch, not at the top of the handler, so the

@@ -3,6 +3,27 @@
 # repeat visit revalidates every file over the network before using a copy it
 # already has.
 
+# Applies to every response. Rules below add Cache-Control to some paths; they
+# set no header named here, so both apply.
+#
+# The news page renders Guardian headlines, which React escapes, so a headline
+# containing a script tag is drawn as text. The policy below is the second
+# lock, for the case where the first one is the thing that fails.
+#
+# connect-src names the deployed API explicitly because this file is static and
+# cannot read VITE_API_URL. Change one and change the other, or My Team and
+# News stop loading.
+#
+# 'unsafe-inline' is in style-src and not script-src. Nine components set
+# style={{...}}, which the browser treats as an inline style, and there is no
+# build step here that would hash them. Scripts have no such exception, which
+# is the half of the policy that stops injected code running.
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://fplens.onrender.com https://cloudflareinsights.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), interest-cohort=()
+
 # Vite puts a content hash in these filenames, so the contents can never change
 # without the name changing too. Safe to keep forever.
 /assets/*
