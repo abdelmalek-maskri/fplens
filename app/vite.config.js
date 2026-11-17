@@ -1,6 +1,7 @@
 import { env } from 'node:process'
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
@@ -133,7 +134,7 @@ function perRouteHtml() {
         // file wins over the single-page-application fallback. The dashboard
         // overwrites index.html itself, which is both the root route and the
         // fallback every other path still falls through to.
-        const distDir = dirname(indexPath.pathname)
+        const distDir = dirname(fileURLToPath(indexPath))
         const file = route === '/' ? join(distDir, 'index.html') : join(distDir, route.slice(1), 'index.html')
         mkdirSync(dirname(file), { recursive: true })
         writeFileSync(file, page, 'utf8')
