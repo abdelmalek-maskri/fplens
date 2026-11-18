@@ -26,6 +26,17 @@ vi.mock("../../hooks", async (importOriginal) => {
     names: { model: "Model" },
     models: {
       model: {
+        xi: {
+          points: 61,
+          average_manager: 55,
+          highest: 139,
+          players: [
+            { element: 1, name: "Keeper", position: "GK", actual: 2, captain: false },
+            { element: 2, name: "Back", position: "DEF", actual: 6, captain: false },
+            { element: 3, name: "Mid", position: "MID", actual: 10, captain: true },
+            { element: 4, name: "Striker", position: "FWD", actual: 1, captain: false },
+          ],
+        },
         players: Array.from({ length: 51 }, (_, i) => ({
           element: i + 1,
           name: `Result ${i + 1}`,
@@ -94,6 +105,22 @@ describe("dashboard fixtures and empty state", () => {
     expect(screen.queryByText("Fixtures are currently unavailable.")).not.toBeInTheDocument();
   });
 
+  it("opens the fixture difficulty key alongside the fixtures", () => {
+    // The badges are a digit and a colour. Nothing said what either meant.
+    state.fixtures = {
+      error: null,
+      data: {
+        currentGw: 1,
+        fixtures: { ARS: [{ gw: 1, home: true, opponent: "CHE", atkFdr: 2, defFdr: 3 }] },
+      },
+    };
+    renderPage(<Dashboard />);
+    fireEvent.click(screen.getByRole("button", { name: /Fixtures/ }));
+    expect(screen.getByText(/Fixture difficulty for that team/)).toBeInTheDocument();
+    expect(screen.getByText("Very Easy")).toBeInTheDocument();
+    expect(screen.getByText("Very Hard")).toBeInTheDocument();
+  });
+
   it("prioritizes search guidance and retains flagged guidance without a search", () => {
     renderPage(<Dashboard />, "/?flagged=1&pos=DEF");
     expect(screen.getByText(/No flagged players in this position/)).toBeInTheDocument();
@@ -135,5 +162,91 @@ describe("Dashboard row disclosure", () => {
     const links = screen.getAllByRole("link", { name: "Player 1" });
     expect(links.length).toBeGreaterThan(0);
     links.forEach((a) => expect(a).toHaveAttribute("href", "/player/1"));
+  });
+});
+
+describe("Dashboard panels", () => {
+  // Fixtures, Differentials, Goals vs xG and Price Watch were two different
+  // mechanisms: a disclosure above the table and a tab strip below it, with
+  // fifty rows in between. These assert they now behave as one accordion.
+  const chip = (name) => screen.getByRole("button", { name: new RegExp(`^${name}`) });
+
+  it("starts with every panel closed", () => {
+    renderPage(<Dashboard />);
+    for (const name of ["Fixtures", "Differentials", "Goals vs xG", "Price Watch"]) {
+      expect(chip(name)).toHaveAttribute("aria-expanded", "false");
+    }
+  });
+
+  it("opens a panel on click and closes it on a second click", () => {
+    renderPage(<Dashboard />);
+    fireEvent.click(chip("Differentials"));
+    expect(chip("Differentials")).toHaveAttribute("aria-expanded", "true");
+    fireEvent.click(chip("Differentials"));
+    expect(chip("Differentials")).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("keeps only one panel open at a time", () => {
+    renderPage(<Dashboard />);
+    fireEvent.click(chip("Differentials"));
+    fireEvent.click(chip("Price Watch"));
+    expect(chip("Price Watch")).toHaveAttribute("aria-expanded", "true");
+    expect(chip("Differentials")).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("opens the panel named in the address bar, so a link can point at one", () => {
+    renderPage(<Dashboard />, "/?panel=xg");
+    expect(chip("Goals vs xG")).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("sits above the table rather than below it", () => {
+    // The whole point of the move: a reader should not have to pass fifty
+    // rows and a pagination bar to find out these panels exist.
+    renderPage(<Dashboard />, "/?panel=differentials");
+    const panel = document.getElementById("dashboard-panel");
+    const table = screen.getByRole("heading", { name: "Player predictions" });
+    expect(panel.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+});
+
+describe("Accuracy XI pitch and search", () => {
+  it("keeps the pitch behind a button, because it is 520px of page", () => {
+    renderPage(<Accuracy />);
+    const button = screen.getByRole("button", { name: /The 11 that this model chose/ });
+    expect(button).toHaveAttribute("aria-expanded", "false");
+    expect(document.getElementById("accuracy-xi-pitch")).toBeNull();
+  });
+
+  it("expands to the pitch and collapses again on a second click", () => {
+    renderPage(<Accuracy />);
+    const button = screen.getByRole("button", { name: /The 11 that this model chose/ });
+    fireEvent.click(button);
+    expect(button).toHaveAttribute("aria-expanded", "true");
+    expect(document.getElementById("accuracy-xi-pitch")).not.toBeNull();
+    fireEvent.click(button);
+    expect(document.getElementById("accuracy-xi-pitch")).toBeNull();
+  });
+
+  it("narrows the table to the searched player", () => {
+    renderPage(<Accuracy />);
+    expect(screen.getByText("Result 1")).toBeInTheDocument();
+    expect(screen.getByText("Result 2")).toBeInTheDocument();
+    fireEvent.change(screen.getByRole("textbox", { name: "Search players" }), {
+      target: { value: "result 2" },
+    });
+    expect(screen.getByText("Result 2")).toBeInTheDocument();
+    expect(screen.queryByText("Result 1")).not.toBeInTheDocument();
+  });
+
+  it("returns to page one when a search is typed", () => {
+    // Searching from page 3 would otherwise land on an empty page, because
+    // the matches fit on page 1 and the page number does not reset.
+    renderPage(<Accuracy />);
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    expect(screen.getByText("Result 51")).toBeInTheDocument();
+    fireEvent.change(screen.getByRole("textbox", { name: "Search players" }), {
+      target: { value: "result 2" },
+    });
+    expect(screen.getByText("Result 2")).toBeInTheDocument();
   });
 });

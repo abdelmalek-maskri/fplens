@@ -54,9 +54,21 @@ export default function XGTab({ predictions }) {
           </div>
         );
       })}
-      <div className="flex items-center gap-4 mt-3 text-2xs text-surface-400">
-        <span>+ outscoring xG</span>
-        <span>− underperforming</span>
+      {/* Carries the bar colours, because the bars are the thing being
+          explained and two grey words beside them explain nothing. At 2xs on
+          surface-400 this was the faintest text on the page, which is the
+          wrong weight for the only line that says what the chart means. */}
+      <div className="flex items-center gap-5 flex-wrap mt-3 pt-3 border-t border-surface-200 text-xs text-surface-600">
+        <span className="flex items-center gap-1.5">
+          <span className="h-2.5 w-5 rounded bg-success-500/50" />
+          <span className="font-semibold text-success-400">+</span>
+          more goals than xG expected
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="h-2.5 w-5 rounded bg-warning-500/50" />
+          <span className="font-semibold text-warning-400">−</span>
+          fewer
+        </span>
       </div>
     </div>
   );

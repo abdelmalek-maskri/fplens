@@ -68,6 +68,28 @@ function Fdr({ rating, team }) {
   );
 }
 
+// The badges are two colours and a digit, and nothing on the page said what
+// either meant. A screen reader was told ("MCI fixture difficulty 2") and a
+// sighted reader was not, which is the wrong way round for a number printed
+// twenty times on one screen.
+function FdrKey() {
+  return (
+    <div className="flex items-center gap-x-4 gap-y-2 flex-wrap px-3 py-2.5 border-t border-surface-200 text-xs text-surface-600">
+      <span className="font-medium">Fixture difficulty for that team</span>
+      {[1, 2, 3, 4, 5].map((rating) => (
+        <span key={rating} className="flex items-center gap-1.5">
+          <span
+            className={`inline-flex items-center justify-center w-5 h-5 rounded text-2xs font-bold ${FDR_COLORS[rating].bg} ${FDR_COLORS[rating].text}`}
+          >
+            {rating}
+          </span>
+          <span>{FDR_COLORS[rating].label}</span>
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function Match({ match }) {
   const time = kickoffTime(match.kickoff);
 
@@ -111,6 +133,7 @@ export default function GameweekFixtures({ fixtureData }) {
           </div>
         </div>
       ))}
+      <FdrKey />
     </section>
   );
 }

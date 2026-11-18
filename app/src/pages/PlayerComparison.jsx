@@ -195,20 +195,33 @@ export default function PlayerComparison() {
             <PlayerCard p={b} onOpen={() => navigate(`/player/${b.id}`)} />
           </div>
 
-          <div className="border-y border-surface-200 py-4">
+          {/* Centred, because it is a judgement about both players rather than
+              about either one, and the two cards above and the two columns
+              below are already symmetric around the middle of the page. */}
+          <div className="border-y border-surface-200 py-4 text-center">
             <Verdict a={a} b={b} />
           </div>
 
-          <div className="max-w-xl">
-            <div className="grid grid-cols-[1fr_6rem_6rem] items-center py-1 text-xs text-surface-500">
-              <span />
-              <span className="text-right font-semibold text-surface-700">{a.web_name}</span>
-              <span className="text-right font-semibold text-surface-700">{b.web_name}</span>
+          {/* Head to head: each player's column sits under their own card
+              above, with the row label between them. The table was capped at
+              max-w-xl and left-aligned, so it used a third of the width while
+              the two cards it describes spanned all of it, and a reader had to
+              carry their eye back across empty space for every row. */}
+          <div>
+            <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-3 sm:gap-6 pb-2">
+              <span className="text-right text-sm font-semibold text-surface-700 truncate">
+                {a.web_name}
+              </span>
+              <span className="w-28 sm:w-44" />
+              <span className="text-left text-sm font-semibold text-surface-700 truncate">
+                {b.web_name}
+              </span>
             </div>
+
             {ROWS.map((row) => {
               const w = winner(row, a, b);
-              const cell = (p, side) =>
-                `text-right font-data tabular-nums ${
+              const cell = (side) =>
+                `font-data tabular-nums text-sm ${
                   w === side
                     ? "text-brand-700 font-bold"
                     : w
@@ -218,11 +231,13 @@ export default function PlayerComparison() {
               return (
                 <div
                   key={row.label}
-                  className="grid grid-cols-[1fr_6rem_6rem] items-center py-1.5 text-sm border-t border-surface-200/60"
+                  className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 sm:gap-6 py-2 border-t border-surface-200/60"
                 >
-                  <span className="text-surface-600">{row.label}</span>
-                  <span className={cell(a, "a")}>{row.fmt(row.get(a))}</span>
-                  <span className={cell(b, "b")}>{row.fmt(row.get(b))}</span>
+                  <span className={`text-right ${cell("a")}`}>{row.fmt(row.get(a))}</span>
+                  <span className="w-28 sm:w-44 text-center text-xs text-surface-600">
+                    {row.label}
+                  </span>
+                  <span className={`text-left ${cell("b")}`}>{row.fmt(row.get(b))}</span>
                 </div>
               );
             })}
