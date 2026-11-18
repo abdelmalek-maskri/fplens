@@ -94,6 +94,22 @@ describe("dashboard fixtures and empty state", () => {
     expect(screen.queryByText("Fixtures are currently unavailable.")).not.toBeInTheDocument();
   });
 
+  it("opens the fixture difficulty key alongside the fixtures", () => {
+    // The badges are a digit and a colour. Nothing said what either meant.
+    state.fixtures = {
+      error: null,
+      data: {
+        currentGw: 1,
+        fixtures: { ARS: [{ gw: 1, home: true, opponent: "CHE", atkFdr: 2, defFdr: 3 }] },
+      },
+    };
+    renderPage(<Dashboard />);
+    fireEvent.click(screen.getByRole("button", { name: /Fixtures/ }));
+    expect(screen.getByText(/Fixture difficulty for that team/)).toBeInTheDocument();
+    expect(screen.getByText("Very Easy")).toBeInTheDocument();
+    expect(screen.getByText("Very Hard")).toBeInTheDocument();
+  });
+
   it("prioritizes search guidance and retains flagged guidance without a search", () => {
     renderPage(<Dashboard />, "/?flagged=1&pos=DEF");
     expect(screen.getByText(/No flagged players in this position/)).toBeInTheDocument();
