@@ -319,10 +319,18 @@ export default function TransferPlanner() {
         </div>
       )}
       {!noTeam && (
-        <div>
-          <span className="section-label">Your squad, as the planner sees it</span>
-          <div className="mt-3 max-w-xl">
-            <div className="grid grid-cols-[1fr_4rem_5rem_6rem] gap-3 py-1 text-2xs text-surface-500 uppercase tracking-wide">
+        <div className="border border-surface-300/50 rounded-md overflow-hidden">
+          {/* The same shell as the suggestions above it. This was capped at
+              max-w-xl and left-aligned, so it hugged the left edge while every
+              other block on the page spanned the width, and the dead space to
+              its right read as something failing to load. */}
+          <div className="flex items-center justify-between px-4 py-2.5 bg-surface-200/50">
+            <span className="text-xs font-medium text-surface-700">
+              Your squad, as the planner sees it
+            </span>
+          </div>
+          <div className="px-4 pb-2">
+            <div className="grid grid-cols-[1fr_6rem_7rem_8rem] gap-3 py-2 text-2xs text-surface-500 uppercase tracking-wide">
               <span>Player</span>
               <span className="text-right">Price</span>
               <span className="text-right">Next GW</span>
@@ -345,7 +353,7 @@ export default function TransferPlanner() {
                 return (
                   <div
                     key={p.element}
-                    className={`grid grid-cols-[1fr_4rem_5rem_6rem] gap-3 items-center py-1.5 text-sm border-t border-surface-200/60 ${
+                    className={`grid grid-cols-[1fr_6rem_7rem_8rem] gap-3 items-center py-1.5 text-sm border-t border-surface-200/60 ${
                       p.isTransferIn ? "bg-brand-600/5" : ""
                     }`}
                   >
