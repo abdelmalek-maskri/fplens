@@ -4,6 +4,7 @@ import { POSITION_COLORS } from "../lib/constants";
 import { useAccuracy, useGameweek, usePagination } from "../hooks";
 import { seasonContext } from "./accuracy/seasonContext";
 import { gameweekPhase } from "../lib/freshness";
+import XiPitch from "./accuracy/XiPitch";
 import Loading from "../components/feedback/Loading";
 import ErrorState from "../components/feedback/ErrorState";
 import EmptyState from "../components/feedback/EmptyState";
@@ -18,12 +19,78 @@ function diffClass(d) {
   return "text-surface-500";
 }
 
+function XiTotal({ value, label, hero = false }) {
+  return (
+    <div>
+      <div
+        className={`font-data tabular-nums font-bold leading-none ${
+          hero ? "text-5xl text-surface-900" : "text-3xl text-surface-700"
+        }`}
+      >
+        {value}
+      </div>
+      <div className="section-label mt-2">{label}</div>
+    </div>
+  );
+}
+
+/**
+ * Where this eleven landed between the average manager and the best in the world.
+ *
+ * The three totals above answer "what were the numbers". This answers "was that
+ * good", which is the question a reader actually has and the one three digits
+ * in a row make them work out for themselves.
+ */
+function XiTrack({ points, average, highest }) {
+  // Without a top of the scale there is nothing to be a fraction of. The track
+  // is the only part of this block that needs it, so it goes rather than the
+  // numbers above.
+  if (!highest || highest <= 0) return null;
+  const pct = (n) => `${Math.min(Math.max((n / highest) * 100, 0), 100)}%`;
+
+  return (
+    <div className="mt-6 mx-auto max-w-lg">
+      <div className="relative h-2 rounded-full bg-surface-200">
+        <div
+          className="absolute inset-y-0 left-0 rounded-full bg-brand-600"
+          style={{ width: pct(points) }}
+        />
+        {average != null && (
+          <span
+            className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-0.5 h-4 rounded bg-surface-600"
+            style={{ left: pct(average) }}
+          />
+        )}
+      </div>
+      {/* The average label is pinned to its tick rather than laid out in the
+          row. Centred by the flex it would sit mid-track whatever the value
+          was, which is worse than no label: it would claim a position. */}
+      <div className="relative flex justify-between text-2xs text-surface-500 mt-1.5">
+        <span>0</span>
+        {average != null && (
+          <span
+            className="absolute -translate-x-1/2 whitespace-nowrap"
+            style={{ left: `${Math.min(Math.max((average / highest) * 100, 0), 100)}%` }}
+          >
+            average {average}
+          </span>
+        )}
+        <span>{highest} best</span>
+      </div>
+    </div>
+  );
+}
+
 export default function Accuracy() {
   const navigate = useNavigate();
   const { data, isLoading, error } = useAccuracy();
   const { data: gwData } = useGameweek();
   const [modelId, setModelId] = useState(null);
   const [positionFilter, setPositionFilter] = useState("ALL");
+  const [searchQuery, setSearchQuery] = useState("");
+  // Collapsed by default. The pitch is 520px tall and pushes the per-player
+  // table off the screen, and the table is what most visitors came for.
+  const [showPitch, setShowPitch] = useState(false);
   const tableHeadingRef = useRef(null);
 
   const modelIds = useMemo(() => Object.keys(data?.models ?? {}), [data]);
@@ -33,8 +100,13 @@ export default function Accuracy() {
 
   const players = useMemo(() => {
     const all = model?.players ?? [];
-    return positionFilter === "ALL" ? all : all.filter((p) => p.position === positionFilter);
-  }, [model, positionFilter]);
+    const query = searchQuery.trim().toLowerCase();
+    return all.filter(
+      (p) =>
+        (positionFilter === "ALL" || p.position === positionFilter) &&
+        (!query || p.name.toLowerCase().includes(query))
+    );
+  }, [model, positionFilter, searchQuery]);
 
   // Before the early returns below, so the hook order stays stable across the
   // loading, error and empty states.
@@ -111,74 +183,61 @@ export default function Accuracy() {
       {xi && (
         /* The outcome before the statistics. The ranking score says the model
            orders players well; this says whether fielding the team it picked
-           would actually have beaten the field. */
-        <div className="py-5 border-y border-surface-200">
-          <p className="text-base text-surface-800">
-            The eleven{" "}
-            <span className="font-semibold text-surface-900">
-              {data.names[selected] ?? selected}
-            </span>{" "}
-            picked scored{" "}
-            <span className="text-2xl font-bold font-data tabular-nums text-surface-900">
-              {xi.points}
-            </span>{" "}
-            points.
-            {margin != null && (
-              <>
-                {" "}
-                That is{" "}
-                <span
-                  className={`font-semibold ${margin > 0 ? "text-success-400" : margin < 0 ? "text-danger-400" : "text-surface-800"}`}
-                >
-                  {margin > 0
-                    ? `${margin} ahead of`
-                    : margin < 0
-                      ? `${-margin} behind`
-                      : "level with"}
-                </span>{" "}
-                the average FPL manager.
-              </>
-            )}
-          </p>
+           would actually have beaten the field.
 
-          <div className="flex items-center gap-8 flex-wrap mt-4">
+           The three totals sit side by side at the same size, because the
+           question is how they compare, and three separate sentences made the
+           reader hold two numbers in their head to answer it. The track does
+           the rest: 61 against 55 and 139 is "just above average and nowhere
+           near the top", which the digits alone do not show. */
+        <div className="py-6 border-y border-surface-200 text-center">
+          <p className="section-label">{data.names[selected] ?? selected} picked</p>
+
+          <div className="mt-4 flex items-start justify-center gap-10 sm:gap-16 flex-wrap">
+            <XiTotal value={xi.points} label="this eleven" hero />
             {xi.average_manager != null && (
-              <div>
-                <span className="text-lg font-bold font-data tabular-nums text-surface-800">
-                  {xi.average_manager}
-                </span>
-                <span className="text-sm text-surface-500 ml-2">average manager</span>
-              </div>
+              <XiTotal value={xi.average_manager} label="average manager" />
             )}
-            {xi.highest != null && (
-              <div>
-                <span className="text-lg font-bold font-data tabular-nums text-surface-800">
-                  {xi.highest}
-                </span>
-                <span className="text-sm text-surface-500 ml-2">best manager in the world</span>
-              </div>
-            )}
+            {xi.highest != null && <XiTotal value={xi.highest} label="best in the world" />}
           </div>
 
-          <div className="mt-4">
-            <p className="text-xs text-surface-500 mb-2">
-              The eleven it picked, and what each one actually scored
+          {margin != null && (
+            <p
+              className={`mt-3 text-sm font-semibold ${
+                margin > 0
+                  ? "text-success-400"
+                  : margin < 0
+                    ? "text-danger-400"
+                    : "text-surface-500"
+              }`}
+            >
+              {margin > 0
+                ? `${margin} ahead of the average manager`
+                : margin < 0
+                  ? `${-margin} behind the average manager`
+                  : "level with the average manager"}
             </p>
-            <div className="flex flex-wrap gap-x-5 gap-y-1.5">
-              {xi.players.map((p) => (
-                <span key={p.element} className="text-sm text-surface-700">
-                  {p.name}
-                  {p.captain && (
-                    <span className="text-brand-700 ml-1">
-                      (C)<span className="sr-only"> captain, points doubled</span>
-                    </span>
-                  )}
-                  <span className="ml-1.5 font-data tabular-nums font-semibold text-surface-900">
-                    {p.actual ?? "-"}
-                  </span>
-                </span>
-              ))}
-            </div>
+          )}
+
+          <XiTrack points={xi.points} average={xi.average_manager} highest={xi.highest} />
+
+          <div className="mt-6 pt-5 border-t border-surface-200">
+            <button
+              type="button"
+              onClick={() => setShowPitch((v) => !v)}
+              aria-expanded={showPitch}
+              aria-controls="accuracy-xi-pitch"
+              className="inline-flex items-center gap-2 rounded border border-surface-300 px-3 py-1.5 text-sm text-surface-700 hover:border-surface-400 hover:text-surface-900 transition-colors"
+            >
+              The 11 that this model chose
+              <span aria-hidden="true">{showPitch ? "\u25b4" : "\u25be"}</span>
+            </button>
+
+            {showPitch && (
+              <div id="accuracy-xi-pitch" className="mt-4 text-left">
+                <XiPitch players={xi.players} />
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -192,7 +251,7 @@ export default function Accuracy() {
             How close each prediction was to what the player really scored.
           </p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 flex-wrap">
           <label className="flex items-center gap-2">
             <span className="text-sm text-surface-500">Model</span>
             <select
@@ -207,46 +266,60 @@ export default function Accuracy() {
               ))}
             </select>
           </label>
-          {/* Ranking first, error second: same order as the dashboard, same reason.
-              A model can win on error by predicting low for everyone. */}
-          {/* No tooltips: the labels beside each number already say what it
-              means, and in plainer words than "Spearman rank correlation" would. */}
-          <div className="flex items-center gap-5 text-sm">
-            {model.spearman != null && (
-              <div>
-                <span className="font-data tabular-nums font-semibold text-brand-700">
-                  {model.spearman.toFixed(2)}
-                </span>
-                <span className="text-surface-500 ml-1.5">ranking, 1 = perfect</span>
-              </div>
-            )}
-            <div>
-              <span className="font-data tabular-nums font-semibold text-surface-800">
-                {model.mae?.toFixed(1) ?? "-"}
-              </span>
-              <span className="text-surface-500 ml-1.5">pts off, on average</span>
-            </div>
-          </div>
         </div>
       </div>
 
-      <div className="flex items-center gap-0 border-b border-surface-200">
-        {POSITIONS.map((pos) => (
-          <button
-            key={pos}
-            onClick={() => setPositionFilter(pos)}
-            className={`relative px-3 py-2 text-xs font-medium transition-colors ${
-              positionFilter === pos
-                ? "text-surface-900"
-                : "text-surface-500 hover:text-surface-700"
-            }`}
+      {/* The position tabs and the search share a row and a bottom border, so
+          they read as one set of controls over the table below. 670 rows at 50
+          a page is 14 pages, which is more than anyone pages through to find
+          one player. */}
+      <div className="flex items-center justify-between gap-3 flex-wrap border-b border-surface-200">
+        <div className="flex items-center gap-0">
+          {POSITIONS.map((pos) => (
+            <button
+              key={pos}
+              onClick={() => setPositionFilter(pos)}
+              className={`relative px-3 py-2 text-xs font-medium transition-colors ${
+                positionFilter === pos
+                  ? "text-surface-900"
+                  : "text-surface-500 hover:text-surface-700"
+              }`}
+            >
+              {pos}
+              {positionFilter === pos && (
+                <span className="absolute bottom-0 left-3 right-3 h-[2px] rounded-full bg-brand-600" />
+              )}
+            </button>
+          ))}
+        </div>
+
+        <div className="relative pb-1">
+          <svg
+            className="absolute left-0 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-surface-400 pointer-events-none"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            aria-hidden="true"
           >
-            {pos}
-            {positionFilter === pos && (
-              <span className="absolute bottom-0 left-3 right-3 h-[2px] rounded-full bg-brand-600" />
-            )}
-          </button>
-        ))}
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z"
+            />
+          </svg>
+          <input
+            type="text"
+            aria-label="Search players"
+            placeholder="Search..."
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setPage(1);
+            }}
+            className="bg-transparent border-b border-surface-300 pl-5 pr-2 py-1.5 text-sm text-surface-900 placeholder:text-surface-400 w-44 focus:border-surface-500 focus:outline-none transition-colors"
+          />
+        </div>
       </div>
 
       <div className="overflow-x-auto">

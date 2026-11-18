@@ -26,6 +26,17 @@ vi.mock("../../hooks", async (importOriginal) => {
     names: { model: "Model" },
     models: {
       model: {
+        xi: {
+          points: 61,
+          average_manager: 55,
+          highest: 139,
+          players: [
+            { element: 1, name: "Keeper", position: "GK", actual: 2, captain: false },
+            { element: 2, name: "Back", position: "DEF", actual: 6, captain: false },
+            { element: 3, name: "Mid", position: "MID", actual: 10, captain: true },
+            { element: 4, name: "Striker", position: "FWD", actual: 1, captain: false },
+          ],
+        },
         players: Array.from({ length: 51 }, (_, i) => ({
           element: i + 1,
           name: `Result ${i + 1}`,
@@ -195,5 +206,47 @@ describe("Dashboard panels", () => {
     const panel = document.getElementById("dashboard-panel");
     const table = screen.getByRole("heading", { name: "Player predictions" });
     expect(panel.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+});
+
+describe("Accuracy XI pitch and search", () => {
+  it("keeps the pitch behind a button, because it is 520px of page", () => {
+    renderPage(<Accuracy />);
+    const button = screen.getByRole("button", { name: /The 11 that this model chose/ });
+    expect(button).toHaveAttribute("aria-expanded", "false");
+    expect(document.getElementById("accuracy-xi-pitch")).toBeNull();
+  });
+
+  it("expands to the pitch and collapses again on a second click", () => {
+    renderPage(<Accuracy />);
+    const button = screen.getByRole("button", { name: /The 11 that this model chose/ });
+    fireEvent.click(button);
+    expect(button).toHaveAttribute("aria-expanded", "true");
+    expect(document.getElementById("accuracy-xi-pitch")).not.toBeNull();
+    fireEvent.click(button);
+    expect(document.getElementById("accuracy-xi-pitch")).toBeNull();
+  });
+
+  it("narrows the table to the searched player", () => {
+    renderPage(<Accuracy />);
+    expect(screen.getByText("Result 1")).toBeInTheDocument();
+    expect(screen.getByText("Result 2")).toBeInTheDocument();
+    fireEvent.change(screen.getByRole("textbox", { name: "Search players" }), {
+      target: { value: "result 2" },
+    });
+    expect(screen.getByText("Result 2")).toBeInTheDocument();
+    expect(screen.queryByText("Result 1")).not.toBeInTheDocument();
+  });
+
+  it("returns to page one when a search is typed", () => {
+    // Searching from page 3 would otherwise land on an empty page, because
+    // the matches fit on page 1 and the page number does not reset.
+    renderPage(<Accuracy />);
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    expect(screen.getByText("Result 51")).toBeInTheDocument();
+    fireEvent.change(screen.getByRole("textbox", { name: "Search players" }), {
+      target: { value: "result 2" },
+    });
+    expect(screen.getByText("Result 2")).toBeInTheDocument();
   });
 });
