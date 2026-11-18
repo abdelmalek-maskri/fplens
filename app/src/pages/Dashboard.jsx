@@ -7,7 +7,6 @@ import SortHeader from "../components/ui/SortHeader";
 import TeamBadge from "../components/badges/TeamBadge";
 import PlayerLink from "../components/ui/PlayerLink";
 
-import TabBar from "../components/ui/TabBar";
 import ErrorState from "../components/feedback/ErrorState";
 import EmptyState from "../components/feedback/EmptyState";
 import Loading from "../components/feedback/Loading";
@@ -46,6 +45,14 @@ function FilterChip({ active, onClick, children, ...props }) {
 
 const POSITIONS = ["ALL", "GK", "DEF", "MID", "FWD"];
 
+// The expandable panels above the table, in the order their chips appear.
+const PANELS = [
+  { id: "fixtures", label: "Fixtures" },
+  { id: "differentials", label: "Differentials" },
+  { id: "xg", label: "Goals vs xG" },
+  { id: "prices", label: "Price Watch" },
+];
+
 // All ~670 players match an empty filter, and a table that long pushes
 // everything below it thousands of pixels out of reach.
 const PAGE_SIZE = 50;
@@ -62,7 +69,11 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const positionFilter = searchParams.get("pos") || "ALL";
-  const bottomTab = searchParams.get("tab") || "differentials";
+  // Which expandable panel is open, or "" for none. Fixtures, differentials,
+  // xG and prices all behave the same way, so they share one piece of state
+  // rather than a boolean for fixtures and a tab index for the other three.
+  // In the address bar, so a link can point at the panel it is talking about.
+  const panel = searchParams.get("panel") || "";
   const setParam = (key, value) => {
     setSearchParams((prev) => {
       const p = new URLSearchParams(prev);
@@ -71,10 +82,8 @@ export default function Dashboard() {
     });
   };
   // Flagged lives in the URL beside the position filter, because both narrow the
-  // table and both are worth keeping on a refresh. Fixtures is a disclosure, not
-  // a filter, so it stays local and out of the address bar.
+  // table and both are worth keeping on a refresh.
   const flaggedOnly = searchParams.get("flagged") === "1";
-  const [showFixtures, setShowFixtures] = useState(false);
   const [sortBy, setSortBy] = useState("predicted_points");
   const [sortDesc, setSortDesc] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -108,7 +117,6 @@ export default function Dashboard() {
   const fdrFor = (teamName) =>
     fixtureData?.fixtures[teamName]?.find((f) => f.gw === fixtureData.currentGw)?.atkFdr;
   const predictions = useMemo(() => data?.predictions ?? [], [data]);
-  const activeModel = models.find((m) => m.id === selectedModel) || models[0];
 
   // Everything the other filters allow, before the flagged toggle narrows it.
   // The toggle's own count is read off this, so it answers "how many of what I
@@ -177,13 +185,22 @@ export default function Dashboard() {
             {flaggedCount} flagged
           </FilterChip>
 
-          <FilterChip
-            active={showFixtures}
-            onClick={() => setShowFixtures((v) => !v)}
-            aria-expanded={showFixtures}
-          >
-            Fixtures {showFixtures ? "▴" : "▾"}
-          </FilterChip>
+          {/* These four were two mechanisms doing one job: Fixtures was a
+              disclosure up here, while Differentials, Goals vs xG and Price
+              Watch were a tab strip below the table. Fifty rows and a
+              pagination bar sat in between, so nobody scrolled that far. One
+              accordion, all four, above the table. */}
+          {PANELS.map((p) => (
+            <FilterChip
+              key={p.id}
+              active={panel === p.id}
+              onClick={() => setParam("panel", panel === p.id ? "" : p.id)}
+              aria-expanded={panel === p.id}
+              aria-controls="dashboard-panel"
+            >
+              {p.label} {panel === p.id ? "▴" : "▾"}
+            </FilterChip>
+          ))}
         </div>
         <div className="flex items-center gap-3">
           {models.length > 0 && (
@@ -202,35 +219,24 @@ export default function Dashboard() {
               </select>
             </label>
           )}
-          {activeModel && (
-            /* Rank quality leads, error follows. Sorting these models by MAE is
-               actively misleading: 60% of gameweek scores are zero, so MAE rewards
-               predicting low. LightGBM Tweedie has the best MAE here and the worst
-               rankings.
-
-               Spelled out rather than hidden behind a title tooltip, which never
-               opens on a phone and is where most of this traffic is. */
-            <span className="text-xs font-data tabular-nums text-surface-500">
-              {typeof activeModel.spearman === "number" && (
-                <>
-                  <span className="text-brand-700">rank {activeModel.spearman.toFixed(3)}</span>
-                  <span className="mx-1.5 text-surface-300">·</span>
-                </>
-              )}
-              <span>error {activeModel.mae}</span>
-            </span>
-          )}
         </div>
       </div>
 
-      {showFixtures &&
-        (fixtureError ? (
-          <section className="border-y border-surface-200 py-3 text-sm text-surface-600">
-            Fixtures are currently unavailable.
-          </section>
-        ) : (
-          <GameweekFixtures fixtureData={fixtureData} />
-        ))}
+      {panel && (
+        <section id="dashboard-panel" aria-label={PANELS.find((p) => p.id === panel)?.label}>
+          {panel === "fixtures" &&
+            (fixtureError ? (
+              <p className="border-y border-surface-200 py-3 text-sm text-surface-600">
+                Fixtures are currently unavailable.
+              </p>
+            ) : (
+              <GameweekFixtures fixtureData={fixtureData} />
+            ))}
+          {panel === "differentials" && <DifferentialsTab predictions={predictions} />}
+          {panel === "xg" && <XGTab predictions={predictions} />}
+          {panel === "prices" && <PriceTab predictions={predictions} />}
+        </section>
+      )}
 
       <h2 ref={tableHeadingRef} tabIndex={-1} className="sr-only">
         Player predictions
@@ -513,25 +519,6 @@ export default function Dashboard() {
             tableHeadingRef.current?.focus({ preventScroll: true });
           }}
         />
-      </div>
-
-      <div className="mt-10">
-        <TabBar
-          tabs={[
-            { id: "differentials", label: "Differentials" },
-            { id: "xg", label: "Goals vs xG" },
-            { id: "prices", label: "Price Watch" },
-          ]}
-          active={bottomTab}
-          onChange={(value) => setParam("tab", value)}
-          id="dashboard-bottom"
-        />
-
-        <div className="pt-4">
-          {bottomTab === "differentials" && <DifferentialsTab predictions={predictions} />}
-          {bottomTab === "xg" && <XGTab predictions={predictions} />}
-          {bottomTab === "prices" && <PriceTab predictions={predictions} />}
-        </div>
       </div>
     </div>
   );

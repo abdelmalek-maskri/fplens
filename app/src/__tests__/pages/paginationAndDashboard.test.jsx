@@ -137,3 +137,47 @@ describe("Dashboard row disclosure", () => {
     links.forEach((a) => expect(a).toHaveAttribute("href", "/player/1"));
   });
 });
+
+describe("Dashboard panels", () => {
+  // Fixtures, Differentials, Goals vs xG and Price Watch were two different
+  // mechanisms: a disclosure above the table and a tab strip below it, with
+  // fifty rows in between. These assert they now behave as one accordion.
+  const chip = (name) => screen.getByRole("button", { name: new RegExp(`^${name}`) });
+
+  it("starts with every panel closed", () => {
+    renderPage(<Dashboard />);
+    for (const name of ["Fixtures", "Differentials", "Goals vs xG", "Price Watch"]) {
+      expect(chip(name)).toHaveAttribute("aria-expanded", "false");
+    }
+  });
+
+  it("opens a panel on click and closes it on a second click", () => {
+    renderPage(<Dashboard />);
+    fireEvent.click(chip("Differentials"));
+    expect(chip("Differentials")).toHaveAttribute("aria-expanded", "true");
+    fireEvent.click(chip("Differentials"));
+    expect(chip("Differentials")).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("keeps only one panel open at a time", () => {
+    renderPage(<Dashboard />);
+    fireEvent.click(chip("Differentials"));
+    fireEvent.click(chip("Price Watch"));
+    expect(chip("Price Watch")).toHaveAttribute("aria-expanded", "true");
+    expect(chip("Differentials")).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("opens the panel named in the address bar, so a link can point at one", () => {
+    renderPage(<Dashboard />, "/?panel=xg");
+    expect(chip("Goals vs xG")).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("sits above the table rather than below it", () => {
+    // The whole point of the move: a reader should not have to pass fifty
+    // rows and a pagination bar to find out these panels exist.
+    renderPage(<Dashboard />, "/?panel=differentials");
+    const panel = document.getElementById("dashboard-panel");
+    const table = screen.getByRole("heading", { name: "Player predictions" });
+    expect(panel.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+});
